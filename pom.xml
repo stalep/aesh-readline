@@ -45,9 +45,7 @@
     <modules>
         <module>terminal-api</module>
         <module>readline</module>
-        <!--
         <module>terminal-telnet</module>
--->
         <module>examples</module>
     </modules>
     
