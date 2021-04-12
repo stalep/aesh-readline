@@ -84,7 +84,7 @@ public class Readline {
         this.decoder = new ActionDecoder(this.editMode);
     }
 
-    protected InputProcessor getInputProcessor() {
+    public InputProcessor getInputProcessor() {
         return inputProcessor;
     }
 
