@@ -1,7 +1,6 @@
 == Æsh (Another Extendable SHell) Readline
 
-
-image:https://travis-ci.org/aeshell/aesh-readline.svg?branch=master["Build Status", link="https://travis-ci.org/aeshell/aesh-readline"]
+[![Build Status](https://github.com/aeshell/aesh-readline/actions/workflows/main.yml/badge.svg)](https://github.com/aeshell/aesh-readline/actions)
 
 Æsh Readline is a library for handling console input with the goal to support most GNU Readline features. 
 
