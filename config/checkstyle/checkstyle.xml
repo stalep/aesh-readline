@@ -16,8 +16,6 @@
 
     <module name="TreeWalker">
 
-        <property name="cacheFile" value="${checkstyle.cache.file}"/>
-
         <!-- Checks for imports                              -->
         <module name="AvoidStarImport">
             <property name="allowStaticMemberImports" value="true"/>
@@ -48,11 +46,6 @@
         <!-- <module name="EmptyStatement"/> -->
         <module name="EqualsHashCode"/>
         <module name="IllegalInstantiation"/>
-        <!-- removed in checkstyle 6.2, see https://github.com/checkstyle/checkstyle/issues/473 -->
-        <!--module name="RedundantThrows">
-            <property name="allowUnchecked" value="true"/>
-            <property name="suppressLoadErrors" value="true"/>
-        </module-->
 
         <!-- Miscellaneous other checks.                   -->
         <module name="UpperEll"/>

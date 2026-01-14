@@ -29,12 +29,12 @@ abstract class BackwardWord extends ChangeAction {
 
     private boolean viMode;
 
-    public BackwardWord() {
+    BackwardWord() {
         super(EditMode.Status.MOVE);
         this.viMode = false;
     }
 
-    public BackwardWord(boolean viMode, EditMode.Status status) {
+    BackwardWord(boolean viMode, EditMode.Status status) {
         super(status);
         this.viMode = viMode;
     }

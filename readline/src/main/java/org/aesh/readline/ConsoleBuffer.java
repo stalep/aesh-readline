@@ -78,7 +78,7 @@ public interface ConsoleBuffer {
      *
      * @param where &lt; 0 move back, where &gt; 0 move forward
      */
-    void moveCursor(final int where);
+    void moveCursor(int where);
 
     /**
      * Print the contents of the current buffer to the console

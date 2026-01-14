@@ -91,7 +91,7 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     private volatile boolean closing;
     private final ConsoleOutput cpConsumer;
 
-    public AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
+    AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
         super(name, "windows", signalHandler);
         PipedInputStream input = new PipedInputStream(PIPE_SIZE);
         this.slaveInputPipe = new PipedOutputStream(input);

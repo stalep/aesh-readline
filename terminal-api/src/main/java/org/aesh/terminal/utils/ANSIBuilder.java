@@ -442,7 +442,7 @@ public class ANSIBuilder {
 
         private final int value;
 
-        private Color(int index) {
+        Color(int index) {
             this.value = index;
         }
 
