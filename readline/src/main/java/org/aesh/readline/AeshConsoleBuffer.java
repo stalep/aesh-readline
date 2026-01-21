@@ -18,7 +18,9 @@ import java.util.logging.Logger;
 import org.aesh.terminal.tty.Size;
 
 /**
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * Default implementation of the ConsoleBuffer interface for managing console input and output.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class AeshConsoleBuffer implements ConsoleBuffer {
 

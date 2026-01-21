@@ -20,7 +20,9 @@
 package org.aesh.readline.action;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action interface for history search operations with status tracking.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface SearchAction extends ActionEvent {
 

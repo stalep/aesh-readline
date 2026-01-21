@@ -65,8 +65,6 @@ public class ShellExample implements Consumer<Connection>{
                 return;
             }
 
-            //LOGGER.info("got: " + line);
-
             Matcher matcher = splitter.matcher(line);
             if (matcher.find()) {
                 String cmd = matcher.group();
@@ -321,7 +319,7 @@ public class ShellExample implements Consumer<Connection>{
                             if (index < threads.size()) {
                                 Thread thread = threads.get(index);
                                 formatter.format(format,
-                                        thread.getId(),
+                                        thread.threadId(),
                                         thread.getState().name(),
                                         thread.getName(),
                                         thread.getThreadGroup().getName());
@@ -330,6 +328,7 @@ public class ShellExample implements Consumer<Connection>{
                     }
 
                     conn.write(buf.toString());
+                    formatter.close();
                     // Sleep until we refresh the list of interrupted
                     Thread.sleep(1000);
                 }

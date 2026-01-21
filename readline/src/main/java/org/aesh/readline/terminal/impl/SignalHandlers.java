@@ -22,6 +22,7 @@ package org.aesh.readline.terminal.impl;
 import org.aesh.terminal.Terminal.SignalHandler;
 
 /**
+ * Provides default and ignore signal handlers for terminal signal handling.
  *
  * @author jdenise@redhat.com
  */

@@ -32,7 +32,10 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Abstract handler that manages tab-completion for command line input.
+ *
+ * @param <C> the type of complete operation this handler works with
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public abstract class CompletionHandler<C extends CompleteOperation> {
 

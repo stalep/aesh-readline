@@ -23,11 +23,25 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
 /**
+ * Maps readline function names to their corresponding action implementations.
  *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class ActionMapper {
 
+    /**
+     * Private constructor to prevent instantiation of this utility class.
+     */
+    private ActionMapper() {
+        // Utility class, not meant to be instantiated
+    }
+
+    /**
+     * Maps a readline function name to its corresponding action.
+     *
+     * @param function the readline function name (e.g., "backward-char", "delete-char")
+     * @return the action corresponding to the function name, or a no-op action if not found
+     */
     public static Action mapToAction(String function) {
 
         if(function.equals("abort"))

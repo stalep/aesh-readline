@@ -23,7 +23,9 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that converts the character at the cursor to uppercase.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class UpCaseChar implements Action {
 

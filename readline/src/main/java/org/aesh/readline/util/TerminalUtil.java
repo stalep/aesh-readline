@@ -25,6 +25,8 @@ import org.aesh.terminal.tty.Size;
 import java.io.IOException;
 
 /**
+ * Utility class for retrieving terminal size and type information.
+ *
  * @author <a href="mailto:stalep@gmail.com">Ståle Pedersen</a>
  */
 public class TerminalUtil {

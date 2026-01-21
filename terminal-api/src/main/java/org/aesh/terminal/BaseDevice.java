@@ -28,7 +28,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Abstract base implementation of the Device interface providing common
+ * functionality for terminal device capabilities.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public abstract class BaseDevice implements Device {
 

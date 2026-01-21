@@ -24,7 +24,9 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that toggles the case of the character at cursor and moves forward.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class ChangeCaseChar implements Action {
     @Override

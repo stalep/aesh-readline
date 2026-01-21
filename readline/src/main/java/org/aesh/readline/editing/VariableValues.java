@@ -25,7 +25,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Defines the allowed values for each readline configuration variable.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum VariableValues {
 

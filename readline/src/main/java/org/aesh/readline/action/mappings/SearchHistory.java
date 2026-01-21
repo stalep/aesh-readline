@@ -33,7 +33,7 @@ import org.aesh.readline.util.LoggerUtil;
 import java.util.logging.Logger;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 abstract class SearchHistory implements SearchAction {
 

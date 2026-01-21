@@ -22,6 +22,9 @@ package org.aesh.terminal.tty;
 import java.util.function.Consumer;
 
 /**
+ * Processes TTY output by converting line feeds to carriage return + line feed sequences.
+ * This is equivalent to 'stty onlcr'.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TtyOutputMode implements Consumer<int[]> {

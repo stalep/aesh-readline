@@ -23,16 +23,25 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
-* @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
-*/
+ * Abstract base class for managing Telnet protocol connections and option negotiation.
+ *
+ * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
+ */
 public abstract class TelnetConnection {
 
+  /** Telnet IAC (Interpret As Command) byte. */
   public static final byte BYTE_IAC = (byte)  0xFF;
+  /** Telnet DON'T option negotiation byte. */
   public static final byte BYTE_DONT = (byte) 0xFE;
+  /** Telnet DO option negotiation byte. */
   public static final byte BYTE_DO = (byte)   0xFD;
+  /** Telnet WON'T option negotiation byte. */
   public static final byte BYTE_WONT = (byte) 0xFC;
+  /** Telnet WILL option negotiation byte. */
   public static final byte BYTE_WILL = (byte) 0xFB;
+  /** Telnet SB (subnegotiation begin) byte. */
   public static final byte BYTE_SB = (byte)   0xFA;
+  /** Telnet SE (subnegotiation end) byte. */
   public static final byte BYTE_SE = (byte)   0xF0;
 
   private byte[] pendingBuffer = new byte[256];
@@ -46,6 +55,11 @@ public abstract class TelnetConnection {
   boolean receiveBinary;
   final TelnetHandler handler;
 
+  /**
+   * Creates a new TelnetConnection with the specified handler.
+   *
+   * @param handler the handler for processing telnet events
+   */
   public TelnetConnection(TelnetHandler handler) {
     this.status = Status.DATA;
     this.paramsOptionCode = null;
@@ -63,10 +77,16 @@ public abstract class TelnetConnection {
     paramsBuffer[paramsLength++] = b;
   }
 
+  /**
+   * Initializes the connection and notifies the handler that it is open.
+   */
   public void onInit() {
     handler.onOpen(this);
   }
 
+  /**
+   * Closes the telnet connection.
+   */
   public abstract void close();
 
   /**
@@ -105,6 +125,11 @@ public abstract class TelnetConnection {
 
   protected abstract void send(byte[] data);
 
+  /**
+   * Receives and processes incoming data from the telnet client.
+   *
+   * @param data the raw byte data received
+   */
   public void receive(byte[] data) {
     for (byte b : data) {
       status.handle(this, b);

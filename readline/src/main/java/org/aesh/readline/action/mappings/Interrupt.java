@@ -24,7 +24,9 @@ import org.aesh.readline.action.Action;
 import org.aesh.terminal.tty.Signal;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that sends an interrupt signal (SIGINT) to the terminal.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Interrupt implements Action {
 

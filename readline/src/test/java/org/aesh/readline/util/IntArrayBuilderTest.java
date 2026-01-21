@@ -24,7 +24,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 
 /**
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class IntArrayBuilderTest {
 

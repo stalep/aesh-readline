@@ -32,19 +32,44 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.aesh.terminal.tty.Signal;
 
+/**
+ * Abstract base class providing common functionality for terminal implementations.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
+ */
 public abstract class AbstractTerminal implements Terminal {
 
+    /** Logger for this terminal instance. */
     protected final Logger LOGGER = LoggerUtil.getLogger(getClass().getName());
 
+    /** The terminal name. */
     protected final String name;
+    /** The terminal type (e.g., "xterm", "vt100"). */
     protected final String type;
+    /** Map of signal types to their handlers. */
     protected final Map<Signal, SignalHandler> handlers = new HashMap<>();
+    /** The device capabilities for this terminal. */
     protected final Device device;
 
+    /**
+     * Creates a new terminal with the specified name and type using default signal handling.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @throws IOException if an I/O error occurs during initialization
+     */
     public AbstractTerminal(String name, String type) throws IOException {
         this(name, type, SignalHandlers.SIG_DFL);
     }
 
+    /**
+     * Creates a new terminal with the specified name, type, and signal handler.
+     *
+     * @param name the terminal name
+     * @param type the terminal type
+     * @param signalHandler the default handler for all signals
+     * @throws IOException if an I/O error occurs during initialization
+     */
     public AbstractTerminal(String name, String type, SignalHandler signalHandler) throws IOException {
         this.name = name;
         this.type = type;
@@ -71,9 +96,21 @@ public abstract class AbstractTerminal implements Terminal {
         }
     }
 
+    /**
+     * Handles the default behavior for a signal when no custom handler is registered.
+     * Subclasses can override this method to provide default signal handling behavior.
+     *
+     * @param signal the signal to handle
+     */
     protected void handleDefaultSignal(Signal signal) {
     }
 
+    /**
+     * Echoes the control character representation of a signal to the terminal output.
+     * For example, SIGINT is echoed as "^C".
+     *
+     * @param signal the signal whose control character should be echoed
+     */
     protected void echoSignal(Signal signal) {
         Attributes.ControlChar cc = null;
         switch (signal) {
@@ -118,6 +155,11 @@ public abstract class AbstractTerminal implements Terminal {
         return name;
     }
 
+    /**
+     * Returns the terminal type identifier.
+     *
+     * @return the terminal type (e.g., "xterm", "vt100")
+     */
     public String getType() {
         return type;
     }

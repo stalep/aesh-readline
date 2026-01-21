@@ -26,6 +26,8 @@ import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 /**
+ * Buffer for queuing and dispatching terminal input data to a read handler.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class ReadBuffer implements Consumer<int[]> {
@@ -34,6 +36,11 @@ public class ReadBuffer implements Consumer<int[]> {
   private final Executor executor;
   private volatile Consumer<int[]> readHandler;
 
+  /**
+   * Creates a new ReadBuffer with the specified executor.
+   *
+   * @param executor the executor used for dispatching data to the read handler
+   */
   public ReadBuffer(Executor executor) {
     this.executor = executor;
   }
@@ -49,10 +56,21 @@ public class ReadBuffer implements Consumer<int[]> {
     }
   }
 
+  /**
+   * Returns the current read handler.
+   *
+   * @return the read handler, or null if none is set
+   */
   public Consumer<int[]> getReadHandler() {
     return readHandler;
   }
 
+  /**
+   * Sets the read handler for receiving buffered data.
+   * When a handler is set, any queued data will be drained to the handler.
+   *
+   * @param readHandler the handler to receive data, or null to clear the handler
+   */
   public void setReadHandler(final Consumer<int[]> readHandler) {
     if (readHandler != null) {
       if (this.readHandler != null) {

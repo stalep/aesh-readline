@@ -25,7 +25,7 @@ package org.aesh.readline.util;
  *
  * <i>readable</i> and <i>writable</i> will be true by default.
  *
- * @author Lin Gao <lgao@redhat.com>
+ * @author <a href="mailto:lgao@redhat.com">Lin Gao</a>
  *
  */
 public class FileAccessPermission {

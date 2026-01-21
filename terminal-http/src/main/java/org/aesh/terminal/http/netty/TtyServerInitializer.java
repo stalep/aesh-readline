@@ -51,6 +51,8 @@ import org.aesh.terminal.Connection;
 import java.util.function.Consumer;
 
 /**
+ * Netty channel initializer that sets up the HTTP and WebSocket pipeline for TTY connections.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TtyServerInitializer extends ChannelInitializer<SocketChannel> {
@@ -58,6 +60,12 @@ public class TtyServerInitializer extends ChannelInitializer<SocketChannel> {
   private final ChannelGroup group;
   private final Consumer<Connection> handler;
 
+  /**
+   * Creates a new server initializer with the specified channel group and connection handler.
+   *
+   * @param group the channel group for managing active channels
+   * @param handler the handler to invoke for each new connection
+   */
   public TtyServerInitializer(ChannelGroup group, Consumer<Connection> handler) {
     this.group = group;
     this.handler = handler;

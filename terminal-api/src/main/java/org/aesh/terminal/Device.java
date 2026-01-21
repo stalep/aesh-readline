@@ -26,7 +26,7 @@ import java.util.function.Consumer;
 /**
  * Contains info regarding the current device connected to readline
  *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface Device {
 

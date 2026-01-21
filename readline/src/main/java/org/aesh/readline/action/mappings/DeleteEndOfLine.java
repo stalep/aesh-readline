@@ -23,7 +23,9 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that deletes text from cursor to end of line.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class DeleteEndOfLine extends ChangeAction {
 

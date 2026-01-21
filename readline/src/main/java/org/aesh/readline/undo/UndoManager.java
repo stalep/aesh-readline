@@ -22,7 +22,9 @@ package org.aesh.readline.undo;
 import java.util.Stack;
 
 /**
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * Manages a stack of undo actions for line editing operations.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class UndoManager {
 

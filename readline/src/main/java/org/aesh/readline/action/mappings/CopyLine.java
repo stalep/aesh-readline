@@ -24,7 +24,9 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that copies the entire current line to the paste buffer.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class CopyLine implements Action {
 

@@ -40,6 +40,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ * Netty channel handler for processing HTTP requests and serving static resources.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
@@ -48,6 +50,11 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
 
     private static final Logger LOGGER = Logger.getLogger(HttpRequestHandler.class.getName());
 
+    /**
+     * Creates a new HTTP request handler with the specified WebSocket URI.
+     *
+     * @param wsUri the URI path for WebSocket upgrade requests
+     */
     public HttpRequestHandler(String wsUri) {
         this.wsUri = wsUri;
     }
@@ -114,6 +121,13 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
         ctx.writeAndFlush(response);
     }
 
+    /**
+     * Handles exceptions caught during channel processing by logging and closing the context.
+     *
+     * @param ctx the channel handler context
+     * @param cause the exception that was caught
+     * @throws Exception if an error occurs during handling
+     */
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         LOGGER.log(Level.WARNING, "Exception caught during io, closing.", cause);
         ctx.close();

@@ -22,7 +22,7 @@ package org.aesh.readline.terminal.formatting;
 /**
  * Define what kind of character type to display
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum CharacterType {
     BOLD(1),

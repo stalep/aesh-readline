@@ -24,7 +24,9 @@ import org.aesh.terminal.utils.ANSI;
 import java.io.PrintStream;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Represents a combination of foreground and background colors for terminal output.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class TerminalColor {
 

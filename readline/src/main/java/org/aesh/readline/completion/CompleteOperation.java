@@ -24,7 +24,9 @@ import org.aesh.readline.terminal.formatting.TerminalString;
 import java.util.List;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Interface representing a completion operation with candidates and configuration options.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface CompleteOperation {
 

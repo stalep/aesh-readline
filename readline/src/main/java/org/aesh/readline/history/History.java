@@ -22,8 +22,9 @@ package org.aesh.readline.history;
 import java.util.List;
 
 /**
+ * Abstract base class for managing command line history.
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public abstract class History {
 

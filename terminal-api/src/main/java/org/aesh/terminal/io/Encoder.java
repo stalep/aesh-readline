@@ -26,7 +26,9 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Encodes int arrays (unicode code points) to byte arrays using a specified charset.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Encoder implements Consumer<int[]> {
 

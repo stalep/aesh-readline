@@ -29,7 +29,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Device implementation for SSH terminal connections.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class SSHDevice extends BaseDevice {
 
@@ -39,6 +41,11 @@ public class SSHDevice extends BaseDevice {
     private final Map<Capability, String> strings;
 
 
+    /**
+     * Creates a new SSH device with the specified terminal type.
+     *
+     * @param type the terminal type (e.g., "xterm", "vt100")
+     */
     public SSHDevice(String type) {
         this.type = type;
         bools = new HashSet<>();

@@ -61,6 +61,7 @@ import java.util.function.Consumer;
  */
 public abstract class HttpTtyConnection implements Connection {
 
+    /** Default terminal size (80 columns x 24 rows). */
     public static final Size DEFAULT_SIZE = new Size(80, 24);
     private final Device device;
 
@@ -75,10 +76,19 @@ public abstract class HttpTtyConnection implements Connection {
     private long lastAccessedTime = System.currentTimeMillis();
     private Attributes attributes;
 
+    /**
+     * Creates a new HTTP TTY connection with default charset (UTF-8) and size (80x24).
+     */
     public HttpTtyConnection() {
         this(StandardCharsets.UTF_8, DEFAULT_SIZE);
     }
 
+    /**
+     * Creates a new HTTP TTY connection with the specified charset and size.
+     *
+     * @param charset the character encoding for the connection
+     * @param size the initial terminal size
+     */
     public HttpTtyConnection(Charset charset, Size size) {
         this.charset = charset;
         this.size = size;
@@ -90,27 +100,52 @@ public abstract class HttpTtyConnection implements Connection {
         attributes = new Attributes();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Charset outputEncoding() {
         return charset;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Charset inputEncoding() {
         return charset;
     }
 
+    /**
+     * Returns the timestamp of the last access to this connection.
+     *
+     * @return the last accessed time in milliseconds since epoch
+     */
     public long lastAccessedTime() {
         return lastAccessedTime;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Device device() {
         return device;
     }
 
+    /**
+     * Writes raw bytes to the underlying transport.
+     *
+     * @param buffer the bytes to write
+     */
     protected abstract void write(byte[] buffer);
 
+    /**
+     * Processes an incoming JSON message from the client and writes it to the decoder.
+     * Handles "read" actions (terminal input) and "resize" actions (terminal resize events).
+     *
+     * @param msg the JSON message from the client
+     */
     @SuppressWarnings("unchecked")
     public void writeToDecoder(String msg) {
         ObjectMapper mapper = new ObjectMapper();
@@ -152,81 +187,149 @@ public abstract class HttpTtyConnection implements Connection {
         }
     }
 
+    /**
+     * Returns the handler for terminal type events.
+     *
+     * @return the terminal type handler, or null if not set
+     */
     public Consumer<String> getTerminalTypeHandler() {
         return termHandler;
     }
 
+    /**
+     * Sets the handler for terminal type events.
+     *
+     * @param handler the handler to invoke when terminal type is received
+     */
     public void setTerminalTypeHandler(Consumer<String> handler) {
         termHandler = handler;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Size size() {
         return size;
     }
 
+    /**
+     * Returns the handler for terminal size change events.
+     *
+     * @return the size handler, or null if not set
+     */
     public Consumer<Size> getSizeHandler() {
         return sizeHandler;
     }
 
+    /**
+     * Sets the handler for terminal size change events.
+     *
+     * @param handler the handler to invoke when terminal size changes
+     */
     public void setSizeHandler(Consumer<Size> handler) {
         this.sizeHandler = handler;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Consumer<Signal> getSignalHandler() {
         return eventDecoder.getSignalHandler();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void setSignalHandler(Consumer<Signal> handler) {
         eventDecoder.setSignalHandler(handler);
     }
 
+    /**
+     * Returns the handler for standard input data.
+     *
+     * @return the stdin handler, or null if not set
+     */
     public Consumer<int[]> getStdinHandler() {
         return eventDecoder.getInputHandler();
     }
 
+    /**
+     * Sets the handler for standard input data.
+     *
+     * @param handler the handler to invoke when input is received
+     */
     public void setStdinHandler(Consumer<int[]> handler) {
         eventDecoder.setInputHandler(handler);
     }
 
+    /**
+     * Returns the standard output handler for writing terminal output.
+     *
+     * @return the stdout handler
+     */
     public Consumer<int[]> stdoutHandler() {
         return stdout;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void setCloseHandler(Consumer<Void> closeHandler) {
         this.closeHandler = closeHandler;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Consumer<Void> getCloseHandler() {
         return closeHandler;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void openBlocking() {
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void openNonBlocking() {
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean put(Capability capability, Object... params) {
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Attributes getAttributes() {
         return attributes;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void setAttributes(Attributes attr) {
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean supportsAnsi() {
         return true;

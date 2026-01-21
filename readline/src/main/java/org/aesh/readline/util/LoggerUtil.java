@@ -36,7 +36,7 @@ import java.util.logging.StreamHandler;
  * butt ugly logger util, but its simple and gets the job done (hopefully not too dangerous)
  * warning: made it even uglier when Settings was changed to not be a Singleton... gah!
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  * @author <a href="mailto:danielsoro@gmail.com">Daniel Cunha (soro)</a>
  */
 public class LoggerUtil {

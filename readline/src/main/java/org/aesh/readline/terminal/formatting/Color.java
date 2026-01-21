@@ -20,7 +20,9 @@
 package org.aesh.readline.terminal.formatting;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Enumeration of ANSI terminal colors with intensity and type options.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum Color {
 

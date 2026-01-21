@@ -20,6 +20,7 @@
 package org.aesh.readline.cursor;
 
 /**
+ * Represents the row and column position of the cursor in the terminal.
  *
  * @author jdenise@redhat.com
  */

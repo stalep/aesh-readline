@@ -26,7 +26,7 @@ package org.aesh.readline.terminal.formatting;
  * - specifying faint AND bold will nullify bold
  * bold AND italic will nullify bold
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class TerminalTextStyle {
     private boolean bold = false;

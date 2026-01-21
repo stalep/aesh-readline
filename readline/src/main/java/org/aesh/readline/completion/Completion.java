@@ -22,7 +22,8 @@ package org.aesh.readline.completion;
 /**
  * To enable auto completion, commands need to implement this interface.
  *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @param <C> the type of complete operation this completion works with
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface Completion<C extends CompleteOperation> {
 

@@ -26,9 +26,10 @@ import org.aesh.readline.action.Action;
 import java.util.Arrays;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that deletes the character at the cursor position.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
-
 public class DeleteChar implements Action {
 
     public DeleteChar() {

@@ -29,7 +29,7 @@ import java.util.List;
  * A simple in-memory history implementation
  * By default max size is 500
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class InMemoryHistory extends History {
 

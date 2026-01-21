@@ -20,14 +20,21 @@
 package org.aesh.terminal.http;
 
 /**
+ * Represents the lifecycle status of a terminal process.
+ *
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
 public enum Status {
 
+  /** Initial state before the process has started. */
   NEW (false),
+  /** The process is currently executing. */
   RUNNING (false),
+  /** The process has completed successfully. */
   COMPLETED (true),
+  /** The process has failed. */
   FAILED (true),
+  /** The process was interrupted before completion. */
   INTERRUPTED (true);
 
   private final boolean final_;
@@ -37,6 +44,8 @@ public enum Status {
   }
 
   /**
+   * Checks whether this status represents a final state where no further status changes will occur.
+   *
    * @return true when master won't wait anymore for the process to end, the process may have terminated or not.
    */
   public boolean isFinal() {

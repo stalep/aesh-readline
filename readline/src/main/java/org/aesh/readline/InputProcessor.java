@@ -31,7 +31,7 @@ import java.util.EnumMap;
  *
  * It is also used by many of the different action classes that react to specific user input.
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface InputProcessor {
 

@@ -24,7 +24,9 @@ import org.aesh.readline.action.Action;
 import org.aesh.readline.undo.UndoAction;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that undoes the last editing operation on the input buffer.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Undo implements Action {
 

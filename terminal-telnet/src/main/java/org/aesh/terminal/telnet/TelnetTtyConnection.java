@@ -52,6 +52,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
   private String terminalType;
   private Consumer<Size> sizeHandler;
   private Consumer<Void> closeHandler;
+  /** The underlying telnet connection. */
   protected TelnetConnection conn;
   private final Charset charset;
   private final EventDecoder eventDecoder = new EventDecoder(3, 4, 26);
@@ -64,6 +65,14 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
   private Device device;
   private Attributes attributes;
 
+  /**
+   * Creates a new TelnetTtyConnection.
+   *
+   * @param inBinary true to enable binary mode for input
+   * @param outBinary true to enable binary mode for output
+   * @param charset the charset to use for encoding/decoding
+   * @param handler the connection handler to be notified when the connection is established
+   */
   public TelnetTtyConnection(boolean inBinary, boolean outBinary, Charset charset, Consumer<Connection> handler) {
     this.charset = charset;
     this.inBinary = inBinary;
@@ -71,18 +80,40 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     this.handler = handler;
   }
 
+  /**
+   * Returns the timestamp of the last access to this connection.
+   *
+   * @return the last accessed time in milliseconds since epoch
+   */
   public long lastAccessedTime() {
     return lastAccessedTime;
   }
 
+  /**
+   * Returns the terminal type reported by the client.
+   *
+   * @return the terminal type string, or null if not yet received
+   */
   public String terminalType() {
     return terminalType;
   }
 
+  /**
+   * Executes a task on the connection's event loop.
+   *
+   * @param task the task to execute
+   */
   public void execute(Runnable task) {
     conn.execute(task);
   }
 
+  /**
+   * Schedules a task to be executed after a delay.
+   *
+   * @param task the task to execute
+   * @param delay the delay before execution
+   * @param unit the time unit of the delay
+   */
   public void schedule(Runnable task, long delay, TimeUnit unit) {
     conn.schedule(task, delay, unit);
   }

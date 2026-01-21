@@ -26,7 +26,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Windows-specific external terminal implementation with CR/LF handling.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class WinExternalTerminal extends ExternalTerminal {
 

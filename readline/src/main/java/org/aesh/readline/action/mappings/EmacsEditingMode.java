@@ -25,7 +25,9 @@ import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that switches the input processor to Emacs editing mode.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class EmacsEditingMode implements Action {
 

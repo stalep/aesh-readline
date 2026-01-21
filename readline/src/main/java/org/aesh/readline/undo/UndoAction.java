@@ -20,7 +20,9 @@
 package org.aesh.readline.undo;
 
 /**
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * Represents a single undo operation containing cursor position and buffer state.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class UndoAction {
 

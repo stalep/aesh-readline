@@ -20,6 +20,7 @@
 package org.aesh.readline.cursor;
 
 /**
+ * Listener interface for receiving cursor movement events.
  *
  * @author jdenise@redhat.com
  */

@@ -21,12 +21,25 @@ package org.aesh.readline.action;
 
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * An action that can receive input events and maintain focus state.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface ActionEvent extends Action {
 
+    /**
+     * Processes an input event with the given action and key.
+     *
+     * @param action the action that triggered this input
+     * @param key the key action associated with the input
+     */
     void input(Action action, KeyAction key);
 
+    /**
+     * Returns whether this action event should retain focus after processing.
+     *
+     * @return true if this event should keep focus
+     */
     boolean keepFocus();
 
 }

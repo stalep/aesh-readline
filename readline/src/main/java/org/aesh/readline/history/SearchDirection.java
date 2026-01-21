@@ -20,8 +20,9 @@
 package org.aesh.readline.history;
 
 /**
+ * Enumeration representing the direction when searching through command history.
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum SearchDirection {
     REVERSE,

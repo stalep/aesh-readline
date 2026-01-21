@@ -20,8 +20,10 @@
 package org.aesh.terminal.utils;
 
 /**
+ * Configuration utility class providing system and environment information
+ * such as OS type, line separators, and path separators.
  *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Config {
 

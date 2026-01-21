@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
 /**
  * String/Parser util methods
  *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Parser {
 

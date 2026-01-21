@@ -56,6 +56,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * SSH command implementation that handles TTY connections and data transfer.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSessionAware {
@@ -72,6 +74,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private Size size = null;
     private Consumer<Size> sizeHandler;
     private Consumer<Void> closeHandler;
+    /** The SSH channel session associated with this command. */
     protected ChannelSession session;
     private final AtomicBoolean closed = new AtomicBoolean();
     private ExitCallback exitCallback;
@@ -82,6 +85,12 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private IoWriteFuture writeFuture;
     private Attributes attributes;
 
+    /**
+     * Creates a new TtyCommand with the specified charset and connection handler.
+     *
+     * @param defaultCharset the default character set for encoding/decoding
+     * @param handler the consumer that handles new connections
+     */
     public TtyCommand(Charset defaultCharset, Consumer<Connection> handler) {
         this.handler = handler;
         this.defaultCharset = defaultCharset;
@@ -183,6 +192,11 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         return controlChar != null ? controlChar : def;
     }
 
+    /**
+     * Updates the terminal size from the SSH environment variables.
+     *
+     * @param env the SSH environment containing size information
+     */
     public void updateSize(Environment env) {
         String columns = env.getEnv().get(Environment.ENV_COLUMNS);
         String lines = env.getEnv().get(Environment.ENV_LINES);
@@ -230,10 +244,22 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             // Test this
     }
 
+    /**
+     * Executes a task asynchronously using the SSH session's executor service.
+     *
+     * @param task the task to execute
+     */
     protected void execute(Runnable task) {
         session.getSession().getFactoryManager().getScheduledExecutorService().execute(task);
     }
 
+    /**
+     * Schedules a task for delayed execution using the SSH session's executor service.
+     *
+     * @param task the task to schedule
+     * @param delay the delay before execution
+     * @param unit the time unit for the delay
+     */
     protected void schedule(Runnable task, long delay, TimeUnit unit) {
         session.getSession().getFactoryManager().getScheduledExecutorService().schedule(task, delay, unit);
     }

@@ -32,7 +32,7 @@ import java.util.List;
  * with the default back and foreground colors.
  * If created with TerminalCharacters the colors can be set individually.
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Prompt {
 

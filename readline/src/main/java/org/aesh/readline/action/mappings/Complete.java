@@ -28,7 +28,9 @@ import org.aesh.terminal.utils.Config;
 import org.aesh.readline.InputProcessor;
 
 /**
- * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that triggers tab completion for the current input.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Complete implements ActionEvent {
 

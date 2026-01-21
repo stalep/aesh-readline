@@ -56,7 +56,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Builder for creating and configuring EditMode instances with key bindings and variables.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class EditModeBuilder {
 

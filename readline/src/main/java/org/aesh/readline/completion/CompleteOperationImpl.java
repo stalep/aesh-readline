@@ -28,7 +28,7 @@ import java.util.List;
 /**
  * A payload object to store completion data
  *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class CompleteOperationImpl implements CompleteOperation {
     private String buffer;

@@ -40,6 +40,11 @@ public class TelnetChannelHandler extends ChannelInboundHandlerAdapter {
   private NettyTelnetConnection conn;
   private static final Logger LOGGER = Logger.getLogger(TelnetChannelHandler.class.getName());
 
+  /**
+   * Creates a new TelnetChannelHandler with the specified handler factory.
+   *
+   * @param factory the factory to create TelnetHandler instances for each connection
+   */
   public TelnetChannelHandler(Supplier<TelnetHandler> factory) {
     this.factory = factory;
   }

@@ -24,7 +24,9 @@ import org.aesh.readline.completion.Completion;
 import org.aesh.readline.util.Parser;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Completion provider for alias and unalias commands.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class AliasCompletion implements Completion {
 

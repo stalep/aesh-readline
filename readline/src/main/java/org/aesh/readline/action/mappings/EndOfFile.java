@@ -13,7 +13,9 @@ import org.aesh.readline.terminal.Key;
 import org.aesh.terminal.utils.Config;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that handles end-of-file (EOF) signal, typically triggered by Ctrl-D.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class EndOfFile implements Action {
 

@@ -26,7 +26,9 @@ import java.util.Queue;
 import java.util.function.Consumer;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Decodes terminal input events, separating signals (INT, SUSP, EOF) from regular input.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class EventDecoder implements Consumer<int[]> {
 

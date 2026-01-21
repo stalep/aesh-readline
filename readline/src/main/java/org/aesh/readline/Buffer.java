@@ -36,7 +36,7 @@ import org.aesh.readline.terminal.impl.WinSysTerminal;
  * Buffer to keep track of text and cursor position in the console.
  * Is using ANSI-codes to clear text and move cursor in the terminal.
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public final class Buffer {
 
@@ -821,8 +821,8 @@ public final class Buffer {
     }
 
     /**
-     * Delete from cursor position and backwards if delta is < 0
-     * Delete from cursor position and forwards if delta is > 0
+     * Delete from cursor position and backwards if delta is &lt; 0
+     * Delete from cursor position and forwards if delta is &gt; 0
      * @param delta difference
      */
     public void delete(Consumer<int[]> out, int delta, int width) {

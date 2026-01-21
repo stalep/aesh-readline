@@ -27,7 +27,9 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Decodes input key sequences and maps them to corresponding actions.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class ActionDecoder {
 
@@ -35,24 +37,47 @@ public class ActionDecoder {
     private final Queue<KeyAction> actions = new LinkedList<>();
     private int[] buffer = new int[0];
 
+    /**
+     * Creates a decoder with key mappings from the specified edit mode.
+     *
+     * @param editMode the edit mode providing key mappings
+     */
     public ActionDecoder(EditMode editMode) {
         this.mappings = editMode.keys();
     }
 
+    /**
+     * Creates a decoder with default key mappings.
+     */
     public ActionDecoder() {
         this.mappings = Key.values();
     }
 
+    /**
+     * Adds input code points to the decoder buffer.
+     *
+     * @param input the array of code points to add
+     */
     public void add(int[] input) {
         buffer = Arrays.copyOf(buffer, buffer.length + input.length);
         System.arraycopy(input, 0, buffer, buffer.length - input.length, input.length);
     }
 
+    /**
+     * Adds a single input code point to the decoder buffer.
+     *
+     * @param input the code point to add
+     */
     public void add(int input) {
         buffer = Arrays.copyOf(buffer, buffer.length + 1);
         System.arraycopy(new int[]{input}, 0, buffer, buffer.length - 1, 1);
     }
 
+    /**
+     * Returns the next action without removing it from the queue.
+     *
+     * @return the next key action, or null if none available
+     */
     public KeyAction peek() {
         if (actions.isEmpty()) {
             return parse(buffer);
@@ -61,10 +86,20 @@ public class ActionDecoder {
         }
     }
 
+    /**
+     * Checks if there is another action available.
+     *
+     * @return true if another action is available
+     */
     public boolean hasNext() {
         return peek() != null;
     }
 
+    /**
+     * Returns and removes the next action from the queue.
+     *
+     * @return the next key action
+     */
     public KeyAction next() {
         if (actions.isEmpty()) {
             KeyAction next = parse(buffer);
@@ -76,6 +111,11 @@ public class ActionDecoder {
         return actions.remove();
     }
 
+    /**
+     * Updates the key mappings from the specified edit mode.
+     *
+     * @param editMode the edit mode providing new key mappings
+     */
     public void setMappings(EditMode editMode) {
         mappings = editMode.keys();
     }

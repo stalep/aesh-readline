@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
+ * Netty handler for processing WebSocket frames and managing TTY connections.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWebSocketFrame> {
@@ -42,6 +44,12 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
   private ChannelHandlerContext context;
   private HttpTtyConnection conn;
 
+  /**
+   * Creates a new WebSocket frame handler with the specified channel group and connection handler.
+   *
+   * @param group the channel group for managing active channels
+   * @param handler the handler to invoke when a connection is established
+   */
   public TtyWebSocketFrameHandler(ChannelGroup group, Consumer<Connection> handler) {
     this.group = group;
     this.handler = handler;
@@ -98,6 +106,13 @@ public class TtyWebSocketFrameHandler extends SimpleChannelInboundHandler<TextWe
     }
   }
 
+  /**
+   * Processes incoming WebSocket text frames and writes them to the connection decoder.
+   *
+   * @param ctx the channel handler context
+   * @param msg the text WebSocket frame
+   * @throws Exception if an error occurs during processing
+   */
   public void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame msg) throws Exception {
     conn.writeToDecoder(msg.text());
   }

@@ -25,11 +25,26 @@ import java.io.IOError;
 import java.io.IOException;
 import org.aesh.terminal.tty.Size;
 
+/**
+ * Abstract base class for POSIX-compliant terminal implementations using PTY.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
+ */
 public abstract class AbstractPosixTerminal extends AbstractTerminal {
 
+    /** The pseudo-terminal device for this terminal. */
     protected final Pty pty;
+    /** The original terminal attributes saved for restoration on close. */
     protected final Attributes originalAttributes;
 
+    /**
+     * Creates a new POSIX terminal with the specified name, type, and PTY.
+     *
+     * @param name the terminal name
+     * @param type the terminal type (e.g., "xterm", "vt100")
+     * @param pty the pseudo-terminal device
+     * @throws IOException if an I/O error occurs during initialization
+     */
     public AbstractPosixTerminal(String name, String type, Pty pty) throws IOException {
         super(name, type);
         assert pty != null;
@@ -37,6 +52,11 @@ public abstract class AbstractPosixTerminal extends AbstractTerminal {
         this.originalAttributes = this.pty.getAttr();
     }
 
+    /**
+     * Returns the pseudo-terminal device associated with this terminal.
+     *
+     * @return the PTY device
+     */
     protected Pty getPty() {
         return pty;
     }

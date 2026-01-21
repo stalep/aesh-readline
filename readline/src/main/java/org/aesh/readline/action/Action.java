@@ -24,10 +24,17 @@ import org.aesh.readline.InputProcessor;
 import java.util.function.Consumer;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Base interface for all readline editing actions.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface Action extends Consumer<InputProcessor> {
 
+    /**
+     * Returns the name of this action.
+     *
+     * @return the action name
+     */
     String name();
 
     void accept(InputProcessor inputProcessor);

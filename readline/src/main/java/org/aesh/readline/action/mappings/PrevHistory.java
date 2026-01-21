@@ -24,7 +24,9 @@ import org.aesh.readline.action.Action;
 import org.aesh.readline.editing.EditMode;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that retrieves the previous entry from the command history.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class PrevHistory implements Action {
     @Override

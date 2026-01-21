@@ -21,7 +21,9 @@
 package org.aesh.readline.editing;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Enumeration of readline configuration variables corresponding to inputrc settings.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum Variable {
 

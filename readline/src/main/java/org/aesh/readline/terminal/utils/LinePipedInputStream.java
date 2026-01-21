@@ -24,7 +24,9 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 
 /**
- * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * A PipedInputStream that reads data line by line, stopping at newline characters.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class LinePipedInputStream extends PipedInputStream {
 

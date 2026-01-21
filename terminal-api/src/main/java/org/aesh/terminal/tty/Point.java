@@ -20,7 +20,9 @@
 package org.aesh.terminal.tty;
 
 /**
- * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Represents a 2D point with x and y coordinates, typically used for cursor positions.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public final class Point {
 

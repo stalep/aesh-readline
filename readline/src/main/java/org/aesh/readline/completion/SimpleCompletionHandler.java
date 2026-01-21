@@ -20,7 +20,9 @@
 package org.aesh.readline.completion;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Simple implementation of CompletionHandler using the default CompleteOperation.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class SimpleCompletionHandler extends CompletionHandler<CompleteOperation> {
 

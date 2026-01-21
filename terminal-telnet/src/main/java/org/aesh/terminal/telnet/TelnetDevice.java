@@ -25,15 +25,22 @@ import org.aesh.terminal.tty.Capability;
 import java.util.function.Consumer;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Device implementation for Telnet terminal connections.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class TelnetDevice implements Device {
 
     private final String type;
 
-    public TelnetDevice(String terminalType) {
-        type = terminalType;
-    }
+  /**
+   * Creates a new TelnetDevice with the specified terminal type.
+   *
+   * @param terminalType the terminal type string (e.g., "xterm", "vt100")
+   */
+  public TelnetDevice(String terminalType) {
+      type = terminalType;
+  }
 
     @Override
     public String type() {

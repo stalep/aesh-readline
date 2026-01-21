@@ -27,7 +27,9 @@ import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that accepts the current input line and processes it.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class Enter implements Action {
 

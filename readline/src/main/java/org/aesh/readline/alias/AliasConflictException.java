@@ -20,6 +20,8 @@
 package org.aesh.readline.alias;
 
 /**
+ * Exception thrown when an alias name conflicts with an existing command or alias.
+ *
  * @author <a href="mailto:stalep@gmail.com">Ståle Pedersen</a>
  */
 public class AliasConflictException extends Exception {

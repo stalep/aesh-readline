@@ -27,8 +27,9 @@ import org.aesh.terminal.Device;
 import java.util.Arrays;
 
 /**
+ * Defines the interface for line editing modes such as Emacs and Vi.
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public interface EditMode {
 

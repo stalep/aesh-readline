@@ -26,7 +26,9 @@ import org.apache.sshd.server.Environment;
 import java.util.Map;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Builder for creating terminal Attributes from an SSH environment.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class SSHAttributesBuilder {
 
@@ -35,15 +37,32 @@ public class SSHAttributesBuilder {
     private SSHAttributesBuilder() {
     }
 
+    /**
+     * Creates a new SSHAttributesBuilder instance.
+     *
+     * @return a new builder instance
+     */
     public static SSHAttributesBuilder builder() {
         return new SSHAttributesBuilder();
     }
 
+    /**
+     * Sets the SSH environment to read PTY modes from.
+     *
+     * @param environment the SSH environment
+     * @return this builder for method chaining
+     */
     public SSHAttributesBuilder environment(Environment environment) {
         this.environment = environment;
         return this;
     }
 
+    /**
+     * Builds the terminal Attributes from the configured SSH environment.
+     * Maps SSH PTY modes to terminal control characters and flags.
+     *
+     * @return the configured Attributes instance
+     */
     public Attributes build() {
         Attributes attr = new Attributes();
         for (Map.Entry<PtyMode, Integer> e : environment.getPtyModes().entrySet()) {

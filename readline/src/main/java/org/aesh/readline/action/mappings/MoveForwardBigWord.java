@@ -22,7 +22,9 @@ package org.aesh.readline.action.mappings;
 import org.aesh.readline.editing.EditMode;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Action that moves the cursor forward to the end of the next WORD (space-delimited).
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class MoveForwardBigWord extends ForwardBigWord {
 

@@ -29,7 +29,7 @@ import java.io.IOException;
 /**
  * Used by TestReadlineInSeparateProcess test
  *
- * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class SimpleTestExample {
 

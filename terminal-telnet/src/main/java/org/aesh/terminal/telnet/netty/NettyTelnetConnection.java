@@ -28,12 +28,21 @@ import org.aesh.terminal.telnet.TelnetHandler;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Netty-based implementation of TelnetConnection for handling Telnet I/O.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class NettyTelnetConnection extends TelnetConnection {
 
+  /** The Netty channel handler context for this connection. */
   final ChannelHandlerContext context;
 
+  /**
+   * Creates a new NettyTelnetConnection.
+   *
+   * @param handler the telnet handler for processing events
+   * @param context the Netty channel handler context
+   */
   public NettyTelnetConnection(TelnetHandler handler, ChannelHandlerContext context) {
     super(handler);
     this.context = context;

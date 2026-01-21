@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * Keep track of edits for paste
  *
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class PasteManager {
 

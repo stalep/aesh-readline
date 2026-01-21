@@ -29,7 +29,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Device implementation for HTTP-based terminal connections.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class HttpDevice extends BaseDevice {
 
@@ -38,6 +40,11 @@ public class HttpDevice extends BaseDevice {
     private final Map<Capability, Integer> ints;
     private final Map<Capability, String> strings;
 
+    /**
+     * Creates a new HTTP device with the specified terminal type.
+     *
+     * @param type the terminal type (e.g., "vt100", "xterm")
+     */
     public HttpDevice(String type) {
         this.type = type;
         bools = new HashSet<>();
@@ -47,21 +54,33 @@ public class HttpDevice extends BaseDevice {
         InfoCmp.parseInfoCmp(data, bools, ints, strings);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String type() {
         return type;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean getBooleanCapability(Capability capability) {
         return bools.contains(capability);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Integer getNumericCapability(Capability capability) {
         return ints.get(capability);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getStringCapability(Capability capability) {
         return strings.get(capability);

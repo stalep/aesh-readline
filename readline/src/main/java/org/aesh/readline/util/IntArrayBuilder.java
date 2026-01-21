@@ -3,7 +3,9 @@ package org.aesh.readline.util;
 import java.util.Arrays;
 
 /**
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * A dynamically resizable int array builder similar to StringBuilder.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class IntArrayBuilder {
 

@@ -27,7 +27,7 @@ import java.io.PrintStream;
 /**
  * Value object that describe how a string should be displayed
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class TerminalString implements Comparable<TerminalString> {
 

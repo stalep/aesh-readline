@@ -35,6 +35,7 @@ import java.nio.charset.CoderResult;
  */
 public class TelnetCharset extends Charset {
 
+  /** Singleton instance of the TelnetCharset. */
   public static final Charset INSTANCE = new TelnetCharset();
 
   private TelnetCharset() {

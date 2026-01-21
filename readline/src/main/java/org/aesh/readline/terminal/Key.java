@@ -29,7 +29,7 @@ import java.nio.IntBuffer;
 /**
  * ANSCII enum key chart
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public enum Key implements KeyAction {
     CTRL_AT(new int[]{0}),

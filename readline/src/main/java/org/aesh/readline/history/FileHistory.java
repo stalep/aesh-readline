@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 /**
  * Read the history file at init and writeToStdOut to it at shutdown
  *
- * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class FileHistory extends InMemoryHistory {
 

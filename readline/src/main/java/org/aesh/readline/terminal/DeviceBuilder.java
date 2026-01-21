@@ -32,7 +32,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * @author Ståle W. Pedersen <stale.pedersen@jboss.org>
+ * Builder for creating TerminalDevice instances with terminal capabilities.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class DeviceBuilder {
 

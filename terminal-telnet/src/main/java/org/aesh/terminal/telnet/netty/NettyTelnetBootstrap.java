@@ -41,6 +41,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
+ * Netty-based implementation of the TelnetBootstrap for starting a Telnet server.
+ *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class NettyTelnetBootstrap extends TelnetBootstrap {
@@ -48,15 +50,30 @@ public class NettyTelnetBootstrap extends TelnetBootstrap {
   private EventLoopGroup group;
   private ChannelGroup channelGroup;
 
+  /**
+   * Creates a new NettyTelnetBootstrap with default NIO event loop group.
+   */
   public NettyTelnetBootstrap() {
     this.group = new NioEventLoopGroup();
     this.channelGroup = new DefaultChannelGroup(ImmediateEventExecutor.INSTANCE);
   }
 
+  /**
+   * Sets the host address the server will bind to.
+   *
+   * @param host the host address
+   * @return this bootstrap instance for method chaining
+   */
   public NettyTelnetBootstrap setHost(String host) {
     return (NettyTelnetBootstrap) super.setHost(host);
   }
 
+  /**
+   * Sets the port number the server will listen on.
+   *
+   * @param port the port number
+   * @return this bootstrap instance for method chaining
+   */
   public NettyTelnetBootstrap setPort(int port) {
     return (NettyTelnetBootstrap) super.setPort(port);
   }

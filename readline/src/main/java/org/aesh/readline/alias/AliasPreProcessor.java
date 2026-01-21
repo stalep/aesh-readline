@@ -23,7 +23,9 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * @author <a href=mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
+ * Pre-processor that expands alias names in input commands.
+ *
+ * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class AliasPreProcessor implements Function<String, Optional<String>> {
 
