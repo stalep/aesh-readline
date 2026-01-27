@@ -265,6 +265,16 @@ public final class TerminalColorDetector {
             return ColorDepth.TRUE_COLOR;
         }
 
+        // Check for Windows 10+ with Virtual Terminal support
+        // Windows 10 build 14931+ supports ANSI/VT sequences including 256 colors and true color
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        if (osName.contains("win")) {
+            ColorDepth windowsDepth = detectWindowsColorDepth();
+            if (windowsDepth != null) {
+                return windowsDepth;
+            }
+        }
+
         // Check terminfo max_colors capability
         if (connection != null && connection.device() != null) {
             Device device = connection.device();
@@ -356,11 +366,233 @@ public final class TerminalColorDetector {
                 return theme;
             }
 
-            // Try Windows Apps dark mode setting
+            // Try legacy console color settings from registry
+            // This applies to cmd.exe and PowerShell in legacy console
+            theme = detectWindowsConsoleTheme();
+            if (theme != TerminalTheme.UNKNOWN) {
+                return theme;
+            }
+
+            // Try Windows Apps dark mode setting as fallback
             theme = detectWindowsAppsDarkMode();
             if (theme != TerminalTheme.UNKNOWN) {
                 return theme;
             }
+
+            // Default: Windows console has historically been dark (black background)
+            // If we're on Windows and couldn't detect otherwise, assume dark
+            LOGGER.log(Level.FINE, "Windows detected but theme not determined, defaulting to dark");
+            return TerminalTheme.DARK;
+        }
+
+        return TerminalTheme.UNKNOWN;
+    }
+
+    /**
+     * Detect color depth on Windows systems.
+     * <p>
+     * Windows 10 build 14931+ (Anniversary Update) supports ANSI/VT sequences.
+     * Windows 10 build 15063+ (Creators Update) has better VT support.
+     * Windows Terminal and modern cmd.exe support 256 colors and true color.
+     * <p>
+     * Detection order:
+     * <ol>
+     * <li>Windows Terminal (WT_SESSION) - true color</li>
+     * <li>ConEmu/Cmder - true color</li>
+     * <li>Windows 10 build 14931+ - true color (VT enabled by default in newer builds)</li>
+     * <li>Older Windows - 16 colors</li>
+     * </ol>
+     *
+     * @return the detected color depth, or null if not determinable
+     */
+    private static ColorDepth detectWindowsColorDepth() {
+        // Windows Terminal always supports true color
+        if (System.getenv("WT_SESSION") != null) {
+            LOGGER.log(Level.FINE, "Windows Terminal detected - true color supported");
+            return ColorDepth.TRUE_COLOR;
+        }
+
+        // ConEmu/Cmder support true color
+        if (System.getenv("ConEmuPID") != null || System.getenv("ConEmuANSI") != null) {
+            LOGGER.log(Level.FINE, "ConEmu detected - true color supported");
+            return ColorDepth.TRUE_COLOR;
+        }
+
+        // Check Windows version for VT support
+        // Windows 10 build 14931+ supports VT sequences
+        String osVersion = System.getProperty("os.version", "");
+        try {
+            // os.version on Windows 10 is "10.0" followed by build number in other properties
+            // We need to check the build number for accurate detection
+            if (osVersion.startsWith("10.") || osVersion.startsWith("11.")) {
+                // Windows 10 or 11 - check build number
+                int buildNumber = getWindowsBuildNumber();
+                if (buildNumber >= 14931) {
+                    // VT support available - modern Windows supports true color
+                    // Build 14931+ has basic VT support
+                    // Build 15063+ (Creators Update) has improved VT support
+                    LOGGER.log(Level.FINE, "Windows 10+ build " + buildNumber + " detected - true color supported");
+                    return ColorDepth.TRUE_COLOR;
+                } else if (buildNumber > 0) {
+                    // Older Windows 10 build - limited color support
+                    LOGGER.log(Level.FINE, "Windows 10 build " + buildNumber + " - 16 colors");
+                    return ColorDepth.COLORS_16;
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Failed to detect Windows version", e);
+        }
+
+        // Fallback: check if running in a modern console by testing TERM
+        // Some Windows setups (MSYS2, Git Bash, Cygwin) set TERM
+        String term = System.getenv("TERM");
+        if (term != null) {
+            String termLower = term.toLowerCase();
+            if (termLower.contains("256color")) {
+                return ColorDepth.COLORS_256;
+            }
+            if (termLower.contains("xterm") || termLower.contains("cygwin") ||
+                    termLower.contains("msys")) {
+                return ColorDepth.COLORS_256;
+            }
+        }
+
+        // Default for Windows without specific detection
+        // Assume modern Windows (10+) with console VT support
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        if (osName.contains("windows 10") || osName.contains("windows 11") ||
+                osName.contains("windows server 2016") || osName.contains("windows server 2019") ||
+                osName.contains("windows server 2022")) {
+            LOGGER.log(Level.FINE, "Modern Windows detected by name - assuming true color");
+            return ColorDepth.TRUE_COLOR;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the Windows build number from system properties or registry.
+     *
+     * @return the build number, or 0 if not determinable
+     */
+    private static int getWindowsBuildNumber() {
+        // Try to get build number from system properties first
+        // Java doesn't expose this directly, so we need to query the registry
+        try {
+            ProcessBuilder pb = new ProcessBuilder("reg", "query",
+                    "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                    "/v", "CurrentBuildNumber");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            StringBuilder output = new StringBuilder();
+            byte[] buffer = new byte[256];
+            java.io.InputStream is = process.getInputStream();
+            int read;
+            while ((read = is.read(buffer)) != -1) {
+                output.append(new String(buffer, 0, read));
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                String result = output.toString();
+                // Output looks like:
+                // HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion
+                //     CurrentBuildNumber    REG_SZ    19045
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("CurrentBuildNumber\\s+REG_SZ\\s+(\\d+)");
+                java.util.regex.Matcher matcher = pattern.matcher(result);
+                if (matcher.find()) {
+                    int buildNumber = Integer.parseInt(matcher.group(1));
+                    LOGGER.log(Level.FINE, "Windows build number from registry: " + buildNumber);
+                    return buildNumber;
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Failed to query Windows build number from registry", e);
+        }
+
+        // Fallback: try to parse from os.version (less reliable)
+        // Some JVMs report "10.0.19045" as os.version
+        String osVersion = System.getProperty("os.version", "");
+        String[] parts = osVersion.split("\\.");
+        if (parts.length >= 3) {
+            try {
+                return Integer.parseInt(parts[2]);
+            } catch (NumberFormatException e) {
+                // Ignore
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Detect theme from Windows legacy console registry settings.
+     * <p>
+     * The Windows console stores color settings in:
+     * {@code HKEY_CURRENT_USER\Console}
+     * <p>
+     * The {@code ScreenColors} value is a DWORD where:
+     * <ul>
+     * <li>Bits 0-3 (low nibble): foreground color index (0-15)</li>
+     * <li>Bits 4-7 (high nibble): background color index (0-15)</li>
+     * </ul>
+     * <p>
+     * Default Windows console color indices:
+     * <ul>
+     * <li>0 = Black, 1 = Dark Blue, 2 = Dark Green, 3 = Dark Cyan</li>
+     * <li>4 = Dark Red, 5 = Dark Magenta, 6 = Dark Yellow, 7 = Light Gray</li>
+     * <li>8 = Dark Gray, 9 = Blue, 10 = Green, 11 = Cyan</li>
+     * <li>12 = Red, 13 = Magenta, 14 = Yellow, 15 = White</li>
+     * </ul>
+     *
+     * @return the detected theme, or UNKNOWN if not detectable
+     */
+    private static TerminalTheme detectWindowsConsoleTheme() {
+        try {
+            // Query the ScreenColors value from the Console registry key
+            ProcessBuilder pb = new ProcessBuilder("reg", "query",
+                    "HKCU\\Console",
+                    "/v", "ScreenColors");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            StringBuilder output = new StringBuilder();
+            byte[] buffer = new byte[256];
+            java.io.InputStream is = process.getInputStream();
+            int read;
+            while ((read = is.read(buffer)) != -1) {
+                output.append(new String(buffer, 0, read));
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                String result = output.toString();
+                // Output looks like:
+                // HKEY_CURRENT_USER\Console
+                //     ScreenColors    REG_DWORD    0x7
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                        "ScreenColors\\s+REG_DWORD\\s+0x([0-9a-fA-F]+)");
+                java.util.regex.Matcher matcher = pattern.matcher(result);
+                if (matcher.find()) {
+                    int screenColors = Integer.parseInt(matcher.group(1), 16);
+                    // Background color is in bits 4-7 (high nibble of low byte)
+                    int bgColorIndex = (screenColors >> 4) & 0x0F;
+
+                    // Determine if background is dark or light based on color index
+                    // Dark colors: 0 (black), 1-6 (dark colors), 8 (dark gray)
+                    // Light colors: 7 (light gray), 9-15 (bright colors)
+                    boolean isDark = (bgColorIndex <= 6) || (bgColorIndex == 8);
+
+                    LOGGER.log(Level.FINE, "Windows Console ScreenColors=0x" +
+                            Integer.toHexString(screenColors) + " bgIndex=" + bgColorIndex +
+                            " -> " + (isDark ? "DARK" : "LIGHT"));
+
+                    return isDark ? TerminalTheme.DARK : TerminalTheme.LIGHT;
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Failed to query Windows Console registry", e);
         }
 
         return TerminalTheme.UNKNOWN;
@@ -645,17 +877,44 @@ public final class TerminalColorDetector {
      * <p>
      * Windows stores the dark mode preference in:
      * {@code HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize}
-     * Key: AppsUseLightTheme (0 = dark, 1 = light)
+     * <p>
+     * Keys checked (in order):
+     * <ul>
+     * <li>AppsUseLightTheme - per-app dark mode setting (0 = dark, 1 = light)</li>
+     * <li>SystemUsesLightTheme - system-wide dark mode setting (0 = dark, 1 = light)</li>
+     * </ul>
      * <p>
      * This method uses the 'reg' command to query the registry.
      *
      * @return the detected theme, or UNKNOWN if not detectable
      */
     private static TerminalTheme detectWindowsAppsDarkMode() {
+        // First try AppsUseLightTheme (app-specific setting)
+        TerminalTheme theme = queryWindowsThemeRegistryKey("AppsUseLightTheme");
+        if (theme != TerminalTheme.UNKNOWN) {
+            return theme;
+        }
+
+        // Fall back to SystemUsesLightTheme (system-wide setting)
+        theme = queryWindowsThemeRegistryKey("SystemUsesLightTheme");
+        if (theme != TerminalTheme.UNKNOWN) {
+            return theme;
+        }
+
+        return TerminalTheme.UNKNOWN;
+    }
+
+    /**
+     * Query a specific Windows theme registry key.
+     *
+     * @param keyName the registry key name (e.g., "AppsUseLightTheme" or "SystemUsesLightTheme")
+     * @return the detected theme, or UNKNOWN if not detectable
+     */
+    private static TerminalTheme queryWindowsThemeRegistryKey(String keyName) {
         try {
             ProcessBuilder pb = new ProcessBuilder("reg", "query",
                     "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-                    "/v", "AppsUseLightTheme");
+                    "/v", keyName);
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
@@ -674,15 +933,15 @@ public final class TerminalColorDetector {
                 // HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize
                 //     AppsUseLightTheme    REG_DWORD    0x0
                 if (result.contains("0x0") || result.contains("0x00000000")) {
-                    LOGGER.log(Level.FINE, "Windows Apps dark mode detected from registry");
+                    LOGGER.log(Level.FINE, "Windows " + keyName + " = 0 (dark mode)");
                     return TerminalTheme.DARK;
                 } else if (result.contains("0x1") || result.contains("0x00000001")) {
-                    LOGGER.log(Level.FINE, "Windows Apps light mode detected from registry");
+                    LOGGER.log(Level.FINE, "Windows " + keyName + " = 1 (light mode)");
                     return TerminalTheme.LIGHT;
                 }
             }
         } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Failed to query Windows registry for dark mode", e);
+            LOGGER.log(Level.FINE, "Failed to query Windows registry key: " + keyName, e);
         }
         return TerminalTheme.UNKNOWN;
     }

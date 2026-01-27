@@ -216,7 +216,8 @@ public class TerminalColorExample {
                 "TERMINAL_EMULATOR", "GHOSTTY_RESOURCES_DIR",
                 "KITTY_WINDOW_ID", "WEZTERM_PANE", "ITERM_SESSION_ID",
                 "APPLE_INTERFACE_STYLE", "TMUX", "ALACRITTY_SOCKET",
-                "ConEmuPID", "WT_SESSION" };
+                "ConEmuPID", "WT_SESSION", "COMSPEC", "PROMPT",
+                "MSYSTEM", "PSModulePath", "POWERSHELL_DISTRIBUTION_CHANNEL" };
 
         for (String var : vars) {
             String value = System.getenv(var);
@@ -253,6 +254,66 @@ public class TerminalColorExample {
             connection.write(indent + ANSIBuilder.builder().faint("  1. tmux set -g allow-passthrough on").toString() + "\n");
             connection.write(indent + ANSIBuilder.builder().faint("  2. export TMUX_PASSTHROUGH=1").toString() + "\n");
         }
+
+        // Additional info for Windows cmd.exe
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        if (osName.contains("win") && System.getenv("WT_SESSION") == null &&
+                System.getenv("ConEmuPID") == null) {
+            connection.write("\n");
+            connection.write(indent + ANSIBuilder.builder().faint("Windows Build: " + getWindowsBuildInfo()).toString() + "\n");
+            connection.write(
+                    indent + ANSIBuilder.builder().faint("Note: Windows cmd.exe does not support OSC color queries.").toString()
+                            + "\n");
+            connection.write(
+                    indent + ANSIBuilder.builder().faint("Theme detection uses Windows registry settings.").toString() + "\n");
+            connection.write(indent
+                    + ANSIBuilder.builder().faint("For better color support, consider using Windows Terminal.").toString()
+                    + "\n");
+        }
+    }
+
+    /**
+     * Get Windows build information for display.
+     *
+     * @return a string with Windows build info
+     */
+    private static String getWindowsBuildInfo() {
+        String osName = System.getProperty("os.name", "Unknown");
+        String osVersion = System.getProperty("os.version", "Unknown");
+
+        // Try to get more detailed build number from registry
+        try {
+            ProcessBuilder pb = new ProcessBuilder("reg", "query",
+                    "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                    "/v", "CurrentBuildNumber");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            StringBuilder output = new StringBuilder();
+            byte[] buffer = new byte[256];
+            java.io.InputStream is = process.getInputStream();
+            int read;
+            while ((read = is.read(buffer)) != -1) {
+                output.append(new String(buffer, 0, read));
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                String result = output.toString();
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("CurrentBuildNumber\\s+REG_SZ\\s+(\\d+)");
+                java.util.regex.Matcher matcher = pattern.matcher(result);
+                if (matcher.find()) {
+                    String buildNumber = matcher.group(1);
+                    int build = Integer.parseInt(buildNumber);
+                    String vtSupport = build >= 14931 ? " (VT sequences supported)" : " (VT sequences NOT supported)";
+                    return osName + " " + osVersion + " Build " + buildNumber + vtSupport;
+                }
+            }
+        } catch (Exception e) {
+            // Ignore and return basic info
+        }
+
+        return osName + " " + osVersion;
     }
 
     /**
@@ -316,6 +377,52 @@ public class TerminalColorExample {
                 return "Cmder (ConEmu)";
             }
             return "ConEmu";
+        }
+
+        // Windows cmd.exe or PowerShell detection
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        if (osName.contains("win")) {
+            // Check for PowerShell
+            String psModulePath = System.getenv("PSModulePath");
+            if (psModulePath != null) {
+                // Check if running in PowerShell Core (pwsh) vs Windows PowerShell
+                String pwshVersion = System.getenv("POWERSHELL_DISTRIBUTION_CHANNEL");
+                if (pwshVersion != null) {
+                    return "PowerShell Core";
+                }
+                // Could be Windows PowerShell or cmd.exe with PSModulePath inherited
+            }
+
+            // Check for MSYS2/Git Bash/Cygwin
+            String msystem = System.getenv("MSYSTEM");
+            if (msystem != null) {
+                return "MSYS2 (" + msystem + ")";
+            }
+            if (System.getenv("CYGWIN") != null ||
+                    (term != null && term.toLowerCase().contains("cygwin"))) {
+                return "Cygwin";
+            }
+
+            // If TERM is set, likely running in a Unix-like environment
+            if (term != null && !term.isEmpty()) {
+                if (term.toLowerCase().contains("xterm")) {
+                    return "Git Bash / MinTTY";
+                }
+            }
+
+            // Check for Windows console host (conhost.exe)
+            // This is plain cmd.exe or PowerShell running in the legacy console
+            // We can detect this by the absence of other terminal indicators
+            String comspec = System.getenv("COMSPEC");
+            if (comspec != null && comspec.toLowerCase().contains("cmd.exe")) {
+                // Check if running PowerShell in cmd window
+                String prompt = System.getenv("PROMPT");
+                if (prompt != null && prompt.contains("$P$G")) {
+                    return "Windows cmd.exe";
+                }
+                // Default to cmd.exe for Windows
+                return "Windows cmd.exe";
+            }
         }
 
         // tmux

@@ -338,6 +338,16 @@ public class TerminalColorCapability {
             return ColorDepth.TRUE_COLOR;
         }
 
+        // Check for Windows Terminal (always supports true color)
+        if (System.getenv("WT_SESSION") != null) {
+            return ColorDepth.TRUE_COLOR;
+        }
+
+        // Check for ConEmu/Cmder (supports true color)
+        if (System.getenv("ConEmuPID") != null || System.getenv("ConEmuANSI") != null) {
+            return ColorDepth.TRUE_COLOR;
+        }
+
         // Check TERM environment variable
         String term = System.getenv("TERM");
         if (term != null) {
@@ -352,6 +362,15 @@ public class TerminalColorCapability {
                     termLower.contains("vt100") || termLower.contains("ansi")) {
                 return ColorDepth.COLORS_8;
             }
+        }
+
+        // Check for Windows 10+ which supports true color via VT sequences
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        if (osName.contains("windows 10") || osName.contains("windows 11") ||
+                osName.contains("windows server 2016") || osName.contains("windows server 2019") ||
+                osName.contains("windows server 2022")) {
+            // Modern Windows supports true color
+            return ColorDepth.TRUE_COLOR;
         }
 
         return ColorDepth.COLORS_8;
