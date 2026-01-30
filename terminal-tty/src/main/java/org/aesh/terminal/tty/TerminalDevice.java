@@ -140,6 +140,7 @@ public class TerminalDevice extends BaseDevice {
                     typeLower.contains("terminus") ||
                     typeLower.contains("tabby") ||
                     typeLower.contains("extraterm") ||
+                    typeLower.contains("windows") ||
                     typeLower.contains("wave")) {
                 return true;
             }
