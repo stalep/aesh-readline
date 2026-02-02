@@ -296,39 +296,54 @@ public final class TerminalColorDetector {
      * @return the detected theme, or UNKNOWN if not detectable
      */
     public static TerminalTheme detectThemeFromEnvironment() {
-        // Check common environment variables for theme hints
-        String colorfgbg = System.getenv("COLORFGBG");
-        if (colorfgbg != null) {
-            // Format is typically "fg;bg" where values < 7 are dark, >= 7 are light
-            String[] parts = colorfgbg.split(";");
-            if (parts.length >= 2) {
-                try {
-                    int bg = Integer.parseInt(parts[parts.length - 1]);
-                    // Colors 0, 1, 2, 3, 4, 5, 6 are typically dark
-                    // Colors 7 and above are typically light
-                    return bg < 7 ? TerminalTheme.DARK : TerminalTheme.LIGHT;
-                } catch (NumberFormatException e) {
-                    // Ignore, continue with other methods
-                }
+        // Check for IDE-specific terminals FIRST, before generic environment variables
+        // IDE terminals may inherit COLORFGBG from the system shell, which doesn't
+        // reflect the actual IDE theme. The IDE-specific detection reads config files.
+
+        // Check for JetBrains IDE (IntelliJ, PyCharm, etc.)
+        String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
+        boolean isJetBrainsTerminal = terminalEmulator != null &&
+                terminalEmulator.toLowerCase().contains("jetbrains");
+        if (isJetBrainsTerminal) {
+            TerminalTheme theme = detectJetBrainsTheme();
+            if (theme != TerminalTheme.UNKNOWN) {
+                return theme;
             }
+            // JetBrains detection failed - skip COLORFGBG (unreliable in IDEs)
+            // and continue to other detection methods below
+            LOGGER.log(Level.FINE, "JetBrains theme detection failed, skipping COLORFGBG");
         }
 
         // Check for VSCode integrated terminal
         String termProgram = System.getenv("TERM_PROGRAM");
-        if ("vscode".equalsIgnoreCase(termProgram)) {
+        boolean isVSCodeTerminal = "vscode".equalsIgnoreCase(termProgram);
+        if (isVSCodeTerminal) {
             TerminalTheme theme = detectVSCodeTheme();
             if (theme != TerminalTheme.UNKNOWN) {
                 return theme;
             }
+            // VSCode detection failed - skip COLORFGBG (unreliable in IDEs)
+            LOGGER.log(Level.FINE, "VSCode theme detection failed, skipping COLORFGBG");
         }
 
-        // Check for JetBrains IDE (IntelliJ, PyCharm, etc.)
-        String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
-        if (terminalEmulator != null &&
-                terminalEmulator.toLowerCase().contains("jetbrains")) {
-            TerminalTheme theme = detectJetBrainsTheme();
-            if (theme != TerminalTheme.UNKNOWN) {
-                return theme;
+        // Check COLORFGBG for terminals that reliably set this variable
+        // Note: This is skipped for IDE terminals where the value may be
+        // inherited from the parent shell and not reflect the actual theme
+        if (!isJetBrainsTerminal && !isVSCodeTerminal) {
+            String colorfgbg = System.getenv("COLORFGBG");
+            if (colorfgbg != null) {
+                // Format is typically "fg;bg" where values < 7 are dark, >= 7 are light
+                String[] parts = colorfgbg.split(";");
+                if (parts.length >= 2) {
+                    try {
+                        int bg = Integer.parseInt(parts[parts.length - 1]);
+                        // Colors 0, 1, 2, 3, 4, 5, 6 are typically dark
+                        // Colors 7 and above are typically light
+                        return bg < 7 ? TerminalTheme.DARK : TerminalTheme.LIGHT;
+                    } catch (NumberFormatException e) {
+                        // Ignore, continue with other methods
+                    }
+                }
             }
         }
 
@@ -1344,10 +1359,24 @@ public final class TerminalColorDetector {
             // Sort by modification time, most recent first
             java.util.Arrays.sort(productDirs, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
 
-            // Try each product directory until we find a colors.scheme.xml
+            // Try each product directory
             for (java.io.File productDir : productDirs) {
+                // First try laf.xml (Look and Feel) which contains the IDE theme
+                // This is more reliable as it contains the actual theme name
+                java.io.File lafFile = new java.io.File(productDir, "options/laf.xml");
+                if (!lafFile.isFile()) {
+                    lafFile = new java.io.File(productDir, "config/options/laf.xml");
+                }
+                if (lafFile.isFile()) {
+                    TerminalTheme theme = parseJetBrainsLafFile(lafFile);
+                    if (theme != TerminalTheme.UNKNOWN) {
+                        LOGGER.log(Level.FINE, "Detected JetBrains theme from " + lafFile + ": " + theme);
+                        return theme;
+                    }
+                }
+
+                // Fall back to colors.scheme.xml
                 java.io.File colorsFile = new java.io.File(productDir, "options/colors.scheme.xml");
-                // Also check config subdirectory for some versions
                 if (!colorsFile.isFile()) {
                     colorsFile = new java.io.File(productDir, "config/options/colors.scheme.xml");
                 }
@@ -1362,6 +1391,70 @@ public final class TerminalColorDetector {
         }
 
         LOGGER.log(Level.FINE, "Could not detect JetBrains theme from config files");
+        return TerminalTheme.UNKNOWN;
+    }
+
+    /**
+     * Parse a JetBrains laf.xml file to detect the theme.
+     * <p>
+     * The laf.xml file contains the Look and Feel settings including the theme name.
+     * Format example:
+     *
+     * <pre>
+     * &lt;application&gt;
+     *   &lt;component name="LafManager"&gt;
+     *     &lt;laf class-name="com.intellij.ide.ui.laf.darcula.DarculaLaf" themeId="Darcula"/&gt;
+     *   &lt;/component&gt;
+     * &lt;/application&gt;
+     * </pre>
+     *
+     * Or for newer versions:
+     *
+     * <pre>
+     * &lt;laf themeId="JetBrainsLightTheme"/&gt;
+     * </pre>
+     *
+     * @param lafFile the laf.xml file
+     * @return the detected theme, or UNKNOWN if parsing failed
+     */
+    private static TerminalTheme parseJetBrainsLafFile(java.io.File lafFile) {
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.FileReader(lafFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String lower = line.toLowerCase();
+
+                // Look for themeId or class-name attributes
+                if (lower.contains("themeid=") || lower.contains("class-name=")) {
+                    // Dark themes
+                    if (lower.contains("darcula") ||
+                            lower.contains("dark") ||
+                            lower.contains("high_contrast") ||
+                            lower.contains("highcontrast") ||
+                            lower.contains("one dark") ||
+                            lower.contains("dracula") ||
+                            lower.contains("nord") ||
+                            lower.contains("monokai") ||
+                            lower.contains("material")) {
+                        return TerminalTheme.DARK;
+                    }
+                    // Light themes
+                    if (lower.contains("light") ||
+                            lower.contains("intellijlaf") ||
+                            lower.contains("intellij laf") ||
+                            lower.contains("jetbrainslight") ||
+                            lower.contains("default") ||
+                            lower.contains("classic") ||
+                            lower.contains("windows") ||
+                            lower.contains("gtk") ||
+                            lower.contains("metal")) {
+                        return TerminalTheme.LIGHT;
+                    }
+                }
+            }
+        } catch (java.io.IOException e) {
+            LOGGER.log(Level.FINE, "Failed to read JetBrains laf.xml file", e);
+        }
         return TerminalTheme.UNKNOWN;
     }
 
