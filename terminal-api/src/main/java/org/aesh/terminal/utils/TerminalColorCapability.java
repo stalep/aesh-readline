@@ -49,6 +49,8 @@ public class TerminalColorCapability {
     private final Integer successCodeOverride;
     private final Integer warningCodeOverride;
     private final Integer infoCodeOverride;
+    private final Integer debugCodeOverride;
+    private final Integer traceCodeOverride;
     private final Integer timestampCodeOverride;
     private final Integer messageCodeOverride;
 
@@ -72,6 +74,8 @@ public class TerminalColorCapability {
         this.successCodeOverride = null;
         this.warningCodeOverride = null;
         this.infoCodeOverride = null;
+        this.debugCodeOverride = null;
+        this.traceCodeOverride = null;
         this.timestampCodeOverride = null;
         this.messageCodeOverride = null;
     }
@@ -89,6 +93,8 @@ public class TerminalColorCapability {
         this.successCodeOverride = builder.successCodeOverride;
         this.warningCodeOverride = builder.warningCodeOverride;
         this.infoCodeOverride = builder.infoCodeOverride;
+        this.debugCodeOverride = builder.debugCodeOverride;
+        this.traceCodeOverride = builder.traceCodeOverride;
         this.timestampCodeOverride = builder.timestampCodeOverride;
         this.messageCodeOverride = builder.messageCodeOverride;
     }
@@ -363,6 +369,44 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Get the suggested "debug" foreground ANSI color code.
+     * <p>
+     * If a custom debug code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a subdued color for debug-level log messages:
+     * <ul>
+     * <li>For dark themes: white (37) - visible but not colorful</li>
+     * <li>For light themes: bright black/gray (90) - subdued</li>
+     * </ul>
+     *
+     * @return ANSI color code for suggested debug foreground
+     */
+    public int getSuggestedDebugCode() {
+        if (debugCodeOverride != null) {
+            return debugCodeOverride;
+        }
+        return theme.isLight() ? 90 : 37; // gray for light bg, white for dark bg
+    }
+
+    /**
+     * Get the suggested "trace" foreground ANSI color code.
+     * <p>
+     * If a custom trace code was set via the {@link Builder}, it is returned.
+     * Otherwise, returns a dim color for trace-level log messages (the least
+     * prominent log level):
+     * <ul>
+     * <li>For both themes: bright black/gray (90) - very subdued</li>
+     * </ul>
+     *
+     * @return ANSI color code for suggested trace foreground
+     */
+    public int getSuggestedTraceCode() {
+        if (traceCodeOverride != null) {
+            return traceCodeOverride;
+        }
+        return 90; // gray for both themes - trace is the least prominent
+    }
+
+    /**
      * Get the suggested "timestamp" foreground ANSI color code.
      * <p>
      * If a custom timestamp code was set via the {@link Builder}, it is returned.
@@ -582,6 +626,8 @@ public class TerminalColorCapability {
         private Integer successCodeOverride;
         private Integer warningCodeOverride;
         private Integer infoCodeOverride;
+        private Integer debugCodeOverride;
+        private Integer traceCodeOverride;
         private Integer timestampCodeOverride;
         private Integer messageCodeOverride;
 
@@ -607,6 +653,8 @@ public class TerminalColorCapability {
                 this.successCodeOverride = base.successCodeOverride;
                 this.warningCodeOverride = base.warningCodeOverride;
                 this.infoCodeOverride = base.infoCodeOverride;
+                this.debugCodeOverride = base.debugCodeOverride;
+                this.traceCodeOverride = base.traceCodeOverride;
                 this.timestampCodeOverride = base.timestampCodeOverride;
                 this.messageCodeOverride = base.messageCodeOverride;
             }
@@ -736,6 +784,41 @@ public class TerminalColorCapability {
          */
         public Builder infoCode(int code) {
             this.infoCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested debug color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>37: white (good for dark backgrounds)</li>
+         * <li>90: bright black/gray (subdued, good for both)</li>
+         * <li>244: 256-color gray</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for debug messages
+         * @return this builder for method chaining
+         */
+        public Builder debugCode(int code) {
+            this.debugCodeOverride = code;
+            return this;
+        }
+
+        /**
+         * Override the suggested trace color code.
+         * <p>
+         * Common values:
+         * <ul>
+         * <li>90: bright black/gray (default, very subdued)</li>
+         * <li>240: 256-color dark gray</li>
+         * </ul>
+         *
+         * @param code the ANSI color code to use for trace messages
+         * @return this builder for method chaining
+         */
+        public Builder traceCode(int code) {
+            this.traceCodeOverride = code;
             return this;
         }
 

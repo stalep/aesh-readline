@@ -148,6 +148,10 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "94mInfo" + RESET, builder.info("Info").toString());
         builder.clear();
+        assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
+        builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
         assertEquals(COLOR_START + "95mMessage" + RESET, builder.message("Message").toString());
@@ -164,6 +168,10 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "92mSuccess" + RESET, builder.success("Success").toString());
         builder.clear();
+        assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
+        builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
         assertEquals(COLOR_START + "95mMessage" + RESET, builder.message("Message").toString());
@@ -179,6 +187,10 @@ public class ANSIBuilderTest {
         assertEquals(COLOR_START + "31mError" + RESET, builder.error("Error").toString());
         builder.clear();
         assertEquals(COLOR_START + "32mSuccess" + RESET, builder.success("Success").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "90mDebug" + RESET, builder.debug("Debug").toString());
+        builder.clear();
+        assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "36mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
@@ -274,5 +286,69 @@ public class ANSIBuilderTest {
         // Combined with colors
         result = builder.redText().appendLine("Error line").toString();
         assertEquals(COLOR_START + "31mError line" + nl + RESET, result);
+    }
+
+    @Test
+    public void testTextCodeAuto256Color() {
+        ANSIBuilder builder = ANSIBuilder.builder();
+
+        // Code 244 is outside basic ANSI range, should be treated as 256-color
+        String result = builder.textCode(244).append("Gray text").toString();
+        assertEquals(COLOR_START + "38;5;244mGray text" + RESET, result);
+
+        builder.reset();
+        // Code 196 (256-color bright red) should also use 256-color format
+        result = builder.textCode(196).append("Red text").toString();
+        assertEquals(COLOR_START + "38;5;196mRed text" + RESET, result);
+
+        builder.reset();
+        // Code 91 (bright red) is a valid basic ANSI code, should use basic format
+        result = builder.textCode(91).append("Bright red").toString();
+        assertEquals(COLOR_START + "91mBright red" + RESET, result);
+
+        builder.reset();
+        // Code 31 (red) is a valid basic ANSI code
+        result = builder.textCode(31).append("Red").toString();
+        assertEquals(COLOR_START + "31mRed" + RESET, result);
+    }
+
+    @Test
+    public void testBgCodeAuto256Color() {
+        ANSIBuilder builder = ANSIBuilder.builder();
+
+        // Code 244 is outside basic ANSI range, should be treated as 256-color
+        String result = builder.bgCode(244).append("Gray bg").toString();
+        assertEquals(COLOR_START + "48;5;244mGray bg" + RESET, result);
+
+        builder.reset();
+        // Code 44 (cyan bg) is a valid basic ANSI code
+        result = builder.bgCode(44).append("Cyan bg").toString();
+        assertEquals(COLOR_START + "44mCyan bg" + RESET, result);
+
+        builder.reset();
+        // Code 104 (bright cyan bg) is a valid basic ANSI code
+        result = builder.bgCode(104).append("Bright cyan bg").toString();
+        assertEquals(COLOR_START + "104mBright cyan bg" + RESET, result);
+    }
+
+    @Test
+    public void testSemanticColorsWith256Override() {
+        // Create capability with 256-color overrides
+        TerminalColorCapability cap = TerminalColorCapability.builder()
+                .theme(TerminalTheme.DARK)
+                .timestampCode(244) // 256-color gray
+                .errorCode(196) // 256-color bright red
+                .build();
+
+        ANSIBuilder builder = ANSIBuilder.builder(cap);
+
+        // timestamp with 256-color override
+        String result = builder.timestamp("10:30:45").toString();
+        assertEquals(COLOR_START + "38;5;244m10:30:45" + RESET, result);
+
+        builder.reset();
+        // error with 256-color override
+        result = builder.error("Error!").toString();
+        assertEquals(COLOR_START + "38;5;196mError!" + RESET, result);
     }
 }

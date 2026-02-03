@@ -214,6 +214,14 @@ public class TerminalColorExample {
         builder.reset();
         connection.write(builder.append(indent).info("Info message").toLine());
 
+        // Debug - uses white for dark themes, gray for light themes (subdued)
+        builder.reset();
+        connection.write(builder.append(indent).debug("Debug message").toLine());
+
+        // Trace - uses gray for both themes (least prominent)
+        builder.reset();
+        connection.write(builder.append(indent).trace("Trace message").toLine());
+
         // Timestamp - uses bright cyan for dark themes, dark cyan for light themes
         builder.reset();
         connection.write(builder.append(indent).timestamp("Timestamp").toLine());
@@ -222,15 +230,49 @@ public class TerminalColorExample {
         builder.reset();
         connection.write(builder.append(indent).message("Highlighted message").toLine());
 
-        // Combined log line example using ANSIBuilder chaining
+        // Combined log line examples using ANSIBuilder chaining
         connection.write("\n");
         builder.reset();
-        connection.write(builder.append(indent).append("Example log output:\n").toString());
+        connection.write(builder.append(indent).append("Example log output (all levels):\n").toString());
+
+        // ERROR level
         builder.reset();
         connection.write(builder.append(indent)
                 .timestamp("2024-01-15 10:30:45").append(" ")
-                .success("[INFO]").append(" ")
+                .error("[ERROR]").append(" ")
+                .append("Connection to database failed")
+                .toLine());
+
+        // WARN level
+        builder.reset();
+        connection.write(builder.append(indent)
+                .timestamp("2024-01-15 10:30:46").append(" ")
+                .warning("[WARN]").append(" ")
+                .append("Low memory condition detected")
+                .toLine());
+
+        // INFO level
+        builder.reset();
+        connection.write(builder.append(indent)
+                .timestamp("2024-01-15 10:30:47").append(" ")
+                .info("[INFO]").append(" ")
                 .message("Application started successfully")
+                .toLine());
+
+        // DEBUG level
+        builder.reset();
+        connection.write(builder.append(indent)
+                .timestamp("2024-01-15 10:30:48").append(" ")
+                .debug("[DEBUG]").append(" ")
+                .append("Configuration loaded from /etc/app.conf")
+                .toLine());
+
+        // TRACE level
+        builder.reset();
+        connection.write(builder.append(indent)
+                .timestamp("2024-01-15 10:30:49").append(" ")
+                .trace("[TRACE]").append(" ")
+                .append("Entering method processRequest()")
                 .toLine());
     }
 

@@ -161,10 +161,16 @@ public class ANSIBuilder {
             b.append("38;5;").append(text256);
             needsSemicolon = true;
         } else if (textCode != null) {
-            // Raw ANSI code
+            // Check if it's a valid basic ANSI foreground code or a 256-color index
             if (needsSemicolon)
                 b.append(';');
-            b.append(textCode);
+            if (isBasicAnsiForegroundCode(textCode)) {
+                // Basic ANSI code: just output the code
+                b.append(textCode);
+            } else {
+                // Treat as 256-color palette index
+                b.append("38;5;").append(textCode);
+            }
             needsSemicolon = true;
         } else if (text != Color.DEFAULT) {
             // Basic color with optional bright
@@ -186,10 +192,16 @@ public class ANSIBuilder {
                 b.append(';');
             b.append("48;5;").append(bg256);
         } else if (bgCode != null) {
-            // Raw ANSI code
+            // Check if it's a valid basic ANSI background code or a 256-color index
             if (needsSemicolon)
                 b.append(';');
-            b.append(bgCode);
+            if (isBasicAnsiBackgroundCode(bgCode)) {
+                // Basic ANSI code: just output the code
+                b.append(bgCode);
+            } else {
+                // Treat as 256-color palette index
+                b.append("48;5;").append(bgCode);
+            }
         } else if (bg != Color.DEFAULT) {
             // Basic color with optional bright
             if (needsSemicolon)
@@ -1322,6 +1334,74 @@ public class ANSIBuilder {
     }
 
     /**
+     * Sets the foreground color to the theme-appropriate debug color.
+     * <p>
+     * Debug uses a subdued color that is less prominent than info level:
+     * <ul>
+     * <li>For dark themes: white (37) - visible but not colorful</li>
+     * <li>For light themes: gray (90) - subdued</li>
+     * </ul>
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder debug() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedDebugCode();
+        } else {
+            this.textCode = 37; // white default (for dark themes)
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with debug styling and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder debug(String text) {
+        return debug().append(text).resetColors();
+    }
+
+    /**
+     * Sets the foreground color to the theme-appropriate trace color.
+     * <p>
+     * Trace is the least prominent log level, using a dim gray color
+     * that doesn't distract from more important messages:
+     * <ul>
+     * <li>For all themes: gray (90) - very subdued</li>
+     * </ul>
+     *
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder trace() {
+        if (capability != null) {
+            this.textCode = capability.getSuggestedTraceCode();
+        } else {
+            this.textCode = 90; // gray default
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        this.textRgb = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    /**
+     * Appends text with trace styling and resets.
+     *
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder trace(String text) {
+        return trace().append(text).resetColors();
+    }
+
+    /**
      * Sets the foreground color to the theme-appropriate timestamp color (cyan).
      * <p>
      * Timestamps use a subdued cyan color that is visible but doesn't
@@ -1457,6 +1537,40 @@ public class ANSIBuilder {
      */
     public ANSIBuilder appendLine(String text) {
         return append(text).newline();
+    }
+
+    /**
+     * Check if the code is a valid basic ANSI foreground color code.
+     * <p>
+     * Valid foreground codes:
+     * <ul>
+     * <li>30-37: Standard foreground colors</li>
+     * <li>39: Default foreground color</li>
+     * <li>90-97: Bright foreground colors</li>
+     * </ul>
+     *
+     * @param code the ANSI code to check
+     * @return true if it's a basic ANSI foreground code
+     */
+    private static boolean isBasicAnsiForegroundCode(int code) {
+        return (code >= 30 && code <= 37) || code == 39 || (code >= 90 && code <= 97);
+    }
+
+    /**
+     * Check if the code is a valid basic ANSI background color code.
+     * <p>
+     * Valid background codes:
+     * <ul>
+     * <li>40-47: Standard background colors</li>
+     * <li>49: Default background color</li>
+     * <li>100-107: Bright background colors</li>
+     * </ul>
+     *
+     * @param code the ANSI code to check
+     * @return true if it's a basic ANSI background code
+     */
+    private static boolean isBasicAnsiBackgroundCode(int code) {
+        return (code >= 40 && code <= 47) || code == 49 || (code >= 100 && code <= 107);
     }
 
     /**
