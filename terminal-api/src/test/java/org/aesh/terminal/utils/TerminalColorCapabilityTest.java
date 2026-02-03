@@ -102,7 +102,7 @@ public class TerminalColorCapabilityTest {
         assertEquals(93, cap.getSuggestedWarningCode()); // bright yellow for dark bg
         assertEquals(94, cap.getSuggestedInfoCode()); // bright blue for dark bg
         assertEquals(37, cap.getSuggestedDebugCode()); // white for dark bg
-        assertEquals(245, cap.getSuggestedTraceCode()); // 256-color gray for dark bg (visible)
+        assertEquals(242, cap.getSuggestedTraceCode()); // 256-color gray for dark bg (visible)
         assertEquals(96, cap.getSuggestedTimestampCode()); // bright cyan for dark bg
         assertEquals(95, cap.getSuggestedMessageCode()); // bright magenta for dark bg
     }
@@ -317,14 +317,14 @@ public class TerminalColorCapabilityTest {
 
         // Verify the codes are correct for dark theme
         assertEquals(37, debugCode); // white - visible but not colorful
-        assertEquals(245, traceCode); // 256-color gray - visible but subdued on dark terminals
+        assertEquals(242, traceCode); // 256-color gray - visible but subdued on dark terminals
 
         // For light terminal, debug and trace use basic gray (90)
         assertEquals(90, lightTerminal.getSuggestedDebugCode()); // gray
         assertEquals(90, lightTerminal.getSuggestedTraceCode()); // gray (visible on light bg)
 
         // Log level color hierarchy (most to least prominent):
-        // ERROR (91/31) > WARN (93/33) > INFO (94/34) > DEBUG (37/90) > TRACE (245/90)
+        // ERROR (91/31) > WARN (93/33) > INFO (94/34) > DEBUG (37/90) > TRACE (242/90)
         int errorCode = darkTerminal.getSuggestedErrorCode();
         int warnCode = darkTerminal.getSuggestedWarningCode();
         int infoCode = darkTerminal.getSuggestedInfoCode();
@@ -334,7 +334,7 @@ public class TerminalColorCapabilityTest {
         assertEquals(93, warnCode); // bright yellow
         assertEquals(94, infoCode); // bright blue
         assertEquals(37, debugCode); // white (less prominent than colored)
-        assertEquals(245, traceCode); // 256-color gray (least prominent but visible)
+        assertEquals(242, traceCode); // 256-color gray (least prominent but visible)
     }
 
     // ==================== Builder Tests ====================

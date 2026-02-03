@@ -77,6 +77,26 @@ public class ANSIBuilder {
     private int[] textRgb = null; // True color RGB
     private int[] bgRgb = null; // True color RGB
 
+    // Semantic color overrides (null means use capability or default)
+    private Integer errorCodeOverride = null;
+    private Integer successCodeOverride = null;
+    private Integer warningCodeOverride = null;
+    private Integer infoCodeOverride = null;
+    private Integer debugCodeOverride = null;
+    private Integer traceCodeOverride = null;
+    private Integer timestampCodeOverride = null;
+    private Integer messageCodeOverride = null;
+
+    // RGB overrides for semantic colors (takes precedence over code overrides)
+    private int[] errorRgbOverride = null;
+    private int[] successRgbOverride = null;
+    private int[] warningRgbOverride = null;
+    private int[] infoRgbOverride = null;
+    private int[] debugRgbOverride = null;
+    private int[] traceRgbOverride = null;
+    private int[] timestampRgbOverride = null;
+    private int[] messageRgbOverride = null;
+
     private ANSIBuilder(boolean enableAnsi) {
         ansi = enableAnsi;
         b = new StringBuilder();
@@ -119,6 +139,327 @@ public class ANSIBuilder {
     public static ANSIBuilder builder(TerminalColorCapability capability) {
         boolean enableAnsi = capability != null && capability.supportsAnsiColors();
         return new ANSIBuilder(enableAnsi, capability);
+    }
+
+    // ==================== Semantic Color Overrides ====================
+
+    /**
+     * Overrides the error color code for this builder.
+     * <p>
+     * This takes precedence over the capability-provided color.
+     * Supports basic ANSI codes (30-37, 90-97) or 256-color palette indices (0-255).
+     *
+     * @param code the ANSI color code to use for error messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder errorCode(int code) {
+        this.errorCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the success color code for this builder.
+     *
+     * @param code the ANSI color code to use for success messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder successCode(int code) {
+        this.successCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the warning color code for this builder.
+     *
+     * @param code the ANSI color code to use for warning messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder warningCode(int code) {
+        this.warningCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the info color code for this builder.
+     *
+     * @param code the ANSI color code to use for info messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder infoCode(int code) {
+        this.infoCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the debug color code for this builder.
+     *
+     * @param code the ANSI color code to use for debug messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder debugCode(int code) {
+        this.debugCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the trace color code for this builder.
+     *
+     * @param code the ANSI color code to use for trace messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder traceCode(int code) {
+        this.traceCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the timestamp color code for this builder.
+     *
+     * @param code the ANSI color code to use for timestamps
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder timestampCode(int code) {
+        this.timestampCodeOverride = code;
+        return this;
+    }
+
+    /**
+     * Overrides the message color code for this builder.
+     *
+     * @param code the ANSI color code to use for highlighted messages
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder messageCode(int code) {
+        this.messageCodeOverride = code;
+        return this;
+    }
+
+    // ==================== RGB Semantic Color Overrides ====================
+
+    /**
+     * Overrides the error color using RGB values (true color).
+     * <p>
+     * RGB overrides take precedence over code overrides.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder errorRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.errorRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the error color using a hex color value.
+     *
+     * @param hex the color in hex format (e.g., "#FF5733" or "FF5733")
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder errorHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return errorRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the success color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder successRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.successRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the success color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder successHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return successRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the warning color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder warningRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.warningRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the warning color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder warningHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return warningRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the info color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder infoRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.infoRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the info color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder infoHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return infoRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the debug color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder debugRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.debugRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the debug color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder debugHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return debugRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the trace color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder traceRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.traceRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the trace color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder traceHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return traceRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the timestamp color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder timestampRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.timestampRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the timestamp color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder timestampHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return timestampRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the message color using RGB values (true color).
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder messageRgb(int r, int g, int b) {
+        validateRgb(r, g, b);
+        this.messageRgbOverride = new int[] { r, g, b };
+        return this;
+    }
+
+    /**
+     * Overrides the message color using a hex color value.
+     *
+     * @param hex the color in hex format
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder messageHex(String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return messageRgb(rgb[0], rgb[1], rgb[2]);
     }
 
     private void checkColor() {
@@ -1220,21 +1561,26 @@ public class ANSIBuilder {
     /**
      * Sets the foreground color to the theme-appropriate error color (red).
      * <p>
-     * If a {@link TerminalColorCapability} was provided to the builder,
-     * this will use bright red for dark themes and dark red for light themes.
-     * Without capability info, defaults to bright red.
+     * Color priority: RGB override > code override > capability > default.
      *
      * @return this builder for method chaining
      */
     public ANSIBuilder error() {
-        if (capability != null) {
+        if (errorRgbOverride != null) {
+            this.textRgb = errorRgbOverride;
+            this.textCode = null;
+        } else if (errorCodeOverride != null) {
+            this.textCode = errorCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedErrorCode();
+            this.textRgb = null;
         } else {
             this.textCode = 91; // bright red default
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }
@@ -1251,18 +1597,27 @@ public class ANSIBuilder {
 
     /**
      * Sets the foreground color to the theme-appropriate success color (green).
+     * <p>
+     * Color priority: RGB override > code override > capability > default.
      *
      * @return this builder for method chaining
      */
     public ANSIBuilder success() {
-        if (capability != null) {
+        if (successRgbOverride != null) {
+            this.textRgb = successRgbOverride;
+            this.textCode = null;
+        } else if (successCodeOverride != null) {
+            this.textCode = successCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedSuccessCode();
+            this.textRgb = null;
         } else {
             this.textCode = 92; // bright green default
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }
@@ -1279,18 +1634,27 @@ public class ANSIBuilder {
 
     /**
      * Sets the foreground color to the theme-appropriate warning color (yellow).
+     * <p>
+     * Color priority: RGB override > code override > capability > default.
      *
      * @return this builder for method chaining
      */
     public ANSIBuilder warning() {
-        if (capability != null) {
+        if (warningRgbOverride != null) {
+            this.textRgb = warningRgbOverride;
+            this.textCode = null;
+        } else if (warningCodeOverride != null) {
+            this.textCode = warningCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedWarningCode();
+            this.textRgb = null;
         } else {
             this.textCode = 93; // bright yellow default
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }
@@ -1307,18 +1671,27 @@ public class ANSIBuilder {
 
     /**
      * Sets the foreground color to the theme-appropriate info color (blue/cyan).
+     * <p>
+     * Color priority: RGB override > code override > capability > default.
      *
      * @return this builder for method chaining
      */
     public ANSIBuilder info() {
-        if (capability != null) {
+        if (infoRgbOverride != null) {
+            this.textRgb = infoRgbOverride;
+            this.textCode = null;
+        } else if (infoCodeOverride != null) {
+            this.textCode = infoCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedInfoCode();
+            this.textRgb = null;
         } else {
             this.textCode = 94; // bright blue default
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }
@@ -1336,6 +1709,8 @@ public class ANSIBuilder {
     /**
      * Sets the foreground color to the theme-appropriate debug color.
      * <p>
+     * Color priority: RGB override > code override > capability > default.
+     * <p>
      * Debug uses a subdued color that is less prominent than info level:
      * <ul>
      * <li>For dark themes: white (37) - visible but not colorful</li>
@@ -1345,14 +1720,21 @@ public class ANSIBuilder {
      * @return this builder for method chaining
      */
     public ANSIBuilder debug() {
-        if (capability != null) {
+        if (debugRgbOverride != null) {
+            this.textRgb = debugRgbOverride;
+            this.textCode = null;
+        } else if (debugCodeOverride != null) {
+            this.textCode = debugCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedDebugCode();
+            this.textRgb = null;
         } else {
             this.textCode = 37; // white default (for dark themes)
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }
@@ -1370,23 +1752,33 @@ public class ANSIBuilder {
     /**
      * Sets the foreground color to the theme-appropriate trace color.
      * <p>
+     * Color priority: RGB override > code override > capability > default.
+     * <p>
      * Trace is the least prominent log level, using a dim gray color
      * that doesn't distract from more important messages:
      * <ul>
-     * <li>For all themes: gray (90) - very subdued</li>
+     * <li>For dark themes: 256-color gray (242) - visible but dimmer than debug</li>
+     * <li>For light themes: gray (90) - very subdued</li>
      * </ul>
      *
      * @return this builder for method chaining
      */
     public ANSIBuilder trace() {
-        if (capability != null) {
+        if (traceRgbOverride != null) {
+            this.textRgb = traceRgbOverride;
+            this.textCode = null;
+        } else if (traceCodeOverride != null) {
+            this.textCode = traceCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedTraceCode();
+            this.textRgb = null;
         } else {
-            this.textCode = 245; // 256-color gray default (visible on dark terminals)
+            this.textCode = 242; // 256-color gray default (visible but dimmer than DEBUG)
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }
@@ -1404,20 +1796,29 @@ public class ANSIBuilder {
     /**
      * Sets the foreground color to the theme-appropriate timestamp color (cyan).
      * <p>
+     * Color priority: RGB override > code override > capability > default.
+     * <p>
      * Timestamps use a subdued cyan color that is visible but doesn't
      * distract from the main message content.
      *
      * @return this builder for method chaining
      */
     public ANSIBuilder timestamp() {
-        if (capability != null) {
+        if (timestampRgbOverride != null) {
+            this.textRgb = timestampRgbOverride;
+            this.textCode = null;
+        } else if (timestampCodeOverride != null) {
+            this.textCode = timestampCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedTimestampCode();
+            this.textRgb = null;
         } else {
             this.textCode = 96; // bright cyan default
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }
@@ -1435,20 +1836,29 @@ public class ANSIBuilder {
     /**
      * Sets the foreground color to the theme-appropriate message color (magenta).
      * <p>
+     * Color priority: RGB override > code override > capability > default.
+     * <p>
      * Message color is used for highlighted or emphasized message content
      * that should stand out from regular text.
      *
      * @return this builder for method chaining
      */
     public ANSIBuilder message() {
-        if (capability != null) {
+        if (messageRgbOverride != null) {
+            this.textRgb = messageRgbOverride;
+            this.textCode = null;
+        } else if (messageCodeOverride != null) {
+            this.textCode = messageCodeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
             this.textCode = capability.getSuggestedMessageCode();
+            this.textRgb = null;
         } else {
             this.textCode = 95; // bright magenta default
+            this.textRgb = null;
         }
         this.text = Color.DEFAULT;
         this.text256 = null;
-        this.textRgb = null;
         havePrintedColor = false;
         return this;
     }

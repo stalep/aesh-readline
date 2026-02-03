@@ -403,10 +403,10 @@ public class TerminalColorCapability {
         if (traceCodeOverride != null) {
             return traceCodeOverride;
         }
-        // For dark themes, use 256-color gray (245) which is visible but subdued.
-        // Code 90 (bright black) can be invisible on some dark terminals.
-        // For light themes, 90 works well as it's visible against light backgrounds.
-        return theme.isLight() ? 90 : 245;
+        // For dark themes, use 256-color gray (242) which is visible but noticeably
+        // dimmer than DEBUG's white (37). Code 90 (bright black) can be invisible
+        // on some dark terminals. For light themes, 90 works well.
+        return theme.isLight() ? 90 : 242;
     }
 
     /**

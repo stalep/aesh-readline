@@ -150,7 +150,7 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
         builder.clear();
-        assertEquals(COLOR_START + "38;5;245mTrace" + RESET, builder.trace("Trace").toString());
+        assertEquals(COLOR_START + "38;5;242mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
@@ -170,7 +170,7 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
         builder.clear();
-        assertEquals(COLOR_START + "38;5;245mTrace" + RESET, builder.trace("Trace").toString());
+        assertEquals(COLOR_START + "38;5;242mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
@@ -350,5 +350,156 @@ public class ANSIBuilderTest {
         // error with 256-color override
         result = builder.error("Error!").toString();
         assertEquals(COLOR_START + "38;5;196mError!" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderLevelColorOverrides() {
+        // Test overriding colors directly on the builder
+        // Note: Avoid codes 30-37, 39, 90-97 which are basic ANSI codes
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .errorCode(196) // 256-color bright red
+                .successCode(46) // 256-color green
+                .warningCode(208) // 256-color orange
+                .infoCode(75) // 256-color cyan (not 39 which is basic ANSI)
+                .debugCode(250) // 256-color light gray
+                .traceCode(240) // 256-color dark gray
+                .timestampCode(244) // 256-color gray
+                .messageCode(201); // 256-color magenta
+
+        // Test each override
+        String result = builder.error("Error").toString();
+        assertEquals(COLOR_START + "38;5;196mError" + RESET, result);
+
+        builder.reset();
+        result = builder.success("Success").toString();
+        assertEquals(COLOR_START + "38;5;46mSuccess" + RESET, result);
+
+        builder.reset();
+        result = builder.warning("Warning").toString();
+        assertEquals(COLOR_START + "38;5;208mWarning" + RESET, result);
+
+        builder.reset();
+        result = builder.info("Info").toString();
+        assertEquals(COLOR_START + "38;5;75mInfo" + RESET, result);
+
+        builder.reset();
+        result = builder.debug("Debug").toString();
+        assertEquals(COLOR_START + "38;5;250mDebug" + RESET, result);
+
+        builder.reset();
+        result = builder.trace("Trace").toString();
+        assertEquals(COLOR_START + "38;5;240mTrace" + RESET, result);
+
+        builder.reset();
+        result = builder.timestamp("10:30").toString();
+        assertEquals(COLOR_START + "38;5;244m10:30" + RESET, result);
+
+        builder.reset();
+        result = builder.message("Hello").toString();
+        assertEquals(COLOR_START + "38;5;201mHello" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderOverrideTakesPrecedenceOverCapability() {
+        // Capability sets error to 196
+        TerminalColorCapability cap = TerminalColorCapability.builder()
+                .theme(TerminalTheme.DARK)
+                .errorCode(196)
+                .build();
+
+        // Builder overrides error to 202
+        ANSIBuilder builder = ANSIBuilder.builder(cap)
+                .errorCode(202);
+
+        // Builder override should win
+        String result = builder.error("Error").toString();
+        assertEquals(COLOR_START + "38;5;202mError" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderOverrideWithBasicAnsiCodes() {
+        // Override with basic ANSI codes (not 256-color)
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .errorCode(31) // basic red
+                .successCode(92); // bright green
+
+        String result = builder.error("Error").toString();
+        assertEquals(COLOR_START + "31mError" + RESET, result);
+
+        builder.reset();
+        result = builder.success("OK").toString();
+        assertEquals(COLOR_START + "92mOK" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderRgbOverrides() {
+        // Test RGB overrides for semantic colors
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .errorRgb(255, 0, 0) // Red
+                .successRgb(0, 255, 0) // Green
+                .warningRgb(255, 165, 0) // Orange
+                .infoRgb(0, 191, 255) // Deep sky blue
+                .debugRgb(200, 200, 200) // Light gray
+                .traceRgb(128, 128, 128) // Gray
+                .timestampRgb(100, 149, 237) // Cornflower blue
+                .messageRgb(255, 0, 255); // Magenta
+
+        // Test error RGB
+        String result = builder.error("Error").toString();
+        assertEquals(COLOR_START + "38;2;255;0;0mError" + RESET, result);
+
+        builder.reset();
+        result = builder.success("Success").toString();
+        assertEquals(COLOR_START + "38;2;0;255;0mSuccess" + RESET, result);
+
+        builder.reset();
+        result = builder.warning("Warning").toString();
+        assertEquals(COLOR_START + "38;2;255;165;0mWarning" + RESET, result);
+
+        builder.reset();
+        result = builder.info("Info").toString();
+        assertEquals(COLOR_START + "38;2;0;191;255mInfo" + RESET, result);
+
+        builder.reset();
+        result = builder.debug("Debug").toString();
+        assertEquals(COLOR_START + "38;2;200;200;200mDebug" + RESET, result);
+
+        builder.reset();
+        result = builder.trace("Trace").toString();
+        assertEquals(COLOR_START + "38;2;128;128;128mTrace" + RESET, result);
+
+        builder.reset();
+        result = builder.timestamp("10:30").toString();
+        assertEquals(COLOR_START + "38;2;100;149;237m10:30" + RESET, result);
+
+        builder.reset();
+        result = builder.message("Hello").toString();
+        assertEquals(COLOR_START + "38;2;255;0;255mHello" + RESET, result);
+    }
+
+    @Test
+    public void testBuilderHexOverrides() {
+        // Test hex overrides for semantic colors
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .errorHex("#FF5733") // Coral
+                .successHex("00FF00"); // Green (without #)
+
+        String result = builder.error("Error").toString();
+        assertEquals(COLOR_START + "38;2;255;87;51mError" + RESET, result);
+
+        builder.reset();
+        result = builder.success("OK").toString();
+        assertEquals(COLOR_START + "38;2;0;255;0mOK" + RESET, result);
+    }
+
+    @Test
+    public void testRgbOverrideTakesPrecedenceOverCodeOverride() {
+        // RGB override should take precedence over code override
+        ANSIBuilder builder = ANSIBuilder.builder()
+                .errorCode(196) // 256-color red
+                .errorRgb(255, 0, 0); // RGB red (should win)
+
+        String result = builder.error("Error").toString();
+        assertEquals(COLOR_START + "38;2;255;0;0mError" + RESET, result);
     }
 }
