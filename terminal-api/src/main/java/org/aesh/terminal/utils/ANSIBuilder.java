@@ -1382,7 +1382,7 @@ public class ANSIBuilder {
         if (capability != null) {
             this.textCode = capability.getSuggestedTraceCode();
         } else {
-            this.textCode = 90; // gray default
+            this.textCode = 245; // 256-color gray default (visible on dark terminals)
         }
         this.text = Color.DEFAULT;
         this.text256 = null;

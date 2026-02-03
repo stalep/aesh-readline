@@ -150,7 +150,7 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
         builder.clear();
-        assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
+        assertEquals(COLOR_START + "38;5;245mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
@@ -170,7 +170,7 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
         builder.clear();
-        assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
+        assertEquals(COLOR_START + "38;5;245mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();

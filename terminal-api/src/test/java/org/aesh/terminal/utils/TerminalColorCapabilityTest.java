@@ -102,7 +102,7 @@ public class TerminalColorCapabilityTest {
         assertEquals(93, cap.getSuggestedWarningCode()); // bright yellow for dark bg
         assertEquals(94, cap.getSuggestedInfoCode()); // bright blue for dark bg
         assertEquals(37, cap.getSuggestedDebugCode()); // white for dark bg
-        assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
+        assertEquals(245, cap.getSuggestedTraceCode()); // 256-color gray for dark bg (visible)
         assertEquals(96, cap.getSuggestedTimestampCode()); // bright cyan for dark bg
         assertEquals(95, cap.getSuggestedMessageCode()); // bright magenta for dark bg
     }
@@ -315,24 +315,16 @@ public class TerminalColorCapabilityTest {
         int debugCode = darkTerminal.getSuggestedDebugCode();
         int traceCode = darkTerminal.getSuggestedTraceCode();
 
-        // Format: ESC[<code>m<text>ESC[0m
-        String coloredDebug = "\u001B[" + debugCode + "m[DEBUG] " + debugMsg + "\u001B[0m";
-        String coloredTrace = "\u001B[" + traceCode + "m[TRACE] " + traceMsg + "\u001B[0m";
-
         // Verify the codes are correct for dark theme
         assertEquals(37, debugCode); // white - visible but not colorful
-        assertEquals(90, traceCode); // gray - very subdued
+        assertEquals(245, traceCode); // 256-color gray - visible but subdued on dark terminals
 
-        // Verify the formatted strings contain the expected escape sequences
-        assertTrue(coloredDebug.contains("\u001B[37m"));
-        assertTrue(coloredTrace.contains("\u001B[90m"));
-
-        // For light terminal, debug should use gray instead of white
+        // For light terminal, debug and trace use basic gray (90)
         assertEquals(90, lightTerminal.getSuggestedDebugCode()); // gray
-        assertEquals(90, lightTerminal.getSuggestedTraceCode()); // gray (same for both themes)
+        assertEquals(90, lightTerminal.getSuggestedTraceCode()); // gray (visible on light bg)
 
         // Log level color hierarchy (most to least prominent):
-        // ERROR (91/31) > WARN (93/33) > INFO (94/34) > DEBUG (37/90) > TRACE (90/90)
+        // ERROR (91/31) > WARN (93/33) > INFO (94/34) > DEBUG (37/90) > TRACE (245/90)
         int errorCode = darkTerminal.getSuggestedErrorCode();
         int warnCode = darkTerminal.getSuggestedWarningCode();
         int infoCode = darkTerminal.getSuggestedInfoCode();
@@ -342,7 +334,7 @@ public class TerminalColorCapabilityTest {
         assertEquals(93, warnCode); // bright yellow
         assertEquals(94, infoCode); // bright blue
         assertEquals(37, debugCode); // white (less prominent than colored)
-        assertEquals(90, traceCode); // gray (least prominent)
+        assertEquals(245, traceCode); // 256-color gray (least prominent but visible)
     }
 
     // ==================== Builder Tests ====================
