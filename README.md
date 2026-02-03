@@ -3,6 +3,8 @@
 [![Build Status](https://github.com/aeshell/aesh-readline/actions/workflows/main.yml/badge.svg)](https://github.com/aeshell/aesh-readline/actions)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+**Homepage:** [aeshell.github.io](https://aeshell.github.io)
+
 Æsh Readline is a library for handling console input with the goal to support most GNU Readline features.
 
 For examples, have a look here: [Aesh Examples](https://github.com/aeshell/aesh-examples)
@@ -14,6 +16,9 @@ For examples, have a look here: [Aesh Examples](https://github.com/aeshell/aesh-
 - [Connectivity](#connectivity)
 - [How to Build](#how-to-build)
 - [Getting Started](#getting-started)
+- [Terminal Colors](#terminal-colors)
+- [Terminal Images](#terminal-images)
+- [Documentation](#documentation)
 - [Examples](#examples)
 - [Key Mappings](#keys-that-are-mapped-by-default-in-æsh-readline)
 - [Supported Runtime Properties](#supported-runtime-properties)
@@ -22,6 +27,7 @@ For examples, have a look here: [Aesh Examples](https://github.com/aeshell/aesh-
 
 ## Features
 
+### Core Readline
 - Line editing
 - History (search, persistence)
 - Completion
@@ -35,6 +41,16 @@ For examples, have a look here: [Aesh Examples](https://github.com/aeshell/aesh-
 - Redirect
 - Alias
 - Pipeline
+
+### Terminal Colors and Styling
+- **Color Detection** - Automatically detect terminal theme (light/dark) and color depth
+- **ANSIBuilder** - Fluent API for building styled terminal output
+- **Semantic Colors** - Theme-aware colors for log levels (error, warning, info, debug, trace)
+- **Extended Colors** - Support for 256-color palette and 24-bit true color (RGB/hex)
+- **Color Adaptation** - Automatic color downgrading for terminals with limited color support
+
+### Terminal Graphics
+- **Image Support** - Display images in supported terminals (Kitty, iTerm2, Sixel)
 
 ## Scope
 
@@ -97,6 +113,143 @@ public class SimpleExample {
     }
 }
 ```
+
+## Terminal Colors
+
+Æsh Readline provides comprehensive terminal color support with automatic theme detection and a fluent API for styled output.
+
+### Color Detection
+
+Automatically detect the terminal's color capabilities and theme:
+
+```java
+import org.aesh.terminal.utils.TerminalColorCapability;
+
+// Quick detection from environment variables
+TerminalColorCapability cap = TerminalColorCapability.detectFromEnvironment();
+
+// Check theme and color depth
+if (cap.getTheme().isDark()) {
+    // Use light colors for dark backgrounds
+}
+
+if (cap.getColorDepth().supportsTrueColor()) {
+    // Terminal supports 24-bit RGB colors
+}
+```
+
+### ANSIBuilder
+
+Use `ANSIBuilder` for fluent, theme-aware terminal styling:
+
+```java
+import org.aesh.terminal.utils.ANSIBuilder;
+
+// Basic usage
+String output = ANSIBuilder.builder()
+    .bold("Title: ").append("Some text")
+    .toString();
+
+// Theme-aware semantic colors
+TerminalColorCapability cap = TerminalColorCapability.detectFromEnvironment();
+ANSIBuilder builder = ANSIBuilder.builder(cap);
+
+String logLine = builder
+    .timestamp("10:30:45").append(" ")
+    .error("[ERROR]").append(" ")
+    .append("Connection failed")
+    .toLine();
+```
+
+### Semantic Colors
+
+Theme-aware colors for log levels that automatically adjust to light/dark terminals:
+
+```java
+ANSIBuilder builder = ANSIBuilder.builder(cap);
+
+// Log level colors (most to least prominent)
+builder.error("Error message");      // Red
+builder.warning("Warning message");  // Yellow
+builder.success("Success message");  // Green (same as INFO level)
+builder.info("Info message");        // Blue
+builder.debug("Debug message");      // White/Gray (subdued)
+builder.trace("Trace message");      // Gray (least prominent)
+
+// Other semantic colors
+builder.timestamp("10:30:45");       // Cyan
+builder.message("Highlighted");      // Magenta
+```
+
+### Extended Colors
+
+Support for 256-color palette and 24-bit true color:
+
+```java
+// 256-color palette
+builder.color256(208).append("Orange text");
+builder.bg256(17).append("Blue background");
+
+// True color RGB
+builder.rgb(255, 87, 51).append("Custom color");
+builder.bgRgb(30, 30, 30).append("Dark background");
+
+// Hex colors
+builder.hex("#FF5733").append("Coral text");
+builder.bgHex("#1E1E1E").append("Dark background");
+```
+
+### Custom Color Overrides
+
+Override semantic colors with custom values:
+
+```java
+ANSIBuilder builder = ANSIBuilder.builder()
+    .errorCode(196)              // 256-color red
+    .successHex("#00FF00")       // Hex green
+    .timestampRgb(100, 149, 237); // RGB cornflower blue
+
+builder.error("Custom error color");
+```
+
+## Terminal Images
+
+Display images in terminals that support graphics protocols (Kitty, iTerm2, Sixel).
+
+### Basic Usage
+
+```java
+import org.aesh.terminal.utils.TerminalImageBuilder;
+import java.nio.file.Path;
+
+// Display an image
+String imageData = TerminalImageBuilder.builder()
+    .file(Path.of("image.png"))
+    .width(40)
+    .height(20)
+    .build();
+
+connection.write(imageData);
+```
+
+### Protocol Detection
+
+```java
+// Check which protocol the terminal supports
+TerminalGraphicsCapability graphics = TerminalGraphicsDetector.detect(connection);
+
+if (graphics.supportsKitty()) {
+    // Use Kitty graphics protocol
+} else if (graphics.supportsIterm()) {
+    // Use iTerm2 inline images
+} else if (graphics.supportsSixel()) {
+    // Use Sixel graphics
+}
+```
+
+## Documentation
+
+For detailed documentation, visit the [Æsh Readline Documentation](https://aeshell.github.io/docs/readline/).
 
 ## Examples
 
