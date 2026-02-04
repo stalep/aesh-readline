@@ -35,6 +35,7 @@
     <version>3.0</version>
     <name>Æsh Readline and terminal</name>
     <description>Æsh (Another Extendable SHell) Readline and Terminal API</description>
+    <url>https://aeshell.github.io</url>
     <scm>
         <connection>scm:git:git://github.com/aeshell/aesh-readline.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/aeshell/aesh-readline.git</developerConnection>
