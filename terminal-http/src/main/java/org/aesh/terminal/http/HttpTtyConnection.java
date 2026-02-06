@@ -22,6 +22,7 @@ package org.aesh.terminal.http;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -42,20 +43,48 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * A connection to an http client, independent of the protocol, it could be straight WebSockets or
  * SockJS, etc...
  *
- * The incoming protocol is based on json messages:
+ * <p>
+ * The incoming protocol is based on JSON messages with an "action" field:
+ * </p>
  *
+ * <p>
+ * <b>init</b> - Client capability reporting (sent on connect)
+ * </p>
+ *
+ * <pre>{@code
  * {
- * "action": "read",
- * "data": "what the user typed"
+ *   "action": "init",
+ *   "type": "xterm-256color",
+ *   "colorDepth": "TRUE_COLOR",
+ *   "features": ["UNICODE", "CLIPBOARD"],
+ *   "cols": 80,
+ *   "rows": 24,
+ *   "userAgent": "Mozilla/5.0 ..."
  * }
+ * }</pre>
  *
- * or
+ * <p>
+ * <b>read</b> - User terminal input
+ * </p>
  *
+ * <pre>{@code
  * {
- * "action": "resize",
- * "cols": 30,
- * "rows: 50
+ *   "action": "read",
+ *   "data": "what the user typed"
  * }
+ * }</pre>
+ *
+ * <p>
+ * <b>resize</b> - Terminal size change
+ * </p>
+ *
+ * <pre>{@code
+ * {
+ *   "action": "resize",
+ *   "cols": 120,
+ *   "rows": 40
+ * }
+ * }</pre>
  *
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
@@ -76,6 +105,7 @@ public abstract class HttpTtyConnection implements Connection {
     private Consumer<String> termHandler;
     private long lastAccessedTime = System.currentTimeMillis();
     private Attributes attributes;
+    private boolean initialized = false;
 
     /**
      * Creates a new HTTP TTY connection with default charset (UTF-8) and size (80x24).
@@ -97,8 +127,17 @@ public abstract class HttpTtyConnection implements Connection {
         this.decoder = new Decoder(512, charset, eventDecoder);
         this.stdout = new TtyOutputMode(new Encoder(charset, this::write));
 
-        this.device = new HttpDevice("vt100");
+        this.device = new HttpDevice();
         attributes = new Attributes();
+    }
+
+    /**
+     * Returns whether the client has sent an init message.
+     *
+     * @return true if the client has initialized the connection
+     */
+    public boolean isInitialized() {
+        return initialized;
     }
 
     /**
@@ -143,7 +182,13 @@ public abstract class HttpTtyConnection implements Connection {
 
     /**
      * Processes an incoming JSON message from the client and writes it to the decoder.
-     * Handles "read" actions (terminal input) and "resize" actions (terminal resize events).
+     * <p>
+     * Handles the following actions:
+     * <ul>
+     * <li><b>init</b> - Client capability reporting (type, colorDepth, features, cols, rows)</li>
+     * <li><b>read</b> - Terminal input from the user</li>
+     * <li><b>resize</b> - Terminal resize events</li>
+     * </ul>
      *
      * @param msg the JSON message from the client
      */
@@ -161,30 +206,86 @@ public abstract class HttpTtyConnection implements Connection {
         }
         if (action != null) {
             switch (action) {
+                case "init":
+                    handleInit(obj);
+                    break;
                 case "read":
                     lastAccessedTime = System.currentTimeMillis();
                     String data = (String) obj.get("data");
                     decoder.write(data.getBytes()); //write back echo
                     break;
                 case "resize":
-                    try {
-                        int cols = (int) obj.getOrDefault("cols", size.getWidth());
-                        int rows = (int) obj.getOrDefault("rows", size.getHeight());
-                        if (cols > 0 && rows > 0) {
-                            Size newSize = new Size(cols, rows);
-                            if (!newSize.equals(size())) {
-                                size = newSize;
-                                if (sizeHandler != null) {
-                                    sizeHandler.accept(size);
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        // Invalid size
-                        // Log this
-                    }
+                    handleResize(obj);
                     break;
             }
+        }
+    }
+
+    /**
+     * Handles the init action from the client, updating device capabilities.
+     *
+     * @param obj the parsed JSON message
+     */
+    @SuppressWarnings("unchecked")
+    private void handleInit(Map<String, Object> obj) {
+        lastAccessedTime = System.currentTimeMillis();
+        initialized = true;
+
+        HttpDevice httpDevice = (HttpDevice) device;
+
+        // Update terminal type if provided
+        String type = (String) obj.get("type");
+        if (type != null && !type.isEmpty()) {
+            httpDevice.setType(type);
+            if (termHandler != null) {
+                termHandler.accept(type);
+            }
+        }
+
+        // Store color depth
+        String colorDepth = (String) obj.get("colorDepth");
+        if (colorDepth != null) {
+            httpDevice.setReportedColorDepth(colorDepth);
+        }
+
+        // Store features
+        Object featuresObj = obj.get("features");
+        if (featuresObj instanceof List) {
+            httpDevice.setFeatures((List<String>) featuresObj);
+        }
+
+        // Store user agent
+        String userAgent = (String) obj.get("userAgent");
+        if (userAgent != null) {
+            httpDevice.setUserAgent(userAgent);
+        }
+
+        // Handle initial size
+        handleResize(obj);
+    }
+
+    /**
+     * Handles the resize action from the client.
+     *
+     * @param obj the parsed JSON message
+     */
+    private void handleResize(Map<String, Object> obj) {
+        try {
+            Object colsObj = obj.get("cols");
+            Object rowsObj = obj.get("rows");
+            int cols = colsObj != null ? ((Number) colsObj).intValue() : size.getWidth();
+            int rows = rowsObj != null ? ((Number) rowsObj).intValue() : size.getHeight();
+            if (cols > 0 && rows > 0) {
+                Size newSize = new Size(cols, rows);
+                if (!newSize.equals(size())) {
+                    size = newSize;
+                    if (sizeHandler != null) {
+                        sizeHandler.accept(size);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Invalid size - ignore
         }
     }
 

@@ -203,7 +203,7 @@ public abstract class TtyTestBase extends TestBase {
     @Test
     public void testTerminalType() throws Exception {
         Consumer<String> assertTerm = term -> {
-            if (term.equals("xterm") || term.equals("vt100")) {
+            if (term.equals("xterm") || term.equals("vt100") || term.equals("xterm-256color")) {
                 testComplete();
             } else {
                 fail("Unexpected term " + term);
