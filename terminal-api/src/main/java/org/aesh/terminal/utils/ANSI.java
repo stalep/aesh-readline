@@ -486,4 +486,262 @@ public class ANSI {
         }
     }
 
+    // ==================== RGB to ANSI Color Conversion ====================
+
+    /**
+     * Convert RGB to nearest 256-color palette index.
+     * <p>
+     * The 256-color palette consists of:
+     * <ul>
+     * <li>0-15: Standard and bright ANSI colors</li>
+     * <li>16-231: 6x6x6 color cube</li>
+     * <li>232-255: 24-shade grayscale ramp</li>
+     * </ul>
+     * <p>
+     * This method maps to the color cube (16-231) or grayscale (232-255).
+     * For standard ANSI colors (0-15), use {@link #rgbToAnsiColor(int, int, int)}.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return the nearest 256-color palette index (16-255)
+     */
+    public static int rgbTo256Color(int r, int g, int b) {
+        // Clamp values to valid range
+        r = Math.max(0, Math.min(255, r));
+        g = Math.max(0, Math.min(255, g));
+        b = Math.max(0, Math.min(255, b));
+
+        // Check if it's a grayscale color
+        if (r == g && g == b) {
+            if (r < 8) {
+                return 16; // Black
+            }
+            if (r > 248) {
+                return 231; // White
+            }
+            // Grayscale: 232-255 (24 shades)
+            return 232 + (r - 8) / 10;
+        }
+
+        // Convert to 6x6x6 color cube (indices 16-231)
+        int ri = (r < 48) ? 0 : (r < 115) ? 1 : (r - 35) / 40;
+        int gi = (g < 48) ? 0 : (g < 115) ? 1 : (g - 35) / 40;
+        int bi = (b < 48) ? 0 : (b < 115) ? 1 : (b - 35) / 40;
+
+        return 16 + 36 * ri + 6 * gi + bi;
+    }
+
+    /**
+     * Convert RGB to nearest basic ANSI foreground color code.
+     * <p>
+     * Returns a foreground color code in the range 30-37 (normal) or 90-97 (bright),
+     * automatically determining brightness based on the RGB luminance.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return ANSI foreground color code (30-37 or 90-97)
+     */
+    public static int rgbToAnsiColor(int r, int g, int b) {
+        boolean bright = rgbIsBright(r, g, b);
+        return rgbToAnsiColor(r, g, b, bright);
+    }
+
+    /**
+     * Convert RGB to nearest basic ANSI foreground color code with explicit brightness.
+     * <p>
+     * Returns a foreground color code:
+     * <ul>
+     * <li>30-37: Normal colors (black, red, green, yellow, blue, magenta, cyan, white)</li>
+     * <li>90-97: Bright colors</li>
+     * </ul>
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @param bright true for bright variant (90-97), false for normal (30-37)
+     * @return ANSI foreground color code
+     */
+    public static int rgbToAnsiColor(int r, int g, int b, boolean bright) {
+        int baseCode = rgbToBasicColorCode(r, g, b);
+        return bright ? baseCode + 60 : baseCode;
+    }
+
+    /**
+     * Convert RGB to nearest basic ANSI background color code.
+     * <p>
+     * Returns a background color code in the range 40-47 (normal) or 100-107 (bright),
+     * automatically determining brightness based on the RGB luminance.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return ANSI background color code (40-47 or 100-107)
+     */
+    public static int rgbToAnsiBackgroundColor(int r, int g, int b) {
+        boolean bright = rgbIsBright(r, g, b);
+        return rgbToAnsiBackgroundColor(r, g, b, bright);
+    }
+
+    /**
+     * Convert RGB to nearest basic ANSI background color code with explicit brightness.
+     * <p>
+     * Returns a background color code:
+     * <ul>
+     * <li>40-47: Normal colors</li>
+     * <li>100-107: Bright colors</li>
+     * </ul>
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @param bright true for bright variant (100-107), false for normal (40-47)
+     * @return ANSI background color code
+     */
+    public static int rgbToAnsiBackgroundColor(int r, int g, int b, boolean bright) {
+        int baseCode = rgbToBasicColorCode(r, g, b);
+        int bgCode = baseCode + 10; // 30-37 -> 40-47
+        return bright ? bgCode + 60 : bgCode;
+    }
+
+    /**
+     * Get the basic ANSI color code (30-37) for an RGB value.
+     * <p>
+     * Maps RGB to one of the 8 basic colors:
+     * <ul>
+     * <li>30: Black</li>
+     * <li>31: Red</li>
+     * <li>32: Green</li>
+     * <li>33: Yellow</li>
+     * <li>34: Blue</li>
+     * <li>35: Magenta</li>
+     * <li>36: Cyan</li>
+     * <li>37: White</li>
+     * </ul>
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return basic ANSI color code (30-37)
+     */
+    public static int rgbToBasicColorCode(int r, int g, int b) {
+        // Clamp values
+        r = Math.max(0, Math.min(255, r));
+        g = Math.max(0, Math.min(255, g));
+        b = Math.max(0, Math.min(255, b));
+
+        // Calculate luminance for grayscale detection
+        double luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+
+        // Check for near-grayscale
+        int max = Math.max(r, Math.max(g, b));
+        int min = Math.min(r, Math.min(g, b));
+        int saturation = max - min;
+
+        if (saturation < 50) {
+            // Grayscale - return black or white
+            return luminance < 0.5 ? 30 : 37; // BLACK or WHITE
+        }
+
+        // Find dominant color
+        if (r >= g && r >= b) {
+            // Red dominant
+            if (g > b && g > 128) {
+                return 33; // YELLOW
+            }
+            if (b > g && b > 128) {
+                return 35; // MAGENTA
+            }
+            return 31; // RED
+        } else if (g >= r && g >= b) {
+            // Green dominant
+            if (b > r && b > 128) {
+                return 36; // CYAN
+            }
+            if (r > b && r > 128) {
+                return 33; // YELLOW
+            }
+            return 32; // GREEN
+        } else {
+            // Blue dominant
+            if (r > g && r > 128) {
+                return 35; // MAGENTA
+            }
+            if (g > r && g > 128) {
+                return 36; // CYAN
+            }
+            return 34; // BLUE
+        }
+    }
+
+    /**
+     * Determine if an RGB color should use bright ANSI variant.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return true if the color is bright enough for bright ANSI variant
+     */
+    public static boolean rgbIsBright(int r, int g, int b) {
+        double luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+        return luminance > 0.6;
+    }
+
+    /**
+     * Get the RGB values for a 256-color palette index.
+     * <p>
+     * This is the inverse of {@link #rgbTo256Color(int, int, int)}.
+     *
+     * @param index the 256-color palette index (0-255)
+     * @return RGB array [r, g, b] (0-255 each)
+     */
+    public static int[] color256ToRgb(int index) {
+        if (index < 0 || index > 255) {
+            throw new IllegalArgumentException("Index must be 0-255, got: " + index);
+        }
+
+        // Standard colors 0-15 (approximate)
+        if (index < 16) {
+            return STANDARD_COLORS[index];
+        }
+
+        // Color cube 16-231
+        if (index < 232) {
+            int idx = index - 16;
+            int r = (idx / 36) % 6;
+            int g = (idx / 6) % 6;
+            int b = idx % 6;
+            return new int[] {
+                    r == 0 ? 0 : 55 + r * 40,
+                    g == 0 ? 0 : 55 + g * 40,
+                    b == 0 ? 0 : 55 + b * 40
+            };
+        }
+
+        // Grayscale 232-255
+        int gray = 8 + (index - 232) * 10;
+        return new int[] { gray, gray, gray };
+    }
+
+    // Standard 16 ANSI colors (approximate RGB values)
+    private static final int[][] STANDARD_COLORS = {
+            { 0, 0, 0 }, // 0: Black
+            { 128, 0, 0 }, // 1: Red
+            { 0, 128, 0 }, // 2: Green
+            { 128, 128, 0 }, // 3: Yellow
+            { 0, 0, 128 }, // 4: Blue
+            { 128, 0, 128 }, // 5: Magenta
+            { 0, 128, 128 }, // 6: Cyan
+            { 192, 192, 192 }, // 7: White
+            { 128, 128, 128 }, // 8: Bright Black (Gray)
+            { 255, 0, 0 }, // 9: Bright Red
+            { 0, 255, 0 }, // 10: Bright Green
+            { 255, 255, 0 }, // 11: Bright Yellow
+            { 0, 0, 255 }, // 12: Bright Blue
+            { 255, 0, 255 }, // 13: Bright Magenta
+            { 0, 255, 255 }, // 14: Bright Cyan
+            { 255, 255, 255 } // 15: Bright White
+    };
+
 }

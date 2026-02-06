@@ -363,4 +363,164 @@ public class ANSIOscTest {
         assertEquals(0x24, rgb[1]); // 2448 >> 8 = 36
         assertEquals(0x2b, rgb[2]); // 2b8a >> 8 = 43
     }
+
+    // ==================== RGB to ANSI Color Conversion Tests ====================
+
+    @Test
+    public void testRgbTo256Color_Black() {
+        // Pure black should map to index 16 (black in color cube)
+        assertEquals(16, ANSI.rgbTo256Color(0, 0, 0));
+    }
+
+    @Test
+    public void testRgbTo256Color_White() {
+        // Pure white should map to index 231 (white in color cube)
+        assertEquals(231, ANSI.rgbTo256Color(255, 255, 255));
+    }
+
+    @Test
+    public void testRgbTo256Color_Grayscale() {
+        // Mid-gray should be in grayscale range (232-255)
+        int gray = ANSI.rgbTo256Color(128, 128, 128);
+        assertTrue("Mid-gray should be in grayscale range", gray >= 232 && gray <= 255);
+    }
+
+    @Test
+    public void testRgbTo256Color_Red() {
+        // Pure red should map to a red in the color cube
+        int red = ANSI.rgbTo256Color(255, 0, 0);
+        // Should be 16 + 36*5 + 6*0 + 0 = 196
+        assertEquals(196, red);
+    }
+
+    @Test
+    public void testRgbTo256Color_Green() {
+        // Pure green should map to a green in the color cube
+        int green = ANSI.rgbTo256Color(0, 255, 0);
+        // Should be 16 + 36*0 + 6*5 + 0 = 46
+        assertEquals(46, green);
+    }
+
+    @Test
+    public void testRgbTo256Color_Blue() {
+        // Pure blue should map to a blue in the color cube
+        int blue = ANSI.rgbTo256Color(0, 0, 255);
+        // Should be 16 + 36*0 + 6*0 + 5 = 21
+        assertEquals(21, blue);
+    }
+
+    @Test
+    public void testRgbToAnsiColor_Black() {
+        // Black should return 30 (normal) or stay as black
+        int code = ANSI.rgbToAnsiColor(0, 0, 0);
+        assertEquals(30, code); // Normal black
+    }
+
+    @Test
+    public void testRgbToAnsiColor_BrightWhite() {
+        // Bright white should return 97 (bright white)
+        int code = ANSI.rgbToAnsiColor(255, 255, 255);
+        assertEquals(97, code); // Bright white (37 + 60)
+    }
+
+    @Test
+    public void testRgbToAnsiColor_Red() {
+        // Red should return red code
+        int code = ANSI.rgbToAnsiColor(200, 50, 50);
+        assertTrue("Should be red (31 or 91)", code == 31 || code == 91);
+    }
+
+    @Test
+    public void testRgbToAnsiColor_ExplicitBrightness() {
+        // Test explicit brightness parameter
+        int normalRed = ANSI.rgbToAnsiColor(255, 0, 0, false);
+        int brightRed = ANSI.rgbToAnsiColor(255, 0, 0, true);
+
+        assertEquals(31, normalRed);
+        assertEquals(91, brightRed);
+    }
+
+    @Test
+    public void testRgbToAnsiBackgroundColor() {
+        // Background colors should be 40-47 or 100-107
+        int bgBlack = ANSI.rgbToAnsiBackgroundColor(0, 0, 0);
+        assertEquals(40, bgBlack); // Normal black background
+
+        int bgWhite = ANSI.rgbToAnsiBackgroundColor(255, 255, 255);
+        assertEquals(107, bgWhite); // Bright white background
+    }
+
+    @Test
+    public void testRgbToBasicColorCode() {
+        // Test direct basic color code mapping
+        assertEquals(30, ANSI.rgbToBasicColorCode(0, 0, 0)); // Black
+        assertEquals(31, ANSI.rgbToBasicColorCode(200, 0, 0)); // Red
+        assertEquals(32, ANSI.rgbToBasicColorCode(0, 200, 0)); // Green
+        assertEquals(33, ANSI.rgbToBasicColorCode(200, 200, 0)); // Yellow
+        assertEquals(34, ANSI.rgbToBasicColorCode(0, 0, 200)); // Blue
+        assertEquals(35, ANSI.rgbToBasicColorCode(200, 0, 200)); // Magenta
+        assertEquals(36, ANSI.rgbToBasicColorCode(0, 200, 200)); // Cyan
+        assertEquals(37, ANSI.rgbToBasicColorCode(200, 200, 200)); // White
+    }
+
+    @Test
+    public void testRgbIsBright() {
+        assertFalse(ANSI.rgbIsBright(0, 0, 0)); // Black is not bright
+        assertTrue(ANSI.rgbIsBright(255, 255, 255)); // White is bright
+        assertFalse(ANSI.rgbIsBright(100, 100, 100)); // Dark gray is not bright
+        assertTrue(ANSI.rgbIsBright(200, 200, 200)); // Light gray is bright
+    }
+
+    @Test
+    public void testColor256ToRgb_Black() {
+        int[] rgb = ANSI.color256ToRgb(0);
+        assertArrayEquals(new int[] { 0, 0, 0 }, rgb);
+    }
+
+    @Test
+    public void testColor256ToRgb_BrightWhite() {
+        int[] rgb = ANSI.color256ToRgb(15);
+        assertArrayEquals(new int[] { 255, 255, 255 }, rgb);
+    }
+
+    @Test
+    public void testColor256ToRgb_ColorCube() {
+        // Index 196 should be bright red (5, 0, 0 in cube)
+        int[] rgb = ANSI.color256ToRgb(196);
+        assertEquals(255, rgb[0]); // 55 + 5*40 = 255
+        assertEquals(0, rgb[1]);
+        assertEquals(0, rgb[2]);
+    }
+
+    @Test
+    public void testColor256ToRgb_Grayscale() {
+        // Index 244 is mid-grayscale
+        int[] rgb = ANSI.color256ToRgb(244);
+        int expected = 8 + (244 - 232) * 10; // 8 + 12*10 = 128
+        assertEquals(expected, rgb[0]);
+        assertEquals(expected, rgb[1]);
+        assertEquals(expected, rgb[2]);
+    }
+
+    @Test
+    public void testColor256ToRgb_RoundTrip() {
+        // Converting RGB to 256 and back should give similar values
+        int original256 = ANSI.rgbTo256Color(128, 64, 192);
+        int[] rgb = ANSI.color256ToRgb(original256);
+        int roundTrip = ANSI.rgbTo256Color(rgb[0], rgb[1], rgb[2]);
+
+        assertEquals("Round-trip should return same index", original256, roundTrip);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testColor256ToRgb_InvalidIndex() {
+        ANSI.color256ToRgb(256);
+    }
+
+    @Test
+    public void testRgbTo256Color_ClampValues() {
+        // Values outside 0-255 should be clamped
+        assertEquals(ANSI.rgbTo256Color(255, 255, 255), ANSI.rgbTo256Color(300, 300, 300));
+        assertEquals(ANSI.rgbTo256Color(0, 0, 0), ANSI.rgbTo256Color(-10, -10, -10));
+    }
 }
