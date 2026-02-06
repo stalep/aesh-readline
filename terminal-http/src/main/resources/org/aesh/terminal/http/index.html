@@ -1,55 +1,158 @@
 <!doctype html>
-<title>&#198sh Readline</title>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>&#198;sh Readline</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #1e1e1e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+    }
 
-<h1>&#198sh Readline</h1>
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
 
-<style>
-  html {
-    background: #555;
-  }
+    h1 {
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      color: #f0f0f0;
+      text-align: center;
+    }
 
-  h1 {
-    margin-bottom: 20px;
-    font: 20px/1.5 sans-serif;
-  }
+    #terminal-container {
+      border: 2px solid #444;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      background: #000;
+    }
 
-  .terminal {
-    float: left;
-    border: #000 solid 5px;
-    font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
-    font-size: 11px;
-    color: #f0f0f0;
-    background: #000;
-  }
+    .connection-status {
+      margin-bottom: 15px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: inline-block;
+    }
 
-  .terminal-cursor {
-    color: #000;
-    background: #f0f0f0;
-  }
-</style><!--<script src="//cdn.jsdelivr.net/sockjs/0.3.4/sockjs.min.js"></script>-->
-<script src="term.js"></script>
+    .status-connected {
+      background: #1a472a;
+      color: #4ade80;
+    }
 
-<script type="text/javascript">
-  window.addEventListener('load', function () {
-    var socket = new WebSocket('ws://localhost:8080/ws');
-    socket.onopen = function () {
-      var term = new Terminal({cols: 80, rows: 24, screenKeys: true});
-      socket.onmessage = function (event) {
-        if (event.type === 'message') {
-          var data = event.data;
-          term.write(data);
-        }
-      };
-      socket.onclose = function () {
-        socket.onmessage = null;
-        socket.onclose = null;
-        term.destroy();
-      };
-      term.on('data', function (data) {
-        socket.send(JSON.stringify({action: 'read', data: data}));
-      });
-      term.open(document.body);
-    };
-  });
-</script>
+    .status-disconnected {
+      background: #4a1a1a;
+      color: #f87171;
+    }
 
+    .status-connecting {
+      background: #4a3a1a;
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>&#198;sh Readline</h1>
+    <div id="status" class="connection-status status-connecting">Connecting...</div>
+    <div id="terminal-container"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+  <script>
+    (function() {
+      'use strict';
+
+      var statusEl = document.getElementById('status');
+
+      function setStatus(status, message) {
+        statusEl.className = 'connection-status status-' + status;
+        statusEl.textContent = message;
+      }
+
+      function connect() {
+        var wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        var wsHost = window.location.host || 'localhost:8080';
+        var wsUrl = wsProtocol + '//' + wsHost + '/ws';
+
+        setStatus('connecting', 'Connecting to ' + wsUrl + '...');
+
+        var socket = new WebSocket(wsUrl);
+
+        socket.onopen = function() {
+          setStatus('connected', 'Connected');
+
+          // Create terminal with xterm.js (fixed size 120x40)
+          var term = new Terminal({
+            cols: 120,
+            rows: 40,
+            cursorBlink: true,
+            cursorStyle: 'block',
+            fontFamily: '"DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace',
+            fontSize: 14,
+            theme: {
+              background: '#000000',
+              foreground: '#f0f0f0',
+              cursor: '#f0f0f0',
+              cursorAccent: '#000000',
+              selectionBackground: 'rgba(255, 255, 255, 0.3)'
+            }
+          });
+
+          // Open terminal in container
+          term.open(document.getElementById('terminal-container'));
+
+          // Handle incoming data from server
+          socket.onmessage = function(event) {
+            if (event.type === 'message') {
+              term.write(event.data);
+            }
+          };
+
+          // Handle user input
+          term.onData(function(data) {
+            socket.send(JSON.stringify({action: 'read', data: data}));
+          });
+
+          // Handle connection close
+          socket.onclose = function(event) {
+            setStatus('disconnected', 'Disconnected (code: ' + event.code + ')');
+            term.write('\r\n\x1b[31mConnection closed.\x1b[0m\r\n');
+            socket.onmessage = null;
+            socket.onclose = null;
+          };
+
+          // Handle connection error
+          socket.onerror = function(error) {
+            setStatus('disconnected', 'Connection error');
+            console.error('WebSocket error:', error);
+          };
+
+          // Focus terminal
+          term.focus();
+        };
+
+        socket.onerror = function(error) {
+          setStatus('disconnected', 'Failed to connect');
+          console.error('WebSocket connection error:', error);
+        };
+      }
+
+      // Connect when page loads
+      window.addEventListener('load', connect);
+    })();
+  </script>
+</body>
+</html>
