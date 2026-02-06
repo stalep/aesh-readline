@@ -416,4 +416,157 @@ public class DeviceAttributesTest {
         assertTrue(da.supportsAnsiColor());
         assertTrue(da.supportsMouse());
     }
+
+    // ==================== TerminalType Synergy Tests ====================
+
+    @Test
+    public void testInferTerminalType_WithSixel() {
+        Set<Integer> features = new HashSet<>();
+        features.add(4); // Sixel
+        features.add(22); // ANSI color
+
+        DeviceAttributes da = new DeviceAttributes(64, features);
+
+        Device.TerminalType type = da.inferTerminalType();
+        assertNotNull(type);
+        // Sixel with high device class suggests xterm or similar
+        assertNotEquals(Device.TerminalType.UNKNOWN, type);
+    }
+
+    @Test
+    public void testInferTerminalType_LinuxConsole() {
+        // Linux console: device class 1, no features
+        DeviceAttributes da = new DeviceAttributes(1, new HashSet<>());
+
+        Device.TerminalType type = da.inferTerminalType();
+        assertEquals(Device.TerminalType.LINUX_CONSOLE, type);
+    }
+
+    @Test
+    public void testInferTerminalType_FromDA2() {
+        // VT420 from DA2
+        DeviceAttributes da = new DeviceAttributes(-1, null,
+                TerminalType.VT420, 100, 0);
+
+        Device.TerminalType type = da.inferTerminalType();
+        assertEquals(Device.TerminalType.XTERM, type); // VT420 maps to xterm
+    }
+
+    @Test
+    public void testInferColorDepth_WithAnsiColor() {
+        Set<Integer> features = new HashSet<>();
+        features.add(22); // ANSI color
+
+        DeviceAttributes da = new DeviceAttributes(64, features);
+
+        org.aesh.terminal.utils.ColorDepth depth = da.inferColorDepth();
+        assertEquals(org.aesh.terminal.utils.ColorDepth.COLORS_256, depth);
+    }
+
+    @Test
+    public void testInferColorDepth_VT220() {
+        DeviceAttributes da = new DeviceAttributes(62, new HashSet<>());
+
+        org.aesh.terminal.utils.ColorDepth depth = da.inferColorDepth();
+        assertEquals(org.aesh.terminal.utils.ColorDepth.COLORS_8, depth);
+    }
+
+    @Test
+    public void testInferColorDepth_VT100() {
+        DeviceAttributes da = new DeviceAttributes(1, new HashSet<>());
+
+        org.aesh.terminal.utils.ColorDepth depth = da.inferColorDepth();
+        assertEquals(org.aesh.terminal.utils.ColorDepth.COLORS_8, depth);
+    }
+
+    @Test
+    public void testMatchesTerminalType_Compatible() {
+        Set<Integer> features = new HashSet<>();
+        features.add(4); // Sixel
+        features.add(22); // ANSI color
+
+        DeviceAttributes da = new DeviceAttributes(64, features);
+
+        // Kitty expects Sixel and ANSI color - should match
+        assertTrue(da.matchesTerminalType(Device.TerminalType.KITTY));
+    }
+
+    @Test
+    public void testMatchesTerminalType_Incompatible() {
+        // Basic terminal without Sixel
+        DeviceAttributes da = new DeviceAttributes(62, new HashSet<>());
+
+        // Kitty expects Sixel - should not match
+        assertFalse(da.matchesTerminalType(Device.TerminalType.KITTY));
+    }
+
+    @Test
+    public void testMatchesTerminalType_Unknown() {
+        DeviceAttributes da = new DeviceAttributes(64, new HashSet<>());
+
+        // Unknown type always matches (can't validate)
+        assertTrue(da.matchesTerminalType(Device.TerminalType.UNKNOWN));
+        assertTrue(da.matchesTerminalType(null));
+    }
+
+    @Test
+    public void testGetExpectedFeatures_Kitty() {
+        Set<DeviceAttributes.Feature> features = Device.TerminalType.KITTY.getExpectedFeatures();
+
+        assertTrue(features.contains(DeviceAttributes.Feature.SIXEL));
+        assertTrue(features.contains(DeviceAttributes.Feature.ANSI_COLOR));
+        assertTrue(features.contains(DeviceAttributes.Feature.ANSI_TEXT_LOCATOR));
+    }
+
+    @Test
+    public void testGetExpectedFeatures_LinuxConsole() {
+        Set<DeviceAttributes.Feature> features = Device.TerminalType.LINUX_CONSOLE.getExpectedFeatures();
+
+        assertTrue("Linux console should have no features", features.isEmpty());
+    }
+
+    @Test
+    public void testGetExpectedFeatures_Xterm() {
+        Set<DeviceAttributes.Feature> features = Device.TerminalType.XTERM.getExpectedFeatures();
+
+        assertTrue(features.contains(DeviceAttributes.Feature.ANSI_COLOR));
+        assertTrue(features.contains(DeviceAttributes.Feature.ANSI_TEXT_LOCATOR));
+        assertTrue(features.contains(DeviceAttributes.Feature.RECTANGULAR_EDITING));
+    }
+
+    @Test
+    public void testExpectsSixel() {
+        assertTrue(Device.TerminalType.KITTY.expectsSixel());
+        assertTrue(Device.TerminalType.GHOSTTY.expectsSixel());
+        assertTrue(Device.TerminalType.FOOT.expectsSixel());
+
+        assertFalse(Device.TerminalType.LINUX_CONSOLE.expectsSixel());
+        assertFalse(Device.TerminalType.VSCODE.expectsSixel());
+    }
+
+    @Test
+    public void testExpectsMouse() {
+        assertTrue(Device.TerminalType.XTERM.expectsMouse());
+        assertTrue(Device.TerminalType.KITTY.expectsMouse());
+        assertTrue(Device.TerminalType.ITERM2.expectsMouse());
+
+        assertFalse(Device.TerminalType.LINUX_CONSOLE.expectsMouse());
+    }
+
+    @Test
+    public void testGetCapabilitySummary() {
+        Set<Integer> features = new HashSet<>();
+        features.add(4); // Sixel
+        features.add(22); // ANSI color
+
+        DeviceAttributes da = new DeviceAttributes(64, features,
+                TerminalType.VT420, 100, 0);
+
+        String summary = da.getCapabilitySummary(Device.TerminalType.KITTY);
+
+        assertNotNull(summary);
+        assertTrue(summary.contains("kitty"));
+        assertTrue(summary.contains("Sixel Graphics: Yes"));
+        assertTrue(summary.contains("ANSI Color: Yes"));
+    }
 }

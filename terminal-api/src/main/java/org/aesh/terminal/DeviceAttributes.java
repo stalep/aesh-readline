@@ -397,6 +397,169 @@ public class DeviceAttributes {
         return new DeviceAttributes(mergedClass, mergedParams, mergedType, mergedVersion, mergedRom);
     }
 
+    // ==================== Synergy with Device.TerminalType ====================
+
+    /**
+     * Infer the terminal type from DA1/DA2 attributes.
+     * <p>
+     * This method attempts to determine which {@link Device.TerminalType} best
+     * matches the features and capabilities reported by the terminal.
+     * <p>
+     * Use this in combination with environment-based detection for more
+     * accurate terminal identification:
+     *
+     * <pre>
+     * Device.TerminalType envType = device.detectTerminalType();
+     * DeviceAttributes attrs = connection.queryDeviceAttributes(500);
+     * Device.TerminalType daType = attrs.inferTerminalType();
+     *
+     * // envType is usually more specific, but daType confirms capabilities
+     * </pre>
+     *
+     * @return the inferred terminal type, or UNKNOWN if not determinable
+     */
+    public Device.TerminalType inferTerminalType() {
+        // Sixel support is a strong indicator of certain terminals
+        if (supportsSixel()) {
+            // Check device class for more hints
+            if (deviceClass >= 64) {
+                // VT420+ with Sixel - could be Foot, Contour, or xterm with Sixel
+                return Device.TerminalType.XTERM;
+            }
+            // Sixel without high device class - likely modern terminal
+            return Device.TerminalType.FOOT; // Good default for Sixel-capable
+        }
+
+        // Check DA2 terminal type for VT identification
+        if (terminalType != TerminalType.UNKNOWN) {
+            switch (terminalType) {
+                case XTERM:
+                    return Device.TerminalType.XTERM;
+                case VT100:
+                case VT220:
+                case VT320:
+                case VT420:
+                case VT510:
+                case VT520:
+                case VT525:
+                    // Legacy VT terminal - return xterm as closest modern equivalent
+                    return Device.TerminalType.XTERM;
+                default:
+                    break;
+            }
+        }
+
+        // Use device class as a hint
+        if (deviceClass >= 62) {
+            // VT220+ compatible
+            if (supportsAnsiColor()) {
+                return Device.TerminalType.XTERM;
+            }
+        }
+
+        // Linux console has very specific characteristics
+        if (deviceClass == 1 && features.isEmpty()) {
+            return Device.TerminalType.LINUX_CONSOLE;
+        }
+
+        return Device.TerminalType.UNKNOWN;
+    }
+
+    /**
+     * Infer the color depth from DA1 features.
+     * <p>
+     * This provides an authoritative color depth based on what the terminal
+     * actually reports, rather than environment-based heuristics.
+     *
+     * @return the inferred color depth
+     */
+    public org.aesh.terminal.utils.ColorDepth inferColorDepth() {
+        if (supportsAnsiColor()) {
+            // ANSI color feature (Ps=22) indicates at least 256 colors
+            // Most terminals reporting this actually support true color
+            return org.aesh.terminal.utils.ColorDepth.COLORS_256;
+        }
+
+        // Check device class
+        if (deviceClass >= 64) {
+            // VT420+ typically supports 256 colors
+            return org.aesh.terminal.utils.ColorDepth.COLORS_256;
+        }
+
+        if (deviceClass >= 62) {
+            // VT220+ supports 8 colors
+            return org.aesh.terminal.utils.ColorDepth.COLORS_8;
+        }
+
+        // VT100 level - minimal color support
+        return org.aesh.terminal.utils.ColorDepth.COLORS_8;
+    }
+
+    /**
+     * Validate that this terminal's attributes match the expected features
+     * for a given terminal type.
+     * <p>
+     * This can be used to verify that environment-detected terminal type
+     * matches the actual terminal capabilities.
+     *
+     * @param expectedType the terminal type detected from environment
+     * @return true if the attributes are consistent with the expected type
+     */
+    public boolean matchesTerminalType(Device.TerminalType expectedType) {
+        if (expectedType == null || expectedType == Device.TerminalType.UNKNOWN) {
+            return true; // Can't validate unknown type
+        }
+
+        Set<Feature> expectedFeatures = expectedType.getExpectedFeatures();
+
+        // Check if expected Sixel support matches
+        if (expectedFeatures.contains(Feature.SIXEL) && !supportsSixel()) {
+            // Terminal was expected to support Sixel but doesn't
+            // This could be a version/config issue, not necessarily a mismatch
+            return false;
+        }
+
+        // Check ANSI color - most modern terminals should have this
+        if (expectedType.supportsTrueColor() &&
+                !supportsAnsiColor() && deviceClass < 62) {
+            // Expected true color but terminal doesn't even report ANSI color
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get enhanced terminal capabilities by combining DA1/DA2 data with
+     * environment-detected terminal type.
+     * <p>
+     * This method returns a summary of capabilities using both sources
+     * of information for the most accurate detection.
+     *
+     * @param envType the terminal type detected from environment variables
+     * @return a capabilities summary string
+     */
+    public String getCapabilitySummary(Device.TerminalType envType) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Terminal: ").append(envType != null ? envType.getIdentifier() : "unknown");
+        sb.append("\nDA1 Class: ").append(deviceClass >= 0 ? deviceClass : "N/A");
+        sb.append("\nDA2 Type: ").append(terminalType.getName());
+
+        sb.append("\n\nCapabilities:");
+        sb.append("\n  Color Depth: ").append(inferColorDepth());
+        sb.append("\n  Sixel Graphics: ").append(supportsSixel() ? "Yes" : "No");
+        sb.append("\n  ANSI Color: ").append(supportsAnsiColor() ? "Yes" : "No");
+        sb.append("\n  Mouse Support: ").append(supportsMouse() ? "Yes" : "No");
+        sb.append("\n  OSC Queries: ").append(likelySupportsOscQueries() ? "Likely" : "Unlikely");
+
+        if (envType != null && !matchesTerminalType(envType)) {
+            sb.append("\n\nWarning: DA attributes don't fully match expected capabilities for ")
+                    .append(envType.getIdentifier());
+        }
+
+        return sb.toString();
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

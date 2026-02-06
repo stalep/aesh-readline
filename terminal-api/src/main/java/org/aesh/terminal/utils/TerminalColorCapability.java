@@ -477,52 +477,14 @@ public class TerminalColorCapability {
     /**
      * Detect color depth from environment variables.
      * This is a fast, non-blocking operation.
+     * <p>
+     * This method delegates to {@link TerminalEnvironment} which provides
+     * centralized, cached terminal environment detection.
      *
      * @return the detected color depth
      */
     public static ColorDepth detectColorDepthFromEnvironment() {
-        // First check environment variables for true color support
-        String colorterm = System.getenv("COLORTERM");
-        if ("truecolor".equalsIgnoreCase(colorterm) || "24bit".equalsIgnoreCase(colorterm)) {
-            return ColorDepth.TRUE_COLOR;
-        }
-
-        // Check for Windows Terminal (always supports true color)
-        if (System.getenv("WT_SESSION") != null) {
-            return ColorDepth.TRUE_COLOR;
-        }
-
-        // Check for ConEmu/Cmder (supports true color)
-        if (System.getenv("ConEmuPID") != null || System.getenv("ConEmuANSI") != null) {
-            return ColorDepth.TRUE_COLOR;
-        }
-
-        // Check TERM environment variable
-        String term = System.getenv("TERM");
-        if (term != null) {
-            String termLower = term.toLowerCase();
-            if (termLower.contains("truecolor") || termLower.contains("24bit")) {
-                return ColorDepth.TRUE_COLOR;
-            }
-            if (termLower.contains("256color") || termLower.contains("256-color")) {
-                return ColorDepth.COLORS_256;
-            }
-            if (termLower.contains("color") || termLower.contains("xterm") ||
-                    termLower.contains("vt100") || termLower.contains("ansi")) {
-                return ColorDepth.COLORS_8;
-            }
-        }
-
-        // Check for Windows 10+ which supports true color via VT sequences
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        if (osName.contains("windows 10") || osName.contains("windows 11") ||
-                osName.contains("windows server 2016") || osName.contains("windows server 2019") ||
-                osName.contains("windows server 2022")) {
-            // Modern Windows supports true color
-            return ColorDepth.TRUE_COLOR;
-        }
-
-        return ColorDepth.COLORS_8;
+        return TerminalEnvironment.getInstance().getDefaultColorDepth();
     }
 
     /**
@@ -532,8 +494,10 @@ public class TerminalColorCapability {
      * @return the detected theme, or UNKNOWN if not detectable
      */
     public static TerminalTheme detectThemeFromEnvironment() {
-        // Check common environment variables for theme hints
-        String colorfgbg = System.getenv("COLORFGBG");
+        TerminalEnvironment env = TerminalEnvironment.getInstance();
+
+        // Check COLORFGBG environment variable
+        String colorfgbg = env.getColorFgBg();
         if (colorfgbg != null) {
             // Format is typically "fg;bg" where values < 7 are dark, >= 7 are light
             String[] parts = colorfgbg.split(";");
@@ -549,12 +513,14 @@ public class TerminalColorCapability {
             }
         }
 
-        // Check macOS dark mode via environment
-        String appleInterfaceStyle = System.getenv("APPLE_INTERFACE_STYLE");
-        if (appleInterfaceStyle != null) {
-            return "Dark".equalsIgnoreCase(appleInterfaceStyle)
-                    ? TerminalTheme.DARK
-                    : TerminalTheme.LIGHT;
+        // Check macOS dark mode
+        if (env.isMacOsDarkMode()) {
+            return TerminalTheme.DARK;
+        }
+
+        // Check if APPLE_INTERFACE_STYLE is set but not "Dark"
+        if (env.getAppleInterfaceStyle() != null) {
+            return TerminalTheme.LIGHT;
         }
 
         return TerminalTheme.UNKNOWN;

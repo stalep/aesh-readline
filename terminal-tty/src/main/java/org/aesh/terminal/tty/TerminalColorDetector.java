@@ -2115,7 +2115,10 @@ public final class TerminalColorDetector {
      * @return true if OSC queries are likely supported
      * @see Device#supportsOscQueries()
      * @see Connection#supportsOscQueries()
+     * @see #isOscColorQuerySupported(Connection)
+     * @deprecated Use {@link Connection#supportsColorQuery()} instead for more accurate detection.
      */
+    @Deprecated
     public static boolean isOscColorQuerySupported() {
         // Check TERMINAL_EMULATOR for JetBrains IDEs (IntelliJ, etc.)
         // JediTerm does NOT support OSC 10/11 queries
@@ -2190,6 +2193,20 @@ public final class TerminalColorDetector {
         }
 
         return false;
+    }
+
+    /**
+     * Check if the terminal likely supports OSC color queries.
+     * <p>
+     * This method uses the Connection's device to detect terminal type and
+     * check OSC support more accurately than the static method.
+     *
+     * @param connection the terminal connection to check
+     * @return true if OSC color queries are likely supported
+     * @see Connection#supportsColorQuery()
+     */
+    public static boolean isOscColorQuerySupported(Connection connection) {
+        return connection != null && connection.supportsColorQuery();
     }
 
     /**

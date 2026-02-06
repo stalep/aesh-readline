@@ -19,7 +19,9 @@
  */
 package org.aesh.terminal.image;
 
+import org.aesh.terminal.Device;
 import org.aesh.terminal.DeviceAttributes;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * Utility class for detecting terminal image protocol support.
@@ -31,6 +33,8 @@ import org.aesh.terminal.DeviceAttributes;
  * </ul>
  * <p>
  * For best results, use {@link #detect(DeviceAttributes, String)} which combines both methods.
+ * <p>
+ * This class uses {@link TerminalEnvironment} for centralized environment detection.
  */
 public final class ImageProtocolDetector {
 
@@ -62,17 +66,9 @@ public final class ImageProtocolDetector {
 
         // Check terminal type for Kitty/iTerm2 support
         if (termType != null) {
-            String typeLower = termType.toLowerCase();
-            if (typeLower.contains("kitty") || typeLower.contains("ghostty")) {
-                return ImageProtocol.KITTY;
-            }
-            if (typeLower.contains("iterm") || typeLower.contains("wezterm") ||
-                    typeLower.contains("mintty") || typeLower.contains("vscode") ||
-                    typeLower.contains("tabby") || typeLower.contains("hyper")) {
-                return ImageProtocol.ITERM2;
-            }
-            if (typeLower.contains("konsole")) {
-                return ImageProtocol.KITTY;
+            ImageProtocol typeProtocol = getProtocolForTermType(termType);
+            if (typeProtocol != ImageProtocol.NONE) {
+                return typeProtocol;
             }
         }
 
@@ -108,6 +104,125 @@ public final class ImageProtocolDetector {
             return checkEnvironment();
         }
 
+        // Check for protocol based on term type string
+        ImageProtocol typeProtocol = getProtocolForTermType(termType);
+        if (typeProtocol != ImageProtocol.NONE) {
+            return typeProtocol;
+        }
+
+        // Check environment for Kitty/iTerm2 first
+        ImageProtocol envProtocol = checkEnvironment();
+        if (envProtocol != ImageProtocol.NONE) {
+            return envProtocol;
+        }
+
+        // Sixel as fallback - only for terminals that explicitly identify themselves
+        String typeLower = termType.toLowerCase();
+        if (typeLower.contains("mlterm") ||
+                typeLower.contains("foot") ||
+                typeLower.contains("contour") ||
+                typeLower.contains("yaft") ||
+                typeLower.contains("ctx") ||
+                typeLower.contains("darktile")) {
+            return ImageProtocol.SIXEL;
+        }
+
+        return ImageProtocol.NONE;
+    }
+
+    /**
+     * Detect image protocol from the current terminal environment.
+     * <p>
+     * This method uses {@link TerminalEnvironment} to detect the terminal type
+     * and determine image protocol support.
+     *
+     * @return the detected protocol, or NONE if unknown
+     */
+    public static ImageProtocol detectFromEnvironment() {
+        Device.TerminalType terminalType = TerminalEnvironment.getInstance().getTerminalType();
+        return getProtocolForTerminalType(terminalType);
+    }
+
+    /**
+     * Get the image protocol supported by a given terminal type.
+     *
+     * @param terminalType the detected terminal type
+     * @return the image protocol supported by this terminal
+     */
+    public static ImageProtocol getProtocolForTerminalType(Device.TerminalType terminalType) {
+        if (terminalType == null) {
+            return ImageProtocol.NONE;
+        }
+
+        switch (terminalType) {
+            // Kitty graphics protocol
+            case KITTY:
+            case GHOSTTY:
+            case KONSOLE:
+                return ImageProtocol.KITTY;
+
+            // iTerm2 inline images protocol
+            case ITERM2:
+            case WEZTERM:
+            case MINTTY:
+            case VSCODE:
+            case TABBY:
+            case HYPER:
+                return ImageProtocol.ITERM2;
+
+            // Sixel graphics
+            case FOOT:
+            case CONTOUR:
+                return ImageProtocol.SIXEL;
+
+            // These terminals may support images but detection is unreliable
+            case XTERM:
+            case GNOME_TERMINAL:
+                // xterm can support Sixel but it depends on compile options
+                // GNOME Terminal doesn't support images
+                return ImageProtocol.NONE;
+
+            default:
+                return ImageProtocol.NONE;
+        }
+    }
+
+    /**
+     * Check environment variables to detect image protocol support.
+     * <p>
+     * This method uses {@link TerminalEnvironment} for centralized detection.
+     *
+     * @return the detected protocol based on environment, or NONE
+     */
+    public static ImageProtocol checkEnvironment() {
+        TerminalEnvironment env = TerminalEnvironment.getInstance();
+
+        // Kitty terminal
+        if (env.isKitty() || env.isGhostty()) {
+            return ImageProtocol.KITTY;
+        }
+
+        // iTerm2 protocol terminals
+        if (env.isITerm2() || env.isWezTerm()) {
+            return ImageProtocol.ITERM2;
+        }
+
+        // Check terminal type from environment
+        Device.TerminalType terminalType = env.getTerminalType();
+        if (terminalType != Device.TerminalType.UNKNOWN) {
+            return getProtocolForTerminalType(terminalType);
+        }
+
+        return ImageProtocol.NONE;
+    }
+
+    /**
+     * Get the image protocol based on a terminal type string.
+     *
+     * @param termType the terminal type string (e.g., from TERM)
+     * @return the detected protocol, or NONE
+     */
+    private static ImageProtocol getProtocolForTermType(String termType) {
         String typeLower = termType.toLowerCase();
 
         // These terminals use the Kitty graphics protocol
@@ -128,67 +243,6 @@ public final class ImageProtocolDetector {
         // Konsole has partial Kitty support
         if (typeLower.contains("konsole")) {
             return ImageProtocol.KITTY;
-        }
-
-        // Check environment for Kitty/iTerm2 first
-        ImageProtocol envProtocol = checkEnvironment();
-        if (envProtocol != ImageProtocol.NONE) {
-            return envProtocol;
-        }
-
-        // Sixel as fallback - only for terminals that explicitly identify themselves
-        // Note: We don't check for "xterm" because many terminals set TERM=xterm-256color
-        // but don't actually support Sixel (e.g., Alacritty, many SSH clients)
-        if (typeLower.contains("mlterm") ||
-                typeLower.contains("foot") ||
-                typeLower.contains("contour") ||
-                typeLower.contains("yaft") ||
-                typeLower.contains("ctx") ||
-                typeLower.contains("darktile")) {
-            return ImageProtocol.SIXEL;
-        }
-
-        return ImageProtocol.NONE;
-    }
-
-    /**
-     * Check environment variables to detect image protocol support.
-     *
-     * @return the detected protocol based on environment, or NONE
-     */
-    public static ImageProtocol checkEnvironment() {
-        // TERM_PROGRAM often indicates the actual terminal
-        String termProgram = System.getenv("TERM_PROGRAM");
-        if (termProgram != null) {
-            String lower = termProgram.toLowerCase();
-            if (lower.contains("iterm") || lower.contains("wezterm") ||
-                    lower.contains("vscode") || lower.contains("tabby") ||
-                    lower.contains("hyper")) {
-                return ImageProtocol.ITERM2;
-            }
-            if (lower.contains("kitty") || lower.contains("ghostty")) {
-                return ImageProtocol.KITTY;
-            }
-        }
-
-        // KITTY_WINDOW_ID indicates Kitty terminal
-        if (System.getenv("KITTY_WINDOW_ID") != null) {
-            return ImageProtocol.KITTY;
-        }
-
-        // GHOSTTY_RESOURCES_DIR indicates Ghostty terminal
-        if (System.getenv("GHOSTTY_RESOURCES_DIR") != null) {
-            return ImageProtocol.KITTY;
-        }
-
-        // ITERM_SESSION_ID indicates iTerm2
-        if (System.getenv("ITERM_SESSION_ID") != null) {
-            return ImageProtocol.ITERM2;
-        }
-
-        // WEZTERM_PANE indicates WezTerm
-        if (System.getenv("WEZTERM_PANE") != null) {
-            return ImageProtocol.ITERM2;
         }
 
         return ImageProtocol.NONE;

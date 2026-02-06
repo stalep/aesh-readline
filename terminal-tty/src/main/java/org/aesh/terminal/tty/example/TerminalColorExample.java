@@ -24,12 +24,14 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.aesh.terminal.Device;
 import org.aesh.terminal.tty.TerminalColorDetector;
 import org.aesh.terminal.tty.TerminalConnection;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.ANSIBuilder;
 import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.TerminalColorCapability;
+import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
  * Example program demonstrating the terminal color detection API.
@@ -375,8 +377,8 @@ public class TerminalColorExample {
                 .append(TerminalColorDetector.shouldUseTmuxPassthrough() ? "Yes" : "No").toLine());
 
         // Additional info for JetBrains
-        String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
-        if (terminalEmulator != null && terminalEmulator.toLowerCase().contains("jetbrains")) {
+        TerminalEnvironment env = TerminalEnvironment.getInstance();
+        if (env.isJetBrains()) {
             connection.write("\n");
             builder.reset();
             connection.write(builder.append(indent)
@@ -384,7 +386,7 @@ public class TerminalColorExample {
         }
 
         // Additional info if in tmux
-        if (TerminalColorDetector.isRunningInTmux()) {
+        if (env.isInTmux()) {
             connection.write("\n");
             builder.reset();
             connection.write(builder.append(indent)
@@ -399,8 +401,7 @@ public class TerminalColorExample {
 
         // Additional info for Windows cmd.exe
         String osName = System.getProperty("os.name", "").toLowerCase();
-        if (osName.contains("win") && System.getenv("WT_SESSION") == null &&
-                System.getenv("ConEmuPID") == null) {
+        if (osName.contains("win") && !env.isWindowsTerminal() && !env.isConEmu()) {
             connection.write("\n");
             builder.reset();
             connection.write(builder.append(indent)
@@ -463,158 +464,83 @@ public class TerminalColorExample {
 
     /**
      * Detect the terminal emulator type based on environment variables.
+     * <p>
+     * Uses {@link TerminalEnvironment} for centralized detection and provides
+     * human-readable names for display.
      *
      * @return a human-readable terminal name
      */
     private static String detectTerminalType() {
-        // Check for specific terminal emulator environment variables
+        TerminalEnvironment env = TerminalEnvironment.getInstance();
+        Device.TerminalType type = env.getTerminalType();
 
-        // JetBrains IDEs
-        String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
-        if (terminalEmulator != null && terminalEmulator.toLowerCase().contains("jetbrains")) {
-            return "JetBrains IDE (JediTerm)";
-        }
-
-        // VSCode
-        String termProgram = System.getenv("TERM_PROGRAM");
-        if ("vscode".equalsIgnoreCase(termProgram)) {
-            return "Visual Studio Code";
-        }
-
-        // iTerm2
-        if (System.getenv("ITERM_SESSION_ID") != null) {
-            return "iTerm2";
-        }
-
-        // Kitty
-        if (System.getenv("KITTY_WINDOW_ID") != null) {
-            return "Kitty";
-        }
-
-        // WezTerm
-        if (System.getenv("WEZTERM_PANE") != null) {
-            return "WezTerm";
-        }
-
-        // Ghostty
-        if (System.getenv("GHOSTTY_RESOURCES_DIR") != null) {
-            return "Ghostty";
-        }
-
-        // Alacritty
-        String term = System.getenv("TERM");
-        if (term != null && term.toLowerCase().contains("alacritty")) {
-            return "Alacritty";
-        }
-        if (System.getenv("ALACRITTY_SOCKET") != null) {
-            return "Alacritty";
-        }
-
-        // Windows Terminal
-        if (System.getenv("WT_SESSION") != null) {
-            return "Windows Terminal";
-        }
-
-        // ConEmu/Cmder
-        if (System.getenv("ConEmuPID") != null) {
-            String cmderRoot = System.getenv("CMDER_ROOT");
-            if (cmderRoot != null) {
-                return "Cmder (ConEmu)";
-            }
-            return "ConEmu";
-        }
-
-        // Windows cmd.exe or PowerShell detection
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        if (osName.contains("win")) {
-            // Check for PowerShell
-            String psModulePath = System.getenv("PSModulePath");
-            if (psModulePath != null) {
-                // Check if running in PowerShell Core (pwsh) vs Windows PowerShell
-                String pwshVersion = System.getenv("POWERSHELL_DISTRIBUTION_CHANNEL");
-                if (pwshVersion != null) {
-                    return "PowerShell Core";
+        // Map terminal types to human-readable names
+        switch (type) {
+            case JETBRAINS:
+                return "JetBrains IDE (JediTerm)";
+            case VSCODE:
+                return "Visual Studio Code";
+            case ITERM2:
+                return "iTerm2";
+            case KITTY:
+                return "Kitty";
+            case WEZTERM:
+                return "WezTerm";
+            case GHOSTTY:
+                return "Ghostty";
+            case ALACRITTY:
+                return "Alacritty";
+            case WINDOWS_TERMINAL:
+                return "Windows Terminal";
+            case CONEMU:
+                return "ConEmu";
+            case MINTTY:
+                return "MinTTY / Git Bash";
+            case TMUX:
+                return "tmux";
+            case SCREEN:
+                return "GNU Screen";
+            case APPLE_TERMINAL:
+                return "Apple Terminal";
+            case GNOME_TERMINAL:
+                return "GNOME Terminal";
+            case KONSOLE:
+                return "Konsole";
+            case FOOT:
+                return "Foot";
+            case CONTOUR:
+                return "Contour";
+            case RIO:
+                return "Rio";
+            case WARP:
+                return "Warp";
+            case WAVE:
+                return "Wave";
+            case HYPER:
+                return "Hyper";
+            case TABBY:
+                return "Tabby";
+            case EXTRATERM:
+                return "Extraterm";
+            case RXVT:
+                return "rxvt/urxvt";
+            case XTERM:
+                return "xterm-compatible";
+            case LINUX_CONSOLE:
+                return "Linux Console";
+            case UNKNOWN:
+            default:
+                // Fall back to TERM_PROGRAM or TERM if available
+                String termProgram = env.getTermProgram();
+                if (termProgram != null) {
+                    return termProgram;
                 }
-                // Could be Windows PowerShell or cmd.exe with PSModulePath inherited
-            }
-
-            // Check for MSYS2/Git Bash/Cygwin
-            String msystem = System.getenv("MSYSTEM");
-            if (msystem != null) {
-                return "MSYS2 (" + msystem + ")";
-            }
-            if (System.getenv("CYGWIN") != null ||
-                    (term != null && term.toLowerCase().contains("cygwin"))) {
-                return "Cygwin";
-            }
-
-            // If TERM is set, likely running in a Unix-like environment
-            if (term != null && !term.isEmpty()) {
-                if (term.toLowerCase().contains("xterm")) {
-                    return "Git Bash / MinTTY";
+                String term = env.getTerm();
+                if (term != null) {
+                    return term;
                 }
-            }
-
-            // Check for Windows console host (conhost.exe)
-            // This is plain cmd.exe or PowerShell running in the legacy console
-            // We can detect this by the absence of other terminal indicators
-            String comspec = System.getenv("COMSPEC");
-            if (comspec != null && comspec.toLowerCase().contains("cmd.exe")) {
-                // Check if running PowerShell in cmd window
-                String prompt = System.getenv("PROMPT");
-                if (prompt != null && prompt.contains("$P$G")) {
-                    return "Windows cmd.exe";
-                }
-                // Default to cmd.exe for Windows
-                return "Windows cmd.exe";
-            }
+                return "Unknown";
         }
-
-        // tmux
-        if (TerminalColorDetector.isRunningInTmux()) {
-            return "tmux";
-        }
-
-        // screen
-        if (TerminalColorDetector.isRunningInScreen()) {
-            return "GNU Screen";
-        }
-
-        // Apple Terminal
-        if ("Apple_Terminal".equals(termProgram)) {
-            return "Apple Terminal";
-        }
-
-        // GNOME Terminal
-        if (System.getenv("GNOME_TERMINAL_SCREEN") != null) {
-            return "GNOME Terminal";
-        }
-
-        // Konsole
-        if (System.getenv("KONSOLE_VERSION") != null) {
-            return "Konsole";
-        }
-
-        // xterm
-        if (term != null && term.startsWith("xterm")) {
-            String xtermVersion = System.getenv("XTERM_VERSION");
-            if (xtermVersion != null) {
-                return "XTerm";
-            }
-            return "xterm-compatible";
-        }
-
-        // Fall back to TERM_PROGRAM if set
-        if (termProgram != null) {
-            return termProgram;
-        }
-
-        // Fall back to TERM if set
-        if (term != null) {
-            return term;
-        }
-
-        return "Unknown";
     }
 
     /**

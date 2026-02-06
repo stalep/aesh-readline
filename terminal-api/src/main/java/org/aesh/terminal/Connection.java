@@ -320,7 +320,8 @@ public interface Connection extends AutoCloseable {
      * Check if OSC (Operating System Command) queries are supported.
      * <p>
      * This checks both the device type and environment variables to determine
-     * if OSC queries like color detection are likely to work.
+     * if OSC queries like color detection are likely to work. Uses
+     * {@link org.aesh.terminal.utils.TerminalEnvironment} for centralized detection.
      * <p>
      * For more accurate detection, use {@link #supportsOscQueries(DeviceAttributes)}
      * with DA1 query results.
@@ -328,21 +329,13 @@ public interface Connection extends AutoCloseable {
      * @return true if OSC queries are likely supported
      */
     default boolean supportsOscQueries() {
-        // First check device
-        if (device() != null && !device().supportsOscQueries()) {
-            return false;
+        // Delegate to Device which uses TerminalEnvironment
+        if (device() != null) {
+            return device().supportsOscQueries();
         }
-
-        // Also check environment for terminal multiplexers
-        String termProgram = System.getenv("TERM_PROGRAM");
-        if (termProgram != null) {
-            String lower = termProgram.toLowerCase();
-            if (lower.equals("tmux") || lower.equals("screen")) {
-                return false;
-            }
-        }
-
-        return supportsAnsi();
+        // Fallback to environment-based detection
+        return org.aesh.terminal.utils.TerminalEnvironment.getInstance().supportsOscQueries()
+                && supportsAnsi();
     }
 
     /**
@@ -613,6 +606,80 @@ public interface Connection extends AutoCloseable {
         DeviceAttributes attrs = queryPrimaryDeviceAttributes(timeoutMs);
         String termType = device() != null ? device().type() : null;
         return ImageProtocolDetector.detect(attrs, termType);
+    }
+
+    // ==================== OSC Support Detection ====================
+
+    /**
+     * Get the detected terminal type based on environment variables.
+     * <p>
+     * This can be used to check OSC support before querying.
+     *
+     * @return the detected terminal type
+     */
+    default Device.TerminalType getTerminalType() {
+        return device() != null ? device().detectTerminalType() : Device.TerminalType.UNKNOWN;
+    }
+
+    /**
+     * Check if the terminal likely supports a specific OSC code.
+     *
+     * @param oscCode the OSC code to check
+     * @return true if the terminal likely supports this OSC code
+     */
+    default boolean supportsOscCode(Device.OscCode oscCode) {
+        return device() != null && device().supportsOscCode(oscCode);
+    }
+
+    /**
+     * Check if the terminal likely supports OSC 4 palette color queries.
+     * <p>
+     * Some terminals (e.g., JetBrains IDEs) don't support OSC 4.
+     * Use this method to avoid unnecessary timeout waits.
+     *
+     * @return true if OSC 4 is likely supported
+     */
+    default boolean supportsPaletteQuery() {
+        return supportsOscCode(Device.OscCode.PALETTE);
+    }
+
+    /**
+     * Check if the terminal likely supports OSC 10/11 color queries.
+     *
+     * @return true if OSC 10/11 are likely supported
+     */
+    default boolean supportsColorQuery() {
+        if (device() == null) {
+            return false;
+        }
+        Device.TerminalType type = device().detectTerminalType();
+        return type.supports(Device.OscCode.FOREGROUND) && type.supports(Device.OscCode.BACKGROUND);
+    }
+
+    /**
+     * Check if the terminal likely supports OSC 52 clipboard access.
+     *
+     * @return true if OSC 52 clipboard access is likely supported
+     */
+    default boolean supportsClipboard() {
+        return supportsOscCode(Device.OscCode.CLIPBOARD);
+    }
+
+    /**
+     * Query palette color only if the terminal supports it.
+     * <p>
+     * This method first checks if the terminal is known to support OSC 4,
+     * avoiding unnecessary timeout waits on unsupported terminals.
+     *
+     * @param index the palette color index (0-255)
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-255 each), or null if not supported or timeout
+     */
+    default int[] queryPaletteColorIfSupported(int index, long timeoutMs) {
+        if (!supportsPaletteQuery()) {
+            return null;
+        }
+        return queryPaletteColor(index, timeoutMs);
     }
 
 }
