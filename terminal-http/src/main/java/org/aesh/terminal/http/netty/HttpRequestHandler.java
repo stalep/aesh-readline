@@ -48,16 +48,29 @@ import io.netty.handler.codec.http.LastHttpContent;
 public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     private final String wsUri;
+    private final String resourcePath;
 
     private static final Logger LOGGER = Logger.getLogger(HttpRequestHandler.class.getName());
 
     /**
      * Creates a new HTTP request handler with the specified WebSocket URI.
+     * Uses the default resource path for static files.
      *
      * @param wsUri the URI path for WebSocket upgrade requests
      */
     public HttpRequestHandler(String wsUri) {
+        this(wsUri, "/org/aesh/terminal/http");
+    }
+
+    /**
+     * Creates a new HTTP request handler with the specified WebSocket URI and resource path.
+     *
+     * @param wsUri the URI path for WebSocket upgrade requests
+     * @param resourcePath the classpath resource path for static files, or null to disable static file serving
+     */
+    public HttpRequestHandler(String wsUri, String resourcePath) {
         this.wsUri = wsUri;
+        this.resourcePath = resourcePath;
     }
 
     @Override
@@ -72,11 +85,20 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             HttpResponse response = new DefaultHttpResponse(request.getProtocolVersion(),
                     HttpResponseStatus.INTERNAL_SERVER_ERROR);
 
+            // If static file serving is disabled, return 404
+            if (resourcePath == null) {
+                response.setStatus(HttpResponseStatus.NOT_FOUND);
+                ctx.write(response);
+                ChannelFuture future = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+                future.addListener(ChannelFutureListener.CLOSE);
+                return;
+            }
+
             String path = request.getUri();
             if ("/".equals(path)) {
                 path = "/index.html";
             }
-            URL res = HttpTtyConnection.class.getResource("/org/aesh/terminal/http" + path);
+            URL res = HttpTtyConnection.class.getResource(resourcePath + path);
             try {
                 if (res != null) {
                     DefaultFullHttpResponse fullResp = new DefaultFullHttpResponse(request.getProtocolVersion(),
@@ -96,6 +118,9 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                                 break;
                             case "js":
                                 contentType = "application/javascript";
+                                break;
+                            case "css":
+                                contentType = "text/css";
                                 break;
                             default:
                                 contentType = null;

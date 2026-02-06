@@ -45,9 +45,13 @@ import io.netty.util.concurrent.ImmediateEventExecutor;
  */
 public class NettyWebsocketTtyBootstrap {
 
+    private static final String DEFAULT_RESOURCE_PATH = "/org/aesh/terminal/http";
+
     private final ChannelGroup channelGroup = new DefaultChannelGroup(ImmediateEventExecutor.INSTANCE);
     private String host;
     private int port;
+    private String resourcePath;
+    private boolean serveStaticFiles;
     private EventLoopGroup group;
     private Channel channel;
 
@@ -57,6 +61,8 @@ public class NettyWebsocketTtyBootstrap {
     public NettyWebsocketTtyBootstrap() {
         this.host = "localhost";
         this.port = 8080;
+        this.resourcePath = DEFAULT_RESOURCE_PATH;
+        this.serveStaticFiles = true;
     }
 
     /**
@@ -100,6 +106,50 @@ public class NettyWebsocketTtyBootstrap {
     }
 
     /**
+     * Returns the classpath resource path for static files.
+     *
+     * @return the resource path
+     */
+    public String getResourcePath() {
+        return resourcePath;
+    }
+
+    /**
+     * Sets the classpath resource path for serving static files.
+     * The path should start with "/" and point to a classpath location.
+     * For example, "/com/example/myapp/web" would serve files from that package.
+     *
+     * @param resourcePath the classpath resource path
+     * @return this bootstrap instance for method chaining
+     */
+    public NettyWebsocketTtyBootstrap setResourcePath(String resourcePath) {
+        this.resourcePath = resourcePath;
+        return this;
+    }
+
+    /**
+     * Returns whether static file serving is enabled.
+     *
+     * @return true if static files are served, false for WebSocket-only mode
+     */
+    public boolean isServeStaticFiles() {
+        return serveStaticFiles;
+    }
+
+    /**
+     * Enables or disables static file serving.
+     * When disabled, only WebSocket connections at /ws are handled.
+     * HTTP requests to other paths will receive a 404 response.
+     *
+     * @param serveStaticFiles true to serve static files, false for WebSocket-only mode
+     * @return this bootstrap instance for method chaining
+     */
+    public NettyWebsocketTtyBootstrap setServeStaticFiles(boolean serveStaticFiles) {
+        this.serveStaticFiles = serveStaticFiles;
+        return this;
+    }
+
+    /**
      * Starts the server asynchronously with callback-based completion notification.
      *
      * @param handler the handler to invoke for each new connection
@@ -112,7 +162,7 @@ public class NettyWebsocketTtyBootstrap {
         b.group(group)
                 .channel(NioServerSocketChannel.class)
                 .handler(new LoggingHandler(LogLevel.INFO))
-                .childHandler(new TtyServerInitializer(channelGroup, handler));
+                .childHandler(new TtyServerInitializer(channelGroup, handler, resourcePath, serveStaticFiles));
 
         ChannelFuture f = b.bind(host, port);
         f.addListener(abc -> {

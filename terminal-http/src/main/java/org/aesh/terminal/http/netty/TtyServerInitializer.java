@@ -60,6 +60,8 @@ public class TtyServerInitializer extends ChannelInitializer<SocketChannel> {
 
     private final ChannelGroup group;
     private final Consumer<Connection> handler;
+    private final String resourcePath;
+    private final boolean serveStaticFiles;
 
     /**
      * Creates a new server initializer with the specified channel group and connection handler.
@@ -68,8 +70,23 @@ public class TtyServerInitializer extends ChannelInitializer<SocketChannel> {
      * @param handler the handler to invoke for each new connection
      */
     public TtyServerInitializer(ChannelGroup group, Consumer<Connection> handler) {
+        this(group, handler, "/org/aesh/terminal/http", true);
+    }
+
+    /**
+     * Creates a new server initializer with configurable static file serving.
+     *
+     * @param group the channel group for managing active channels
+     * @param handler the handler to invoke for each new connection
+     * @param resourcePath the classpath resource path for static files
+     * @param serveStaticFiles whether to serve static files
+     */
+    public TtyServerInitializer(ChannelGroup group, Consumer<Connection> handler,
+            String resourcePath, boolean serveStaticFiles) {
         this.group = group;
         this.handler = handler;
+        this.resourcePath = resourcePath;
+        this.serveStaticFiles = serveStaticFiles;
     }
 
     @Override
@@ -78,7 +95,11 @@ public class TtyServerInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast(new HttpServerCodec());
         pipeline.addLast(new ChunkedWriteHandler());
         pipeline.addLast(new HttpObjectAggregator(64 * 1024));
-        pipeline.addLast(new HttpRequestHandler("/ws"));
+        if (serveStaticFiles) {
+            pipeline.addLast(new HttpRequestHandler("/ws", resourcePath));
+        } else {
+            pipeline.addLast(new HttpRequestHandler("/ws", null));
+        }
         pipeline.addLast(new WebSocketServerProtocolHandler("/ws"));
         pipeline.addLast(new TtyWebSocketFrameHandler(group, handler));
     }
