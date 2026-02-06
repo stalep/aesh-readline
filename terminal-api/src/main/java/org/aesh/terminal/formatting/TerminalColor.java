@@ -218,6 +218,170 @@ public class TerminalColor {
         return new TerminalColor();
     }
 
+    // ==================== HSL Color Support ====================
+
+    /**
+     * Create a TerminalColor with true color foreground from HSL values.
+     * <p>
+     * HSL (Hue, Saturation, Lightness) is often more intuitive for generating
+     * color palettes and gradients than RGB.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return a new TerminalColor with RGB foreground converted from HSL
+     */
+    public static TerminalColor fromHSL(float h, float s, float l) {
+        int[] rgb = hslToRgb(h, s, l);
+        return new TerminalColor(rgb, null, true);
+    }
+
+    /**
+     * Create a TerminalColor with true color foreground and background from HSL values.
+     *
+     * @param textH foreground hue in degrees (0-360)
+     * @param textS foreground saturation as percentage (0-100)
+     * @param textL foreground lightness as percentage (0-100)
+     * @param bgH background hue in degrees (0-360)
+     * @param bgS background saturation as percentage (0-100)
+     * @param bgL background lightness as percentage (0-100)
+     * @return a new TerminalColor with RGB colors converted from HSL
+     */
+    public static TerminalColor fromHSL(float textH, float textS, float textL,
+            float bgH, float bgS, float bgL) {
+        int[] textRgb = hslToRgb(textH, textS, textL);
+        int[] bgRgb = hslToRgb(bgH, bgS, bgL);
+        return new TerminalColor(textRgb, bgRgb, true);
+    }
+
+    /**
+     * Convert HSL (Hue, Saturation, Lightness) to RGB color values.
+     * <p>
+     * This is useful for generating color palettes, as HSL makes it easy to:
+     * <ul>
+     * <li>Create color variations by adjusting lightness</li>
+     * <li>Generate harmonious colors by rotating hue</li>
+     * <li>Control color intensity via saturation</li>
+     * </ul>
+     *
+     * @param h hue in degrees (0-360), wraps around
+     * @param s saturation as percentage (0-100), clamped
+     * @param l lightness as percentage (0-100), clamped
+     * @return RGB array [r, g, b] with values 0-255
+     */
+    public static int[] hslToRgb(float h, float s, float l) {
+        // Normalize inputs
+        h = ((h % 360) + 360) % 360; // Wrap hue to 0-360
+        s = Math.max(0, Math.min(100, s)) / 100f; // Clamp and convert to 0-1
+        l = Math.max(0, Math.min(100, l)) / 100f; // Clamp and convert to 0-1
+
+        float c = (1 - Math.abs(2 * l - 1)) * s; // Chroma
+        float x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        float m = l - c / 2;
+
+        float r1, g1, b1;
+
+        if (h < 60) {
+            r1 = c;
+            g1 = x;
+            b1 = 0;
+        } else if (h < 120) {
+            r1 = x;
+            g1 = c;
+            b1 = 0;
+        } else if (h < 180) {
+            r1 = 0;
+            g1 = c;
+            b1 = x;
+        } else if (h < 240) {
+            r1 = 0;
+            g1 = x;
+            b1 = c;
+        } else if (h < 300) {
+            r1 = x;
+            g1 = 0;
+            b1 = c;
+        } else {
+            r1 = c;
+            g1 = 0;
+            b1 = x;
+        }
+
+        int r = Math.round((r1 + m) * 255);
+        int g = Math.round((g1 + m) * 255);
+        int b = Math.round((b1 + m) * 255);
+
+        return new int[] {
+                Math.max(0, Math.min(255, r)),
+                Math.max(0, Math.min(255, g)),
+                Math.max(0, Math.min(255, b))
+        };
+    }
+
+    /**
+     * Convert RGB color values to HSL (Hue, Saturation, Lightness).
+     * <p>
+     * Useful for analyzing colors or adjusting their properties.
+     *
+     * @param r red component (0-255)
+     * @param g green component (0-255)
+     * @param b blue component (0-255)
+     * @return HSL array [h, s, l] where h is 0-360 and s,l are 0-100
+     */
+    public static float[] rgbToHsl(int r, int g, int b) {
+        float rf = r / 255f;
+        float gf = g / 255f;
+        float bf = b / 255f;
+
+        float max = Math.max(rf, Math.max(gf, bf));
+        float min = Math.min(rf, Math.min(gf, bf));
+        float l = (max + min) / 2;
+
+        float h, s;
+
+        if (max == min) {
+            h = s = 0; // Achromatic
+        } else {
+            float d = max - min;
+            s = l > 0.5f ? d / (2 - max - min) : d / (max + min);
+
+            if (max == rf) {
+                h = (gf - bf) / d + (gf < bf ? 6 : 0);
+            } else if (max == gf) {
+                h = (bf - rf) / d + 2;
+            } else {
+                h = (rf - gf) / d + 4;
+            }
+            h *= 60;
+        }
+
+        return new float[] { h, s * 100, l * 100 };
+    }
+
+    /**
+     * Get the foreground color as HSL values, if using true color.
+     *
+     * @return HSL array [h, s, l] or null if not using RGB foreground
+     */
+    public float[] getTextHSL() {
+        if (textRGB == null) {
+            return null;
+        }
+        return rgbToHsl(textRGB[0], textRGB[1], textRGB[2]);
+    }
+
+    /**
+     * Get the background color as HSL values, if using true color.
+     *
+     * @return HSL array [h, s, l] or null if not using RGB background
+     */
+    public float[] getBackgroundHSL() {
+        if (backgroundRGB == null) {
+            return null;
+        }
+        return rgbToHsl(backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);
+    }
+
     /**
      * Check if this color uses true color (24-bit RGB) mode.
      *

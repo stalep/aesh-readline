@@ -267,6 +267,19 @@ public class ANSIBuilder {
     }
 
     /**
+     * Overrides the error color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder errorHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return errorRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
      * Overrides the success color using RGB values (true color).
      *
      * @param r red component (0-255)
@@ -291,6 +304,19 @@ public class ANSIBuilder {
         if (rgb == null) {
             throw new IllegalArgumentException("Invalid hex color: " + hex);
         }
+        return successRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the success color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder successHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
         return successRgb(rgb[0], rgb[1], rgb[2]);
     }
 
@@ -323,6 +349,19 @@ public class ANSIBuilder {
     }
 
     /**
+     * Overrides the warning color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder warningHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return warningRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
      * Overrides the info color using RGB values (true color).
      *
      * @param r red component (0-255)
@@ -347,6 +386,19 @@ public class ANSIBuilder {
         if (rgb == null) {
             throw new IllegalArgumentException("Invalid hex color: " + hex);
         }
+        return infoRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the info color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder infoHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
         return infoRgb(rgb[0], rgb[1], rgb[2]);
     }
 
@@ -379,6 +431,19 @@ public class ANSIBuilder {
     }
 
     /**
+     * Overrides the debug color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder debugHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return debugRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
      * Overrides the trace color using RGB values (true color).
      *
      * @param r red component (0-255)
@@ -403,6 +468,19 @@ public class ANSIBuilder {
         if (rgb == null) {
             throw new IllegalArgumentException("Invalid hex color: " + hex);
         }
+        return traceRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the trace color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder traceHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
         return traceRgb(rgb[0], rgb[1], rgb[2]);
     }
 
@@ -435,6 +513,19 @@ public class ANSIBuilder {
     }
 
     /**
+     * Overrides the timestamp color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder timestampHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return timestampRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
      * Overrides the message color using RGB values (true color).
      *
      * @param r red component (0-255)
@@ -459,6 +550,19 @@ public class ANSIBuilder {
         if (rgb == null) {
             throw new IllegalArgumentException("Invalid hex color: " + hex);
         }
+        return messageRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Overrides the message color using HSL values.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder messageHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
         return messageRgb(rgb[0], rgb[1], rgb[2]);
     }
 
@@ -1547,6 +1651,74 @@ public class ANSIBuilder {
      */
     public ANSIBuilder hex(String hex, String text) {
         return hex(hex).append(text).resetColors();
+    }
+
+    // ==================== HSL Color Support ====================
+
+    /**
+     * Sets the foreground color using HSL values (converted to RGB true color).
+     * <p>
+     * HSL (Hue, Saturation, Lightness) is often more intuitive for color selection:
+     * <ul>
+     * <li>Hue: Position on color wheel (0=red, 60=yellow, 120=green, 180=cyan, 240=blue, 300=magenta)</li>
+     * <li>Saturation: Color intensity (0=gray, 100=vivid)</li>
+     * <li>Lightness: Brightness (0=black, 50=pure color, 100=white)</li>
+     * </ul>
+     * <p>
+     * Example for creating visible colors on dark terminals:
+     *
+     * <pre>
+     * // Use high lightness (65-75) for dark backgrounds
+     * ANSIBuilder.builder().hsl(0, 80, 65).append("Red on dark").toString();
+     * </pre>
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder hsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return rgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Sets the background color using HSL values (converted to RGB true color).
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder bgHsl(float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return bgRgb(rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * Appends text with the specified HSL foreground color and resets.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder hsl(float h, float s, float l, String text) {
+        return hsl(h, s, l).append(text).resetColors();
+    }
+
+    /**
+     * Appends text with the specified HSL background color and resets.
+     *
+     * @param h hue in degrees (0-360)
+     * @param s saturation as percentage (0-100)
+     * @param l lightness as percentage (0-100)
+     * @param text the text to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder bgHsl(float h, float s, float l, String text) {
+        return bgHsl(h, s, l).append(text).resetColors();
     }
 
     private void validateRgb(int r, int g, int b) {
