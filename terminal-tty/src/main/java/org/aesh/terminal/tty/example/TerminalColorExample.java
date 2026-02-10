@@ -92,10 +92,14 @@ public class TerminalColorExample {
      */
     private static void runExample(TerminalConnection connection) {
         // First, do environment-based detection to get capability for the builder
+        long envStart = System.currentTimeMillis();
         TerminalColorCapability envCap = TerminalColorCapability.detectFromEnvironment();
+        long envTime = System.currentTimeMillis() - envStart;
 
         // Detect with OSC queries for full capability
+        long fullStart = System.currentTimeMillis();
         TerminalColorCapability fullCap = TerminalColorDetector.detect(connection);
+        long fullTime = System.currentTimeMillis() - fullStart;
 
         // Create a single reusable ANSIBuilder with the detected capability
         ANSIBuilder builder = ANSIBuilder.builder(fullCap);
@@ -108,6 +112,7 @@ public class TerminalColorExample {
         builder.reset();
         connection.write(builder.bold("1. Environment-Based Detection (Fast)").toLine());
         connection.write("   This uses environment variables only, no terminal queries.\n");
+        connection.write("   Detection time: " + envTime + "ms\n");
         connection.write("\n");
 
         printCapability(connection, "   ", envCap);
@@ -116,6 +121,7 @@ public class TerminalColorExample {
         builder.reset();
         connection.write(builder.bold("2. Full Detection with Terminal Query").toLine());
         connection.write("   This queries the terminal for actual colors using OSC sequences.\n");
+        connection.write("   Detection time: " + fullTime + "ms\n");
         connection.write("\n");
 
         printCapability(connection, "   ", fullCap);
@@ -173,6 +179,36 @@ public class TerminalColorExample {
                     formatColorSwatch(fg) + "\n");
         } else {
             connection.write(indent + "Foreground:  Not detected\n");
+        }
+
+        if (cap.hasCursorColor()) {
+            int[] cursor = cap.getCursorRGB();
+            connection.write(indent + "Cursor:      RGB(" + cursor[0] + ", " + cursor[1] + ", " + cursor[2] + ") " +
+                    formatColorSwatch(cursor) + "\n");
+        } else {
+            connection.write(indent + "Cursor:      Not detected\n");
+        }
+
+        if (cap.hasPaletteColors()) {
+            java.util.Map<Integer, int[]> palette = cap.getPaletteColors();
+            connection.write(indent + "Palette:     " + palette.size() + " colors detected\n");
+            // Show the 8 standard colors in a compact format
+            StringBuilder swatches = new StringBuilder(indent + "             ");
+            String[] names = { "Blk", "Red", "Grn", "Yel", "Blu", "Mag", "Cyn", "Wht" };
+            for (int i = 0; i < 8 && i < palette.size(); i++) {
+                int[] color = palette.get(i);
+                if (color != null) {
+                    swatches.append(formatColorSwatch(color));
+                }
+            }
+            connection.write(swatches + "\n");
+            connection.write(indent + "             ");
+            for (String name : names) {
+                connection.write(name + " ");
+            }
+            connection.write("\n");
+        } else {
+            connection.write(indent + "Palette:     Not detected (OSC 4 not supported)\n");
         }
     }
 

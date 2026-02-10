@@ -362,6 +362,11 @@ public class ConnectionOscQueryTest {
         }
 
         @Override
+        public boolean reading() {
+            return true; // Mock is always "reading" for test purposes
+        }
+
+        @Override
         public boolean put(Capability capability, Object... params) {
             return false;
         }

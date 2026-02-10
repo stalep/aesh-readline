@@ -523,4 +523,170 @@ public class ANSIOscTest {
         assertEquals(ANSI.rgbTo256Color(255, 255, 255), ANSI.rgbTo256Color(300, 300, 300));
         assertEquals(ANSI.rgbTo256Color(0, 0, 0), ANSI.rgbTo256Color(-10, -10, -10));
     }
+
+    // ==================== Batch OSC Query Tests ====================
+
+    @Test
+    public void testBuildBatchOscQuery() {
+        // Test building batch query for foreground, background, cursor
+        String query = ANSI.buildBatchOscQuery(10, 11, 12);
+        assertEquals("\u001B]10;?\u0007\u001B]11;?\u0007\u001B]12;?\u0007", query);
+    }
+
+    @Test
+    public void testBuildBatchOscQuery_Single() {
+        String query = ANSI.buildBatchOscQuery(10);
+        assertEquals("\u001B]10;?\u0007", query);
+    }
+
+    @Test
+    public void testBuildBatchOscQueryWithIndices() {
+        // Test building batch query for palette colors 0, 1, 2
+        String query = ANSI.buildBatchOscQueryWithIndices(4, 0, 1, 2);
+        assertEquals("\u001B]4;0;?\u0007\u001B]4;1;?\u0007\u001B]4;2;?\u0007", query);
+    }
+
+    @Test
+    public void testParseMultipleOscColorResponses_FgAndBg() {
+        // Simulate concatenated responses for OSC 10 and 11
+        String response = "\u001B]10;rgb:FFFF/0000/0000\u0007\u001B]11;rgb:0000/0000/2828\u0007";
+        int[] input = response.codePoints().toArray();
+
+        java.util.Map<Integer, int[]> results = ANSI.parseMultipleOscColorResponses(input, 10, 11);
+
+        assertEquals(2, results.size());
+
+        int[] fg = results.get(10);
+        assertNotNull("Should have foreground color", fg);
+        assertEquals(255, fg[0]);
+        assertEquals(0, fg[1]);
+        assertEquals(0, fg[2]);
+
+        int[] bg = results.get(11);
+        assertNotNull("Should have background color", bg);
+        assertEquals(0, bg[0]);
+        assertEquals(0, bg[1]);
+        assertEquals(40, bg[2]); // 2828 >> 8 = 40
+    }
+
+    @Test
+    public void testParseMultipleOscColorResponses_FgBgCursor() {
+        // All three standard color queries
+        String response = "\u001B]10;rgb:EEEE/EEEE/EEEE\u0007"
+                + "\u001B]11;rgb:1919/1919/1919\u0007"
+                + "\u001B]12;rgb:00FF/FF00/00FF\u0007";
+        int[] input = response.codePoints().toArray();
+
+        java.util.Map<Integer, int[]> results = ANSI.parseMultipleOscColorResponses(input, 10, 11, 12);
+
+        assertEquals(3, results.size());
+
+        int[] fg = results.get(10);
+        assertEquals(0xee, fg[0]);
+        assertEquals(0xee, fg[1]);
+        assertEquals(0xee, fg[2]);
+
+        int[] bg = results.get(11);
+        assertEquals(0x19, bg[0]);
+        assertEquals(0x19, bg[1]);
+        assertEquals(0x19, bg[2]);
+
+        int[] cursor = results.get(12);
+        assertEquals(0, cursor[0]);
+        assertEquals(255, cursor[1]);
+        assertEquals(0, cursor[2]);
+    }
+
+    @Test
+    public void testParseMultipleOscColorResponses_PartialResponse() {
+        // Only OSC 10 responds, 11 is missing
+        String response = "\u001B]10;rgb:FFFF/FFFF/FFFF\u0007";
+        int[] input = response.codePoints().toArray();
+
+        java.util.Map<Integer, int[]> results = ANSI.parseMultipleOscColorResponses(input, 10, 11);
+
+        assertEquals(1, results.size());
+        assertNotNull(results.get(10));
+        assertNull(results.get(11));
+    }
+
+    @Test
+    public void testParseMultipleOscColorResponses_Empty() {
+        java.util.Map<Integer, int[]> results = ANSI.parseMultipleOscColorResponses(null, 10, 11);
+        assertTrue(results.isEmpty());
+
+        results = ANSI.parseMultipleOscColorResponses(new int[0], 10, 11);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void testParseMultiplePaletteResponses() {
+        // Simulate batch palette color responses for indices 0, 1, 2
+        String response = "\u001B]4;0;rgb:0000/0000/0000\u0007"
+                + "\u001B]4;1;rgb:AAAA/0000/0000\u0007"
+                + "\u001B]4;2;rgb:0000/AAAA/0000\u0007";
+        int[] input = response.codePoints().toArray();
+
+        java.util.Map<Integer, int[]> results = ANSI.parseMultiplePaletteResponses(input, 0, 1, 2);
+
+        assertEquals(3, results.size());
+
+        int[] color0 = results.get(0);
+        assertNotNull(color0);
+        assertEquals(0, color0[0]);
+        assertEquals(0, color0[1]);
+        assertEquals(0, color0[2]);
+
+        int[] color1 = results.get(1);
+        assertNotNull(color1);
+        assertEquals(0xaa, color1[0]);
+        assertEquals(0, color1[1]);
+        assertEquals(0, color1[2]);
+
+        int[] color2 = results.get(2);
+        assertNotNull(color2);
+        assertEquals(0, color2[0]);
+        assertEquals(0xaa, color2[1]);
+        assertEquals(0, color2[2]);
+    }
+
+    @Test
+    public void testParseMultiplePaletteResponses_HighIndices() {
+        // Test higher palette indices (e.g., grayscale region)
+        String response = "\u001B]4;232;rgb:0808/0808/0808\u0007"
+                + "\u001B]4;255;rgb:EEEE/EEEE/EEEE\u0007";
+        int[] input = response.codePoints().toArray();
+
+        java.util.Map<Integer, int[]> results = ANSI.parseMultiplePaletteResponses(input, 232, 255);
+
+        assertEquals(2, results.size());
+
+        int[] gray232 = results.get(232);
+        assertEquals(8, gray232[0]);
+        assertEquals(8, gray232[1]);
+        assertEquals(8, gray232[2]);
+
+        int[] gray255 = results.get(255);
+        assertEquals(0xee, gray255[0]);
+        assertEquals(0xee, gray255[1]);
+        assertEquals(0xee, gray255[2]);
+    }
+
+    @Test
+    public void testParseMultipleOscColorResponses_WithSTTerminator() {
+        // Test with ESC \ terminator instead of BEL
+        String response = "\u001B]10;rgb:FFFF/0000/0000\u001B\\"
+                + "\u001B]11;rgb:0000/0000/FFFF\u001B\\";
+        int[] input = response.codePoints().toArray();
+
+        java.util.Map<Integer, int[]> results = ANSI.parseMultipleOscColorResponses(input, 10, 11);
+
+        assertEquals(2, results.size());
+        assertEquals(255, results.get(10)[0]);
+        assertEquals(0, results.get(10)[1]);
+        assertEquals(0, results.get(10)[2]);
+        assertEquals(0, results.get(11)[0]);
+        assertEquals(0, results.get(11)[1]);
+        assertEquals(255, results.get(11)[2]);
+    }
 }

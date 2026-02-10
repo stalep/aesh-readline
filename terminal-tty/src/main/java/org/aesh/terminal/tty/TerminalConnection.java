@@ -402,6 +402,26 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
+    public boolean reading() {
+        return reading;
+    }
+
+    /**
+     * Query terminal color capabilities using synchronous I/O.
+     * <p>
+     * This method delegates to {@link TerminalColorDetector#queryColorCapability(TerminalConnection, long)}
+     * which uses direct terminal I/O and does NOT require an active reading thread.
+     * It can be called before {@link #openBlocking()} or {@link #openNonBlocking()}.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @return TerminalColorCapability with detected colors, or null if not supported
+     */
+    @Override
+    public org.aesh.terminal.utils.TerminalColorCapability queryColorCapability(long timeoutMs) {
+        return TerminalColorDetector.queryColorCapability(this, timeoutMs);
+    }
+
+    @Override
     public void close() {
         try {
             reading = false;

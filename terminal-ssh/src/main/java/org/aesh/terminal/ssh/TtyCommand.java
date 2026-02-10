@@ -84,6 +84,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private Device device;
     private IoWriteFuture writeFuture;
     private Attributes attributes;
+    private volatile boolean reading = false;
 
     /**
      * Creates a new TtyCommand with the specified charset and connection handler.
@@ -183,6 +184,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         conn = new SSHConnection();
 
         session.setDataReceiver(this);
+        reading = true;
         handler.accept(conn);
     }
 
@@ -223,6 +225,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     }
 
     private void close(int exit) throws IOException {
+        reading = false;
         ioOut.close(false).addListener(future -> {
             exitCallback.onExit(exit);
             if (closed.compareAndSet(false, true)) {
@@ -370,6 +373,11 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         @Override
         public void openNonBlocking() {
 
+        }
+
+        @Override
+        public boolean reading() {
+            return reading;
         }
 
         @Override

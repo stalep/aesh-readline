@@ -106,6 +106,7 @@ public abstract class HttpTtyConnection implements Connection {
     private long lastAccessedTime = System.currentTimeMillis();
     private Attributes attributes;
     private boolean initialized = false;
+    private volatile boolean reading = false;
 
     /**
      * Creates a new HTTP TTY connection with default charset (UTF-8) and size (80x24).
@@ -396,7 +397,19 @@ public abstract class HttpTtyConnection implements Connection {
      * {@inheritDoc}
      */
     @Override
+    public void close() {
+        reading = false;
+        if (closeHandler != null) {
+            closeHandler.accept(null);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void openBlocking() {
+        reading = true;
     }
 
     /**
@@ -404,6 +417,15 @@ public abstract class HttpTtyConnection implements Connection {
      */
     @Override
     public void openNonBlocking() {
+        reading = true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean reading() {
+        return reading;
     }
 
     /**

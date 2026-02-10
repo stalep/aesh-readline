@@ -82,18 +82,6 @@ public final class TerminalColorDetector {
     private static final String OSC_QUERY_BACKGROUND = "\u001B]11;?\u0007";
 
     /**
-     * DCS (Device Control String) prefix for tmux passthrough.
-     * Format: ESC P tmux ; ESC <sequence> ESC \
-     * The inner ESC must be doubled for tmux passthrough.
-     */
-    private static final String TMUX_DCS_PREFIX = "\u001BPtmux;\u001B";
-
-    /**
-     * DCS terminator for tmux passthrough.
-     */
-    private static final String TMUX_DCS_SUFFIX = "\u001B\\";
-
-    /**
      * Default timeout for OSC queries in milliseconds.
      * Terminal responses can take 200-500ms depending on the terminal and system load.
      */
@@ -174,17 +162,24 @@ public final class TerminalColorDetector {
         TerminalTheme theme = TerminalTheme.UNKNOWN;
         int[] foregroundRGB = null;
         int[] backgroundRGB = null;
+        int[] cursorRGB = null;
+        java.util.Map<Integer, int[]> paletteColors = null;
 
         if (queryTerminal && connection != null && connection.supportsAnsi()) {
             try {
-                // Query both colors together for efficiency and to avoid timing issues
-                int[][] colors = queryBothColors(connection, DEFAULT_TIMEOUT_MS);
-                if (colors != null) {
-                    foregroundRGB = colors[0];
-                    backgroundRGB = colors[1];
-                    if (backgroundRGB != null) {
-                        theme = TerminalTheme.fromRGB(backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);
-                    }
+                // Use the Connection's synchronous query method
+                // This uses direct terminal I/O and doesn't require an active reading thread
+                TerminalColorCapability queryResult = connection.queryColorCapability(DEFAULT_TIMEOUT_MS);
+                if (queryResult != null) {
+                    foregroundRGB = queryResult.getForegroundRGB();
+                    backgroundRGB = queryResult.getBackgroundRGB();
+                    cursorRGB = queryResult.getCursorRGB();
+                    paletteColors = queryResult.getPaletteColors();
+                    theme = queryResult.getTheme();
+
+                    LOGGER.log(Level.FINE, "Queried colors via Connection: FG=" + (foregroundRGB != null) +
+                            ", BG=" + (backgroundRGB != null) + ", cursor=" + (cursorRGB != null) +
+                            ", palette=" + (paletteColors != null ? paletteColors.size() : 0));
                 }
             } catch (Exception e) {
                 LOGGER.log(Level.FINE, "Failed to query terminal colors", e);
@@ -196,8 +191,307 @@ public final class TerminalColorDetector {
             theme = detectThemeFromEnvironment();
         }
 
-        return new TerminalColorCapability(colorDepth, theme, foregroundRGB, backgroundRGB);
+        // Use detected colorDepth if queryResult didn't provide one
+        return new TerminalColorCapability(colorDepth, theme, foregroundRGB, backgroundRGB,
+                cursorRGB, paletteColors);
     }
+
+    // ==================== Synchronous Color Query ====================
+
+    /** DCS prefix for tmux passthrough. */
+    private static final String DCS_TMUX_PREFIX = "\u001BPtmux;\u001B";
+    /** DCS suffix for tmux passthrough. */
+    private static final String DCS_TMUX_SUFFIX = "\u001B\\";
+
+    /**
+     * Query terminal color capabilities using synchronous I/O.
+     * <p>
+     * This method uses direct terminal I/O and does NOT require an active
+     * reading thread. It can be called before the connection is opened.
+     * <p>
+     * When running in tmux with passthrough enabled, this method will wrap
+     * queries in DCS passthrough sequences to reach the outer terminal.
+     *
+     * @param connection the terminal connection (must be a TerminalConnection)
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @return TerminalColorCapability with detected colors, or null if not supported
+     */
+    public static TerminalColorCapability queryColorCapability(TerminalConnection connection, long timeoutMs) {
+        if (connection == null || !connection.supportsAnsi()) {
+            return null;
+        }
+
+        Terminal terminal = connection.getTerminal();
+        if (terminal == null) {
+            return null;
+        }
+
+        // Check for terminals that don't support OSC queries
+        String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
+        if (terminalEmulator != null &&
+                terminalEmulator.toLowerCase().contains("jetbrains")) {
+            LOGGER.log(Level.FINE, "JetBrains/JediTerm detected - OSC queries not supported");
+            return null;
+        }
+
+        boolean inTmux = isRunningInTmux();
+        boolean canUseTmuxPassthrough = shouldUseTmuxPassthrough();
+
+        // Skip OSC support check when in tmux (tmux may not accurately reflect outer terminal)
+        if (!inTmux) {
+            Device device = connection.device();
+            if (device != null && !device.supportsOscQueries()) {
+                LOGGER.log(Level.FINE, "OSC queries not supported by device");
+                return null;
+            }
+        }
+
+        // Check OSC support for cursor and palette colors
+        // In tmux, assume support if passthrough is enabled
+        boolean supportsCursor = inTmux || connection.supportsOscCode(Device.OscCode.CURSOR_COLOR);
+        boolean supportsPalette = inTmux || connection.supportsPaletteQuery();
+
+        // Strategy 1: Try plain OSC query (works for normal terminals and tmux 3.3+ native)
+        LOGGER.log(Level.FINE, "Trying plain OSC color query");
+        TerminalColorCapability result = doSynchronousColorQuery(
+                connection, terminal, timeoutMs, supportsCursor, supportsPalette, false);
+
+        // In tmux: Plain query may get FG/BG from tmux native (3.3+), but OSC 4 (palette)
+        // typically needs DCS passthrough to reach the outer terminal
+        boolean needPalettePassthrough = inTmux && canUseTmuxPassthrough && supportsPalette
+                && (result == null || result.getPaletteColors() == null || result.getPaletteColors().isEmpty());
+
+        if (needPalettePassthrough) {
+            LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for palette colors");
+            // Query only palette colors via passthrough, merge with existing result
+            TerminalColorCapability paletteResult = doSynchronousColorQuery(
+                    connection, terminal, timeoutMs / 2, false, true, true);
+
+            if (paletteResult != null && paletteResult.getPaletteColors() != null
+                    && !paletteResult.getPaletteColors().isEmpty()) {
+                LOGGER.log(Level.FINE, "DCS passthrough palette query succeeded");
+                // Merge palette colors into result
+                if (result != null) {
+                    result = new TerminalColorCapability(
+                            result.getColorDepth(),
+                            result.getTheme(),
+                            result.getForegroundRGB(),
+                            result.getBackgroundRGB(),
+                            result.getCursorRGB() != null ? result.getCursorRGB() : paletteResult.getCursorRGB(),
+                            paletteResult.getPaletteColors());
+                } else {
+                    result = paletteResult;
+                }
+            }
+        } else if (result == null || !hasColors(result)) {
+            // No colors from plain query - try full DCS passthrough
+            if (inTmux && canUseTmuxPassthrough) {
+                LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for all colors");
+                result = doSynchronousColorQuery(
+                        connection, terminal, timeoutMs, supportsCursor, supportsPalette, true);
+            }
+        }
+
+        if (result != null && hasColors(result)) {
+            LOGGER.log(Level.FINE, "Color query succeeded");
+        }
+
+        return result;
+    }
+
+    /**
+     * Check if any colors were detected.
+     */
+    private static boolean hasColors(TerminalColorCapability cap) {
+        return cap != null && (cap.getForegroundRGB() != null || cap.getBackgroundRGB() != null);
+    }
+
+    /**
+     * Perform synchronous color query using direct terminal I/O.
+     */
+    private static TerminalColorCapability doSynchronousColorQuery(
+            Connection connection, Terminal terminal, long timeoutMs,
+            boolean supportsCursor, boolean supportsPalette, boolean useDcsPassthrough) {
+
+        int[] foregroundRGB = null;
+        int[] backgroundRGB = null;
+        int[] cursorRGB = null;
+        java.util.Map<Integer, int[]> paletteColors = null;
+
+        // Save current attributes and enter raw mode
+        Attributes savedAttributes = connection.getAttributes();
+        Attributes rawAttributes = new Attributes(savedAttributes);
+        rawAttributes.setLocalFlags(
+                java.util.EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO),
+                false);
+        rawAttributes.setControlChar(Attributes.ControlChar.VMIN, 0);
+        rawAttributes.setControlChar(Attributes.ControlChar.VTIME, 1);
+        connection.setAttributes(rawAttributes);
+
+        try {
+            java.io.InputStream input = terminal.input();
+
+            // Drain any pending input first
+            while (input.available() > 0) {
+                input.read();
+            }
+
+            // Build combined query string
+            String combinedQuery = buildSyncColorQuery(supportsCursor, supportsPalette, useDcsPassthrough);
+            connection.stdoutHandler().accept(combinedQuery.codePoints().toArray());
+
+            // Calculate expected responses
+            int expectedResponses = 2; // FG + BG
+            if (supportsCursor)
+                expectedResponses++;
+            if (supportsPalette)
+                expectedResponses += 16;
+
+            // Read responses with timeout
+            StringBuilder response = new StringBuilder();
+            long endTime = System.currentTimeMillis() + timeoutMs;
+            byte[] buffer = new byte[1024];
+
+            while (System.currentTimeMillis() < endTime) {
+                int read = input.read(buffer);
+                if (read > 0) {
+                    for (int i = 0; i < read; i++) {
+                        response.append((char) (buffer[i] & 0xFF));
+                    }
+                    int responseCount = countResponses(response.toString());
+                    if (responseCount >= expectedResponses) {
+                        break;
+                    }
+                } else if (read < 0) {
+                    break;
+                }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            // Drain any remaining input to prevent leakage
+            drainInput(input, 100);
+
+            // Parse the collected responses
+            String responseStr = response.toString();
+            if (!responseStr.isEmpty()) {
+                LOGGER.log(Level.FINE, "OSC color response received, length: " + responseStr.length());
+
+                java.util.Map<Integer, int[]> fgBgColors = org.aesh.terminal.utils.ANSI.parseMultipleOscColorResponses(
+                        responseStr.codePoints().toArray(),
+                        org.aesh.terminal.utils.ANSI.OSC_FOREGROUND,
+                        org.aesh.terminal.utils.ANSI.OSC_BACKGROUND);
+                foregroundRGB = fgBgColors.get(org.aesh.terminal.utils.ANSI.OSC_FOREGROUND);
+                backgroundRGB = fgBgColors.get(org.aesh.terminal.utils.ANSI.OSC_BACKGROUND);
+
+                if (supportsCursor) {
+                    cursorRGB = org.aesh.terminal.utils.ANSI.parseOscColorResponse(
+                            responseStr.codePoints().toArray(),
+                            org.aesh.terminal.utils.ANSI.OSC_CURSOR_COLOR);
+                }
+
+                if (supportsPalette) {
+                    paletteColors = org.aesh.terminal.utils.ANSI.parseMultiplePaletteResponses(
+                            responseStr.codePoints().toArray(),
+                            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+                }
+            }
+
+        } catch (java.io.IOException e) {
+            LOGGER.log(Level.FINE, "Failed to query color capability", e);
+            return null;
+        } finally {
+            connection.setAttributes(savedAttributes);
+        }
+
+        ColorDepth colorDepth = connection.getColorDepth();
+        TerminalTheme theme = TerminalTheme.UNKNOWN;
+        if (backgroundRGB != null) {
+            theme = TerminalTheme.fromRGB(backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);
+        }
+
+        return new TerminalColorCapability(colorDepth, theme, foregroundRGB, backgroundRGB, cursorRGB, paletteColors);
+    }
+
+    /**
+     * Build the OSC query string for synchronous queries.
+     */
+    private static String buildSyncColorQuery(boolean supportsCursor, boolean supportsPalette, boolean useDcsPassthrough) {
+        StringBuilder queryBuilder = new StringBuilder();
+
+        if (useDcsPassthrough) {
+            queryBuilder.append(DCS_TMUX_PREFIX).append("\u001B]10;?\u0007").append(DCS_TMUX_SUFFIX);
+            queryBuilder.append(DCS_TMUX_PREFIX).append("\u001B]11;?\u0007").append(DCS_TMUX_SUFFIX);
+            if (supportsCursor) {
+                queryBuilder.append(DCS_TMUX_PREFIX).append("\u001B]12;?\u0007").append(DCS_TMUX_SUFFIX);
+            }
+            if (supportsPalette) {
+                for (int i = 0; i < 16; i++) {
+                    queryBuilder.append(DCS_TMUX_PREFIX)
+                            .append("\u001B]4;").append(i).append(";?\u0007")
+                            .append(DCS_TMUX_SUFFIX);
+                }
+            }
+        } else {
+            queryBuilder.append("\u001B]10;?\u0007");
+            queryBuilder.append("\u001B]11;?\u0007");
+            if (supportsCursor) {
+                queryBuilder.append("\u001B]12;?\u0007");
+            }
+            if (supportsPalette) {
+                for (int i = 0; i < 16; i++) {
+                    queryBuilder.append("\u001B]4;").append(i).append(";?\u0007");
+                }
+            }
+        }
+
+        return queryBuilder.toString();
+    }
+
+    /**
+     * Count OSC responses in a string (each ends with BEL or ST).
+     */
+    private static int countResponses(String response) {
+        int count = 0;
+        for (int i = 0; i < response.length(); i++) {
+            char c = response.charAt(i);
+            if (c == '\u0007') {
+                count++;
+            } else if (c == '\\' && i > 0 && response.charAt(i - 1) == '\u001B') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Drain remaining input from the stream.
+     */
+    private static void drainInput(java.io.InputStream input, long maxWaitMs) throws java.io.IOException {
+        byte[] buffer = new byte[256];
+        long endTime = System.currentTimeMillis() + maxWaitMs;
+        while (System.currentTimeMillis() < endTime) {
+            if (input.available() > 0) {
+                input.read(buffer);
+            } else {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                if (input.available() == 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    // ==================== Color Depth Detection ====================
 
     /**
      * Detect only the color depth without querying the terminal for colors.
@@ -1608,101 +1902,165 @@ public final class TerminalColorDetector {
         return connection.queryBackgroundColor(timeoutMs);
     }
 
+    // ==================== Batch Color Queries ====================
+
     /**
-     * Query both foreground and background colors in a single operation.
+     * Query foreground, background, and cursor colors in a single batch operation.
      * <p>
-     * This method sends both OSC 10 and OSC 11 queries together and actively
-     * reads the responses from the terminal input stream.
+     * This method is much more efficient than calling {@link #queryForegroundColor}
+     * and {@link #queryBackgroundColor} separately. By sending all queries at once,
+     * latency is reduced from O(n * timeout) to O(timeout).
      * <p>
-     * When running inside tmux, this method first tries plain OSC queries
-     * (since tmux 3.3+ can respond natively to OSC 10/11), and falls back
-     * to DCS passthrough if that fails.
+     * For example, querying 3 colors individually might take 300-400ms due to
+     * serial round-trips, while batch querying takes only 50-100ms.
+     * <p>
+     * If OSC queries are not supported by the terminal, this method returns an
+     * empty map. Use {@link #isOscColorQuerySupported(Connection)} to check support
+     * beforehand, or use {@link #detect(Connection)} which has automatic fallbacks.
      *
      * @param connection the terminal connection
-     * @param timeoutMs timeout in milliseconds for the entire operation
-     * @return array of two RGB arrays: [foreground, background], either may be null
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @return map from OSC code to RGB array [r, g, b] (0-255 each);
+     *         keys are {@link org.aesh.terminal.utils.ANSI#OSC_FOREGROUND} (10),
+     *         {@link org.aesh.terminal.utils.ANSI#OSC_BACKGROUND} (11),
+     *         {@link org.aesh.terminal.utils.ANSI#OSC_CURSOR_COLOR} (12)
      */
-    private static int[][] queryBothColors(Connection connection, long timeoutMs) {
-        if (connection == null || !connection.supportsAnsi()) {
-            return null;
+    public static java.util.Map<Integer, int[]> queryColors(Connection connection, long timeoutMs) {
+        if (connection == null) {
+            return java.util.Collections.emptyMap();
         }
 
-        // Check for terminals that don't support OSC queries at all
-        // JetBrains/JediTerm doesn't support OSC 10/11 and throws errors
-        String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
-        if (terminalEmulator != null &&
-                terminalEmulator.toLowerCase().contains("jetbrains")) {
-            LOGGER.log(Level.FINE, "JetBrains/JediTerm detected - OSC queries not supported");
-            return null;
+        // Check OSC support before attempting queries
+        if (!isOscColorQuerySupported(connection)) {
+            LOGGER.log(Level.FINE, "OSC color queries not supported, returning empty result");
+            return java.util.Collections.emptyMap();
         }
 
-        boolean inTmux = isRunningInTmux();
-        boolean canUseTmuxPassthrough = shouldUseTmuxPassthrough();
+        return connection.queryColors(timeoutMs);
+    }
 
-        // When in tmux, we try multiple strategies
-        // Strategy 1: Plain OSC query (tmux can respond natively since 3.3+)
-        // Strategy 2: DCS passthrough to outer terminal (if outer terminal detected)
-
-        if (!inTmux) {
-            // Not in tmux - use standard device checks
-            Device device = connection.device();
-            if (device != null && !device.supportsOscQueries()) {
-                LOGGER.log(Level.FINE, "OSC color queries not supported by device: " + device.type());
-                return null;
-            }
-
-            if (!connection.supportsOscQueries()) {
-                LOGGER.log(Level.FINE, "OSC color queries not supported by connection");
-                return null;
-            }
+    /**
+     * Query multiple palette colors in a single batch operation.
+     * <p>
+     * This method sends all palette color queries at once, significantly
+     * reducing latency compared to calling individual queries multiple times.
+     * <p>
+     * Palette colors are indexed 0-255, where:
+     * <ul>
+     * <li>0-7: Standard ANSI colors</li>
+     * <li>8-15: Bright ANSI colors</li>
+     * <li>16-231: 216-color cube</li>
+     * <li>232-255: Grayscale ramp</li>
+     * </ul>
+     * <p>
+     * Note: Not all terminals support OSC 4 palette queries. Use
+     * {@link Connection#supportsPaletteQuery()} to check support beforehand.
+     *
+     * @param connection the terminal connection
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @param indices the palette color indices to query (0-255)
+     * @return map from palette index to RGB array [r, g, b] (0-255 each)
+     */
+    public static java.util.Map<Integer, int[]> queryPaletteColors(Connection connection, long timeoutMs, int... indices) {
+        if (connection == null) {
+            return java.util.Collections.emptyMap();
         }
 
-        // Check if this is a TerminalConnection so we can access the terminal directly
-        if (!(connection instanceof org.aesh.terminal.tty.TerminalConnection)) {
-            LOGGER.log(Level.FINE, "Connection is not a TerminalConnection, cannot query colors");
-            return null;
+        // Check palette query support
+        if (!connection.supportsPaletteQuery()) {
+            LOGGER.log(Level.FINE, "OSC 4 palette queries not supported");
+            return java.util.Collections.emptyMap();
         }
 
-        TerminalConnection termConn = (org.aesh.terminal.tty.TerminalConnection) connection;
-        Terminal terminal = termConn.getTerminal();
+        return connection.queryPaletteColors(timeoutMs, indices);
+    }
 
-        if (terminal == null) {
-            return null;
+    /**
+     * Query the ANSI 16-color palette (colors 0-15) in a single batch operation.
+     * <p>
+     * This queries the 8 standard colors (0-7) and 8 bright colors (8-15).
+     * <p>
+     * Note: Not all terminals support OSC 4 palette queries. Use
+     * {@link Connection#supportsPaletteQuery()} to check support beforehand.
+     *
+     * @param connection the terminal connection
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @return map from palette index (0-15) to RGB array [r, g, b] (0-255 each)
+     */
+    public static java.util.Map<Integer, int[]> queryAnsi16Colors(Connection connection, long timeoutMs) {
+        if (connection == null) {
+            return java.util.Collections.emptyMap();
         }
 
-        int[][] result = null;
-
-        // Strategy 1: Try plain OSC query (works for tmux native handling and normal terminals)
-        LOGGER.log(Level.FINE, "Trying plain OSC color query");
-        result = doOscColorQuery(connection, terminal, timeoutMs, false);
-
-        if (hasColors(result)) {
-            LOGGER.log(Level.FINE, "Plain OSC query succeeded");
-            return result;
+        // Check palette query support
+        if (!connection.supportsPaletteQuery()) {
+            LOGGER.log(Level.FINE, "OSC 4 palette queries not supported");
+            return java.util.Collections.emptyMap();
         }
 
-        // Strategy 2: If in tmux with known outer terminal, try DCS passthrough
-        if (inTmux && canUseTmuxPassthrough) {
-            LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for OSC queries");
-            result = doOscColorQuery(connection, terminal, timeoutMs, true);
+        return connection.queryAnsi16Colors(timeoutMs);
+    }
 
-            if (hasColors(result)) {
-                LOGGER.log(Level.FINE, "DCS passthrough query succeeded");
-                return result;
-            }
+    /**
+     * Check if an RGB color represents a dark theme (luminance &lt; 0.5).
+     * <p>
+     * This is useful for determining whether to use light or dark
+     * foreground colors based on the terminal's background color.
+     *
+     * @param rgb the RGB color array [r, g, b] (0-255 each)
+     * @return true if the color is dark, false if light
+     */
+    public static boolean isDarkColor(int[] rgb) {
+        if (rgb == null || rgb.length < 3) {
+            return true; // assume dark if unknown
+        }
+        // Calculate relative luminance using ITU-R BT.601 coefficients
+        double luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255.0;
+        return luminance < 0.5;
+    }
+
+    /**
+     * Query colors with automatic fallback to environment-based detection.
+     * <p>
+     * This method first tries to query the terminal for actual colors.
+     * If OSC queries are not supported or fail, it falls back to
+     * environment-based theme detection and returns typical colors
+     * for that theme.
+     * <p>
+     * This is the recommended method when you need colors and want
+     * graceful degradation on terminals that don't support OSC queries.
+     *
+     * @param connection the terminal connection
+     * @param timeoutMs timeout in milliseconds for OSC queries
+     * @return map from OSC code to RGB array; always contains at least
+     *         estimated foreground and background colors
+     */
+    public static java.util.Map<Integer, int[]> queryColorsWithFallback(Connection connection, long timeoutMs) {
+        // First try actual OSC queries
+        java.util.Map<Integer, int[]> results = queryColors(connection, timeoutMs);
+
+        // If we got results, return them
+        if (!results.isEmpty()) {
+            return results;
         }
 
-        // Strategy 3: Try to get colors from tmux options as fallback
-        if (inTmux) {
-            LOGGER.log(Level.FINE, "Falling back to tmux option detection");
-            result = detectColorsFromTmux();
-            if (hasColors(result)) {
-                LOGGER.log(Level.FINE, "Tmux option detection succeeded");
-                return result;
-            }
+        // Fall back to environment-based detection
+        LOGGER.log(Level.FINE, "OSC queries failed or not supported, using environment-based fallback");
+
+        java.util.Map<Integer, int[]> fallback = new java.util.LinkedHashMap<>();
+        TerminalTheme theme = detectThemeFromEnvironment();
+
+        if (theme == TerminalTheme.LIGHT) {
+            // Typical light theme colors
+            fallback.put(org.aesh.terminal.utils.ANSI.OSC_FOREGROUND, new int[] { 0, 0, 0 }); // Black text
+            fallback.put(org.aesh.terminal.utils.ANSI.OSC_BACKGROUND, new int[] { 255, 255, 255 }); // White background
+        } else {
+            // Typical dark theme colors (default assumption)
+            fallback.put(org.aesh.terminal.utils.ANSI.OSC_FOREGROUND, new int[] { 204, 204, 204 }); // Light gray text
+            fallback.put(org.aesh.terminal.utils.ANSI.OSC_BACKGROUND, new int[] { 30, 30, 30 }); // Dark gray background
         }
 
-        return result;
+        return fallback;
     }
 
     /**
@@ -1710,128 +2068,6 @@ public final class TerminalColorDetector {
      */
     private static boolean hasColors(int[][] result) {
         return result != null && (result[0] != null || result[1] != null);
-    }
-
-    /**
-     * Perform the actual OSC color query.
-     *
-     * @param connection the terminal connection
-     * @param terminal the terminal instance
-     * @param timeoutMs timeout in milliseconds
-     * @param useDcsPassthrough if true, wrap queries in DCS passthrough for tmux
-     * @return array of two RGB arrays: [foreground, background], either may be null
-     */
-    private static int[][] doOscColorQuery(Connection connection,
-            org.aesh.terminal.Terminal terminal,
-            long timeoutMs,
-            boolean useDcsPassthrough) {
-        int[] foregroundRGB = null;
-        int[] backgroundRGB = null;
-
-        // Save current attributes and enter raw mode
-        Attributes savedAttributes = connection.getAttributes();
-        Attributes rawAttributes = new Attributes(savedAttributes);
-        rawAttributes.setLocalFlags(
-                java.util.EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO),
-                false);
-        rawAttributes.setControlChar(Attributes.ControlChar.VMIN, 0);
-        rawAttributes.setControlChar(Attributes.ControlChar.VTIME, 1); // 0.1 second timeout
-        connection.setAttributes(rawAttributes);
-
-        try {
-            java.io.InputStream input = terminal.input();
-
-            // Drain any pending input first
-            while (input.available() > 0) {
-                input.read();
-            }
-
-            // Build the query string
-            String combinedQuery;
-            if (useDcsPassthrough) {
-                // Wrap each OSC query in DCS passthrough for tmux
-                // Format: ESC P tmux ; ESC <osc-sequence> ESC \
-                combinedQuery = TMUX_DCS_PREFIX + OSC_QUERY_FOREGROUND + TMUX_DCS_SUFFIX +
-                        TMUX_DCS_PREFIX + OSC_QUERY_BACKGROUND + TMUX_DCS_SUFFIX;
-            } else {
-                combinedQuery = OSC_QUERY_FOREGROUND + OSC_QUERY_BACKGROUND;
-            }
-            connection.stdoutHandler().accept(combinedQuery.codePoints().toArray());
-
-            // Read response with timeout
-            StringBuilder response = new StringBuilder();
-            long endTime = System.currentTimeMillis() + timeoutMs;
-            byte[] buffer = new byte[256];
-
-            while (System.currentTimeMillis() < endTime) {
-                int read = input.read(buffer);
-                if (read > 0) {
-                    for (int i = 0; i < read; i++) {
-                        response.append((char) (buffer[i] & 0xFF));
-                    }
-                    // Check if we have both responses
-                    if (response.indexOf("10;rgb:") >= 0 && response.indexOf("11;rgb:") >= 0) {
-                        break;
-                    }
-                } else if (read < 0) {
-                    break;
-                }
-                // Small sleep to avoid busy-waiting
-                try {
-                    Thread.sleep(5);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-
-            // Drain any remaining input to prevent leakage
-            long drainEnd = System.currentTimeMillis() + 100;
-            while (System.currentTimeMillis() < drainEnd) {
-                if (input.available() > 0) {
-                    input.read(buffer);
-                } else {
-                    break;
-                }
-            }
-
-            // Parse the collected response
-            String responseStr = response.toString();
-            if (!responseStr.isEmpty()) {
-                LOGGER.log(Level.FINE, "OSC color response (" +
-                        (useDcsPassthrough ? "DCS" : "plain") + "): " +
-                        escapeForLog(responseStr));
-                foregroundRGB = parseOscColorFromString(responseStr, 10);
-                backgroundRGB = parseOscColorFromString(responseStr, 11);
-            }
-
-        } catch (IOException e) {
-            LOGGER.log(Level.FINE, "Failed to read OSC color response", e);
-        } finally {
-            // Restore original terminal attributes
-            connection.setAttributes(savedAttributes);
-        }
-
-        return new int[][] { foregroundRGB, backgroundRGB };
-    }
-
-    /**
-     * Escape control characters for logging.
-     */
-    private static String escapeForLog(String s) {
-        StringBuilder sb = new StringBuilder();
-        for (char c : s.toCharArray()) {
-            if (c == '\u001B') {
-                sb.append("\\e");
-            } else if (c == '\u0007') {
-                sb.append("\\a");
-            } else if (c < 32) {
-                sb.append(String.format("\\x%02x", (int) c));
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 
     /**
@@ -2034,74 +2270,6 @@ public final class TerminalColorDetector {
                 return new int[] { 192, 192, 192 };
             default:
                 return null;
-        }
-    }
-
-    /**
-     * Parse an OSC color response from a string.
-     *
-     * @param response the full response string
-     * @param oscCode the OSC code to look for (10 or 11)
-     * @return RGB array [r, g, b] (0-255 each), or null if not found
-     */
-    private static int[] parseOscColorFromString(String response, int oscCode) {
-        // Look for pattern: {oscCode};rgb:RRRR/GGGG/BBBB
-        // The ESC ] may or may not be present depending on terminal
-        String marker = oscCode + ";rgb:";
-        int start = response.indexOf(marker);
-        if (start < 0) {
-            return null;
-        }
-
-        int rgbStart = start + marker.length();
-
-        // Find the end - could be BEL, ESC, or next response
-        int end = response.length();
-        for (int i = rgbStart; i < response.length(); i++) {
-            char c = response.charAt(i);
-            if (c == '\u0007' || c == '\u001B' || c == '1') {
-                // Check if '1' is start of next OSC code (10 or 11)
-                if (c == '1' && i + 1 < response.length()) {
-                    char next = response.charAt(i + 1);
-                    if (next == '0' || next == '1') {
-                        end = i;
-                        break;
-                    }
-                } else if (c != '1') {
-                    end = i;
-                    break;
-                }
-            }
-        }
-
-        String rgbPart = response.substring(rgbStart, end);
-
-        // Parse RRRR/GGGG/BBBB
-        String[] parts = rgbPart.split("/");
-        if (parts.length != 3) {
-            return null;
-        }
-
-        try {
-            int[] rgb = new int[3];
-            for (int i = 0; i < 3; i++) {
-                String hex = parts[i].trim();
-                int value;
-                if (hex.length() == 4) {
-                    // 4-digit hex (e.g., FFFF), take high byte
-                    value = Integer.parseInt(hex, 16) >> 8;
-                } else if (hex.length() == 2) {
-                    // 2-digit hex
-                    value = Integer.parseInt(hex, 16);
-                } else {
-                    return null;
-                }
-                rgb[i] = Math.min(255, Math.max(0, value));
-            }
-            return rgb;
-        } catch (NumberFormatException e) {
-            LOGGER.log(Level.FINE, "Failed to parse OSC color: " + rgbPart, e);
-            return null;
         }
     }
 

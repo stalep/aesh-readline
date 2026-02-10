@@ -153,6 +153,21 @@ public interface Connection extends AutoCloseable {
     void openNonBlocking();
 
     /**
+     * Check if the connection is actively reading from the input stream.
+     * <p>
+     * This returns true after {@link #openBlocking()} or {@link #openNonBlocking()}
+     * has been called and before {@link #close()} is called.
+     * <p>
+     * When reading is active, query methods can use {@link #setStdinHandler(Consumer)}
+     * to receive responses. When reading is not active, synchronous I/O must be used.
+     *
+     * @return true if the connection is actively reading input
+     */
+    default boolean reading() {
+        return false;
+    }
+
+    /**
      * Specify terminal settings
      *
      * @param capability capability
@@ -266,19 +281,28 @@ public interface Connection extends AutoCloseable {
      * and restores the original terminal attributes. It's useful for OSC queries
      * and other terminal interrogation sequences.
      * <p>
-     * Note: This method requires the connection to be actively reading input
-     * (via {@link #openBlocking()} or {@link #openNonBlocking()}).
+     * This method uses {@link #setStdinHandler(Consumer)} to receive responses,
+     * which requires the connection to be actively reading input (i.e.,
+     * {@link #reading()} returns true). If not reading, this method returns null.
+     * <p>
+     * For queries that need to work before the connection is opened, use
+     * {@link #queryColorCapability(long)} or implementation-specific synchronous methods.
      *
      * @param query the query sequence to send
      * @param timeoutMs timeout in milliseconds to wait for response
      * @param responseParser function to parse the response; should return non-null when
      *        a complete response is received, null to continue waiting
      * @param <T> the type of the parsed response
-     * @return the parsed response, or null if timeout or parsing failed
+     * @return the parsed response, or null if not reading, timeout, or parsing failed
      */
     default <T> T queryTerminal(String query, long timeoutMs,
             java.util.function.Function<int[], T> responseParser) {
         if (!supportsAnsi()) {
+            return null;
+        }
+
+        // This method uses setStdinHandler which requires active reading
+        if (!reading()) {
             return null;
         }
 
@@ -521,6 +545,179 @@ public interface Connection extends AutoCloseable {
                 input -> ANSI.parseOscColorResponse(input, ANSI.OSC_PALETTE, index));
     }
 
+    // ==================== Batch OSC Queries ====================
+
+    /**
+     * Query multiple OSC color codes in a single batch operation.
+     * <p>
+     * This method is much more efficient than calling individual query methods
+     * (like {@link #queryForegroundColor(long)}, {@link #queryBackgroundColor(long)})
+     * multiple times. By sending all queries at once and collecting responses
+     * in a single operation, latency is reduced from O(n * timeout) to O(timeout).
+     * <p>
+     * For example, querying 10 colors individually might take 600-700ms due to
+     * serial round-trips, while batch querying takes only 50-100ms.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @param oscCodes the OSC codes to query (e.g., 10 for foreground, 11 for background)
+     * @return map from OSC code to RGB array [r, g, b] (0-255 each);
+     *         missing entries indicate the terminal didn't respond to that query
+     */
+    default java.util.Map<Integer, int[]> queryBatchOsc(long timeoutMs, int... oscCodes) {
+        if (!supportsAnsi() || oscCodes == null || oscCodes.length == 0) {
+            return java.util.Collections.emptyMap();
+        }
+
+        // Check if OSC queries are supported
+        if (device() != null && !device().supportsOscQueries()) {
+            return java.util.Collections.emptyMap();
+        }
+
+        Consumer<int[]> prevInputHandler = getStdinHandler();
+        CountDownLatch latch = new CountDownLatch(1);
+        final java.util.Map<Integer, int[]> results = new java.util.concurrent.ConcurrentHashMap<>();
+        final StringBuilder responseBuffer = new StringBuilder();
+        final int[] expectedCount = { oscCodes.length };
+        Attributes savedAttributes = enterRawMode();
+
+        setStdinHandler(ints -> {
+            // Append to response buffer
+            for (int c : ints) {
+                responseBuffer.appendCodePoint(c);
+            }
+
+            // Try to parse all expected responses
+            java.util.Map<Integer, int[]> parsed = ANSI.parseMultipleOscColorResponses(
+                    responseBuffer.toString().codePoints().toArray(), oscCodes);
+            results.putAll(parsed);
+
+            // If we got all expected responses, signal completion
+            if (results.size() >= expectedCount[0]) {
+                latch.countDown();
+            }
+        });
+
+        try {
+            // Build and send batch query
+            String batchQuery = ANSI.buildBatchOscQuery(oscCodes);
+            stdoutHandler().accept(batchQuery.codePoints().toArray());
+
+            // Wait for responses
+            latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            setStdinHandler(prevInputHandler);
+            setAttributes(savedAttributes);
+        }
+
+        return results;
+    }
+
+    /**
+     * Query foreground, background, and cursor colors in a single batch operation.
+     * <p>
+     * This is a convenience method equivalent to calling
+     * {@code queryBatchOsc(timeoutMs, 10, 11, 12)}.
+     * <p>
+     * The returned map uses OSC codes as keys:
+     * <ul>
+     * <li>{@link ANSI#OSC_FOREGROUND} (10) - foreground color</li>
+     * <li>{@link ANSI#OSC_BACKGROUND} (11) - background color</li>
+     * <li>{@link ANSI#OSC_CURSOR_COLOR} (12) - cursor color</li>
+     * </ul>
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @return map from OSC code to RGB array [r, g, b] (0-255 each)
+     */
+    default java.util.Map<Integer, int[]> queryColors(long timeoutMs) {
+        return queryBatchOsc(timeoutMs,
+                ANSI.OSC_FOREGROUND, ANSI.OSC_BACKGROUND, ANSI.OSC_CURSOR_COLOR);
+    }
+
+    /**
+     * Query multiple palette colors in a single batch operation.
+     * <p>
+     * This method sends all palette color queries at once, significantly
+     * reducing latency compared to calling {@link #queryPaletteColor(int, long)}
+     * multiple times.
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @param indices the palette color indices to query (0-255)
+     * @return map from palette index to RGB array [r, g, b] (0-255 each);
+     *         missing entries indicate the terminal didn't respond to that query
+     */
+    default java.util.Map<Integer, int[]> queryPaletteColors(long timeoutMs, int... indices) {
+        if (!supportsAnsi() || indices == null || indices.length == 0) {
+            return java.util.Collections.emptyMap();
+        }
+
+        // Check if palette queries are supported
+        if (!supportsPaletteQuery()) {
+            return java.util.Collections.emptyMap();
+        }
+
+        Consumer<int[]> prevInputHandler = getStdinHandler();
+        CountDownLatch latch = new CountDownLatch(1);
+        final java.util.Map<Integer, int[]> results = new java.util.concurrent.ConcurrentHashMap<>();
+        final StringBuilder responseBuffer = new StringBuilder();
+        final int[] expectedCount = { indices.length };
+        Attributes savedAttributes = enterRawMode();
+
+        setStdinHandler(ints -> {
+            // Append to response buffer
+            for (int c : ints) {
+                responseBuffer.appendCodePoint(c);
+            }
+
+            // Try to parse all expected responses
+            java.util.Map<Integer, int[]> parsed = ANSI.parseMultiplePaletteResponses(
+                    responseBuffer.toString().codePoints().toArray(), indices);
+            results.putAll(parsed);
+
+            // If we got all expected responses, signal completion
+            if (results.size() >= expectedCount[0]) {
+                latch.countDown();
+            }
+        });
+
+        try {
+            // Build and send batch query
+            String batchQuery = ANSI.buildBatchOscQueryWithIndices(ANSI.OSC_PALETTE, indices);
+            stdoutHandler().accept(batchQuery.codePoints().toArray());
+
+            // Wait for responses
+            latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            setStdinHandler(prevInputHandler);
+            setAttributes(savedAttributes);
+        }
+
+        return results;
+    }
+
+    /**
+     * Query the ANSI 16-color palette (colors 0-15) in a single batch operation.
+     * <p>
+     * This queries the 8 standard colors (0-7) and 8 bright colors (8-15).
+     * <p>
+     * The terminal must be actively reading input for this to work.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @return map from palette index (0-15) to RGB array [r, g, b] (0-255 each)
+     */
+    default java.util.Map<Integer, int[]> queryAnsi16Colors(long timeoutMs) {
+        return queryPaletteColors(timeoutMs, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    }
+
     // ==================== Device Attributes (DA1/DA2) ====================
 
     /**
@@ -680,6 +877,36 @@ public interface Connection extends AutoCloseable {
             return null;
         }
         return queryPaletteColor(index, timeoutMs);
+    }
+
+    // ==================== Color Capability Detection ====================
+
+    /**
+     * Query terminal color capabilities using synchronous I/O.
+     * <p>
+     * This method queries the terminal for color information including:
+     * <ul>
+     * <li>Foreground color (OSC 10)</li>
+     * <li>Background color (OSC 11)</li>
+     * <li>Cursor color (OSC 12, if supported)</li>
+     * <li>Palette colors (OSC 4, if supported)</li>
+     * </ul>
+     * <p>
+     * Unlike {@link #queryTerminal(String, long, java.util.function.Function)} and
+     * other handler-based query methods, this method uses synchronous I/O and
+     * works regardless of {@link #reading()} state. It can be called before
+     * {@link #openBlocking()} or {@link #openNonBlocking()}.
+     * <p>
+     * The default implementation returns null. Implementations that support
+     * synchronous queries (like TerminalConnection) should override this method.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @return TerminalColorCapability with detected colors, or null if not supported
+     */
+    default TerminalColorCapability queryColorCapability(long timeoutMs) {
+        // Default implementation returns null.
+        // TerminalConnection overrides this with direct I/O implementation.
+        return null;
     }
 
 }

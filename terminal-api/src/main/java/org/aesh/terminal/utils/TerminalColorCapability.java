@@ -42,6 +42,8 @@ public class TerminalColorCapability {
     private final TerminalTheme theme;
     private final int[] foregroundRGB;
     private final int[] backgroundRGB;
+    private final int[] cursorRGB;
+    private final java.util.Map<Integer, int[]> paletteColors;
 
     // Custom color overrides (null means use theme-based default)
     private final Integer foregroundCodeOverride;
@@ -64,10 +66,30 @@ public class TerminalColorCapability {
      */
     public TerminalColorCapability(ColorDepth colorDepth, TerminalTheme theme,
             int[] foregroundRGB, int[] backgroundRGB) {
+        this(colorDepth, theme, foregroundRGB, backgroundRGB, null, null);
+    }
+
+    /**
+     * Create a new TerminalColorCapability with all detected values including cursor and palette.
+     *
+     * @param colorDepth the detected color depth
+     * @param theme the detected terminal theme
+     * @param foregroundRGB the foreground RGB color (may be null if not detected)
+     * @param backgroundRGB the background RGB color (may be null if not detected)
+     * @param cursorRGB the cursor RGB color (may be null if not detected)
+     * @param paletteColors the palette colors map (may be null if not detected)
+     */
+    public TerminalColorCapability(ColorDepth colorDepth, TerminalTheme theme,
+            int[] foregroundRGB, int[] backgroundRGB, int[] cursorRGB,
+            java.util.Map<Integer, int[]> paletteColors) {
         this.colorDepth = colorDepth != null ? colorDepth : ColorDepth.COLORS_8;
         this.theme = theme != null ? theme : TerminalTheme.UNKNOWN;
         this.foregroundRGB = foregroundRGB;
         this.backgroundRGB = backgroundRGB;
+        this.cursorRGB = cursorRGB;
+        this.paletteColors = paletteColors != null
+                ? java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(paletteColors))
+                : null;
         // No overrides in this constructor
         this.foregroundCodeOverride = null;
         this.errorCodeOverride = null;
@@ -88,6 +110,10 @@ public class TerminalColorCapability {
         this.theme = builder.theme != null ? builder.theme : TerminalTheme.UNKNOWN;
         this.foregroundRGB = builder.foregroundRGB;
         this.backgroundRGB = builder.backgroundRGB;
+        this.cursorRGB = builder.cursorRGB;
+        this.paletteColors = builder.paletteColors != null
+                ? java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(builder.paletteColors))
+                : null;
         this.foregroundCodeOverride = builder.foregroundCodeOverride;
         this.errorCodeOverride = builder.errorCodeOverride;
         this.successCodeOverride = builder.successCodeOverride;
@@ -157,12 +183,69 @@ public class TerminalColorCapability {
     }
 
     /**
+     * Get the detected cursor RGB color.
+     *
+     * @return the detected cursor RGB color as [r, g, b] (0-255 each),
+     *         or null if not detected
+     */
+    public int[] getCursorRGB() {
+        return cursorRGB != null ? cursorRGB.clone() : null;
+    }
+
+    /**
+     * Get the detected palette colors.
+     * <p>
+     * The map contains palette index to RGB color mappings. Common indices:
+     * <ul>
+     * <li>0-7: Standard ANSI colors (black, red, green, yellow, blue, magenta, cyan, white)</li>
+     * <li>8-15: Bright ANSI colors</li>
+     * </ul>
+     *
+     * @return unmodifiable map of palette index to RGB array, or null if not detected
+     */
+    public java.util.Map<Integer, int[]> getPaletteColors() {
+        return paletteColors;
+    }
+
+    /**
+     * Get a specific palette color by index.
+     *
+     * @param index the palette index (0-255)
+     * @return the RGB color as [r, g, b] (0-255 each), or null if not available
+     */
+    public int[] getPaletteColor(int index) {
+        if (paletteColors == null) {
+            return null;
+        }
+        int[] color = paletteColors.get(index);
+        return color != null ? color.clone() : null;
+    }
+
+    /**
      * Check if the foreground color was detected.
      *
      * @return true if foreground RGB is available
      */
     public boolean hasForegroundColor() {
         return foregroundRGB != null;
+    }
+
+    /**
+     * Check if the cursor color was detected.
+     *
+     * @return true if cursor RGB is available
+     */
+    public boolean hasCursorColor() {
+        return cursorRGB != null;
+    }
+
+    /**
+     * Check if palette colors were detected.
+     *
+     * @return true if any palette colors are available
+     */
+    public boolean hasPaletteColors() {
+        return paletteColors != null && !paletteColors.isEmpty();
     }
 
     /**
@@ -590,6 +673,8 @@ public class TerminalColorCapability {
         private TerminalTheme theme;
         private int[] foregroundRGB;
         private int[] backgroundRGB;
+        private int[] cursorRGB;
+        private java.util.Map<Integer, int[]> paletteColors;
         private Integer foregroundCodeOverride;
         private Integer errorCodeOverride;
         private Integer successCodeOverride;
@@ -617,6 +702,8 @@ public class TerminalColorCapability {
                 this.theme = base.theme;
                 this.foregroundRGB = base.foregroundRGB;
                 this.backgroundRGB = base.backgroundRGB;
+                this.cursorRGB = base.cursorRGB;
+                this.paletteColors = base.paletteColors != null ? new java.util.LinkedHashMap<>(base.paletteColors) : null;
                 this.foregroundCodeOverride = base.foregroundCodeOverride;
                 this.errorCodeOverride = base.errorCodeOverride;
                 this.successCodeOverride = base.successCodeOverride;
@@ -670,6 +757,43 @@ public class TerminalColorCapability {
          */
         public Builder backgroundRGB(int[] rgb) {
             this.backgroundRGB = rgb;
+            return this;
+        }
+
+        /**
+         * Set the cursor RGB color.
+         *
+         * @param rgb the RGB array [r, g, b] with values 0-255
+         * @return this builder for method chaining
+         */
+        public Builder cursorRGB(int[] rgb) {
+            this.cursorRGB = rgb;
+            return this;
+        }
+
+        /**
+         * Set the palette colors.
+         *
+         * @param colors map of palette index to RGB array
+         * @return this builder for method chaining
+         */
+        public Builder paletteColors(java.util.Map<Integer, int[]> colors) {
+            this.paletteColors = colors != null ? new java.util.LinkedHashMap<>(colors) : null;
+            return this;
+        }
+
+        /**
+         * Add a single palette color.
+         *
+         * @param index the palette index (0-255)
+         * @param rgb the RGB array [r, g, b] with values 0-255
+         * @return this builder for method chaining
+         */
+        public Builder paletteColor(int index, int[] rgb) {
+            if (this.paletteColors == null) {
+                this.paletteColors = new java.util.LinkedHashMap<>();
+            }
+            this.paletteColors.put(index, rgb);
             return this;
         }
 

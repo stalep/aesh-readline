@@ -64,6 +64,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
     private long lastAccessedTime = System.currentTimeMillis();
     private Device device;
     private Attributes attributes;
+    private volatile boolean reading = false;
 
     /**
      * Creates a new TelnetTtyConnection.
@@ -193,6 +194,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
             if (!outBinary | (outBinary && sendingBinary)) {
                 if (!inBinary | (inBinary && receivingBinary)) {
                     accepted = true;
+                    reading = true;
                     readBuffer.setReadHandler(eventDecoder);
                     handler.accept(this);
                 }
@@ -276,6 +278,7 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
 
     @Override
     protected void onClose() {
+        reading = false;
         if (closeHandler != null) {
             closeHandler.accept(null);
         }
@@ -292,6 +295,11 @@ public final class TelnetTtyConnection extends TelnetHandler implements Connecti
 
     @Override
     public void openNonBlocking() {
+    }
+
+    @Override
+    public boolean reading() {
+        return reading;
     }
 
     @Override
