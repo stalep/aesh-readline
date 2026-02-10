@@ -100,11 +100,11 @@ public class TerminalColorCapabilityTest {
         assertEquals(91, cap.getSuggestedErrorCode()); // bright red for dark bg
         assertEquals(92, cap.getSuggestedSuccessCode()); // bright green for dark bg
         assertEquals(93, cap.getSuggestedWarningCode()); // bright yellow for dark bg
-        assertEquals(94, cap.getSuggestedInfoCode()); // bright blue for dark bg
-        assertEquals(37, cap.getSuggestedDebugCode()); // white for dark bg
-        assertEquals(242, cap.getSuggestedTraceCode()); // 256-color gray for dark bg (visible)
+        assertEquals(96, cap.getSuggestedInfoCode()); // bright cyan for dark bg
+        assertEquals(95, cap.getSuggestedDebugCode()); // bright magenta for dark bg
+        assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
         assertEquals(96, cap.getSuggestedTimestampCode()); // bright cyan for dark bg
-        assertEquals(95, cap.getSuggestedMessageCode()); // bright magenta for dark bg
+        assertEquals(37, cap.getSuggestedMessageCode()); // white for dark bg
     }
 
     @Test
@@ -116,11 +116,11 @@ public class TerminalColorCapabilityTest {
         assertEquals(31, cap.getSuggestedErrorCode()); // dark red for light bg
         assertEquals(32, cap.getSuggestedSuccessCode()); // dark green for light bg
         assertEquals(33, cap.getSuggestedWarningCode()); // dark yellow for light bg
-        assertEquals(34, cap.getSuggestedInfoCode()); // dark blue for light bg
-        assertEquals(90, cap.getSuggestedDebugCode()); // gray for light bg
+        assertEquals(36, cap.getSuggestedInfoCode()); // dark cyan for light bg
+        assertEquals(35, cap.getSuggestedDebugCode()); // dark magenta for light bg
         assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
         assertEquals(36, cap.getSuggestedTimestampCode()); // dark cyan for light bg
-        assertEquals(35, cap.getSuggestedMessageCode()); // dark magenta for light bg
+        assertEquals(30, cap.getSuggestedMessageCode()); // black for light bg
     }
 
     @Test
@@ -286,15 +286,15 @@ public class TerminalColorCapabilityTest {
 
         // Verify the codes are correct for dark theme
         assertEquals(96, tsCode); // bright cyan
-        assertEquals(95, msgCode); // bright magenta
+        assertEquals(37, msgCode); // white
 
         // Verify the formatted strings contain the expected escape sequences
         assertTrue(coloredTimestamp.contains("\u001B[96m"));
-        assertTrue(coloredMessage.contains("\u001B[95m"));
+        assertTrue(coloredMessage.contains("\u001B[37m"));
 
         // For light terminal, codes should be different (darker variants)
         assertEquals(36, lightTerminal.getSuggestedTimestampCode()); // dark cyan
-        assertEquals(35, lightTerminal.getSuggestedMessageCode()); // dark magenta
+        assertEquals(30, lightTerminal.getSuggestedMessageCode()); // black
     }
 
     @Test
@@ -316,15 +316,15 @@ public class TerminalColorCapabilityTest {
         int traceCode = darkTerminal.getSuggestedTraceCode();
 
         // Verify the codes are correct for dark theme
-        assertEquals(37, debugCode); // white - visible but not colorful
-        assertEquals(242, traceCode); // 256-color gray - visible but subdued on dark terminals
+        assertEquals(95, debugCode); // bright magenta
+        assertEquals(90, traceCode); // gray for all themes
 
-        // For light terminal, debug and trace use basic gray (90)
-        assertEquals(90, lightTerminal.getSuggestedDebugCode()); // gray
+        // For light terminal, debug and trace use dark colors
+        assertEquals(35, lightTerminal.getSuggestedDebugCode()); // dark magenta
         assertEquals(90, lightTerminal.getSuggestedTraceCode()); // gray (visible on light bg)
 
         // Log level color hierarchy (most to least prominent):
-        // ERROR (91/31) > WARN (93/33) > INFO (94/34) > DEBUG (37/90) > TRACE (242/90)
+        // ERROR (91/31) > WARN (93/33) > INFO (96/36) > DEBUG (95/35) > TRACE (90)
         int errorCode = darkTerminal.getSuggestedErrorCode();
         int warnCode = darkTerminal.getSuggestedWarningCode();
         int infoCode = darkTerminal.getSuggestedInfoCode();
@@ -332,9 +332,9 @@ public class TerminalColorCapabilityTest {
         // Verify the hierarchy - bright colors for dark theme
         assertEquals(91, errorCode); // bright red
         assertEquals(93, warnCode); // bright yellow
-        assertEquals(94, infoCode); // bright blue
-        assertEquals(37, debugCode); // white (less prominent than colored)
-        assertEquals(242, traceCode); // 256-color gray (least prominent but visible)
+        assertEquals(96, infoCode); // bright cyan
+        assertEquals(95, debugCode); // bright magenta
+        assertEquals(90, traceCode); // gray (least prominent)
     }
 
     // ==================== Builder Tests ====================

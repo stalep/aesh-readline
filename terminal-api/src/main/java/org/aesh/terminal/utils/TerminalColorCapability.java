@@ -448,7 +448,7 @@ public class TerminalColorCapability {
         if (infoCodeOverride != null) {
             return infoCodeOverride;
         }
-        return theme.isLight() ? 34 : 94; // dark blue for light bg, bright blue for dark bg
+        return theme.isLight() ? 36 : 96; // dark cyan for light bg, bright cyan for dark bg
     }
 
     /**
@@ -467,7 +467,7 @@ public class TerminalColorCapability {
         if (debugCodeOverride != null) {
             return debugCodeOverride;
         }
-        return theme.isLight() ? 90 : 37; // gray for light bg, white for dark bg
+        return theme.isLight() ? 35 : 95; // dark magenta for light bg, bright magenta for dark bg
     }
 
     /**
@@ -486,10 +486,8 @@ public class TerminalColorCapability {
         if (traceCodeOverride != null) {
             return traceCodeOverride;
         }
-        // For dark themes, use 256-color gray (242) which is visible but noticeably
-        // dimmer than DEBUG's white (37). Code 90 (bright black) can be invisible
-        // on some dark terminals. For light themes, 90 works well.
-        return theme.isLight() ? 90 : 242;
+        // Use standard ANSI gray (90) for both themes - consistent and widely supported
+        return 90;
     }
 
     /**
@@ -529,7 +527,7 @@ public class TerminalColorCapability {
         if (messageCodeOverride != null) {
             return messageCodeOverride;
         }
-        return theme.isLight() ? 35 : 95; // dark magenta for light bg, bright magenta for dark bg
+        return theme.isLight() ? 30 : 37; // black for light bg, white for dark bg
     }
 
     /**

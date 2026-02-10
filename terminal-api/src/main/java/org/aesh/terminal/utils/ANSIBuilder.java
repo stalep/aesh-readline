@@ -1859,7 +1859,7 @@ public class ANSIBuilder {
             this.textCode = capability.getSuggestedInfoCode();
             this.textRgb = null;
         } else {
-            this.textCode = 94; // bright blue default
+            this.textCode = 96; // bright cyan default
             this.textRgb = null;
         }
         this.text = Color.DEFAULT;
@@ -1902,7 +1902,7 @@ public class ANSIBuilder {
             this.textCode = capability.getSuggestedDebugCode();
             this.textRgb = null;
         } else {
-            this.textCode = 37; // white default (for dark themes)
+            this.textCode = 95; // bright magenta default
             this.textRgb = null;
         }
         this.text = Color.DEFAULT;
@@ -1946,7 +1946,7 @@ public class ANSIBuilder {
             this.textCode = capability.getSuggestedTraceCode();
             this.textRgb = null;
         } else {
-            this.textCode = 242; // 256-color gray default (visible but dimmer than DEBUG)
+            this.textCode = 90; // gray default
             this.textRgb = null;
         }
         this.text = Color.DEFAULT;
@@ -2026,7 +2026,7 @@ public class ANSIBuilder {
             this.textCode = capability.getSuggestedMessageCode();
             this.textRgb = null;
         } else {
-            this.textCode = 95; // bright magenta default
+            this.textCode = 37; // white default
             this.textRgb = null;
         }
         this.text = Color.DEFAULT;

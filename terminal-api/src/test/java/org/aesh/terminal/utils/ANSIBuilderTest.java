@@ -146,15 +146,15 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "93mWarning" + RESET, builder.warning("Warning").toString());
         builder.clear();
-        assertEquals(COLOR_START + "94mInfo" + RESET, builder.info("Info").toString());
+        assertEquals(COLOR_START + "96mInfo" + RESET, builder.info("Info").toString());
         builder.clear();
-        assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
+        assertEquals(COLOR_START + "95mDebug" + RESET, builder.debug("Debug").toString());
         builder.clear();
-        assertEquals(COLOR_START + "38;5;242mTrace" + RESET, builder.trace("Trace").toString());
+        assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
-        assertEquals(COLOR_START + "95mMessage" + RESET, builder.message("Message").toString());
+        assertEquals(COLOR_START + "37mMessage" + RESET, builder.message("Message").toString());
     }
 
     @Test
@@ -168,13 +168,13 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "92mSuccess" + RESET, builder.success("Success").toString());
         builder.clear();
-        assertEquals(COLOR_START + "37mDebug" + RESET, builder.debug("Debug").toString());
+        assertEquals(COLOR_START + "95mDebug" + RESET, builder.debug("Debug").toString());
         builder.clear();
-        assertEquals(COLOR_START + "38;5;242mTrace" + RESET, builder.trace("Trace").toString());
+        assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "96mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
-        assertEquals(COLOR_START + "95mMessage" + RESET, builder.message("Message").toString());
+        assertEquals(COLOR_START + "37mMessage" + RESET, builder.message("Message").toString());
     }
 
     @Test
@@ -188,13 +188,13 @@ public class ANSIBuilderTest {
         builder.clear();
         assertEquals(COLOR_START + "32mSuccess" + RESET, builder.success("Success").toString());
         builder.clear();
-        assertEquals(COLOR_START + "90mDebug" + RESET, builder.debug("Debug").toString());
+        assertEquals(COLOR_START + "35mDebug" + RESET, builder.debug("Debug").toString());
         builder.clear();
         assertEquals(COLOR_START + "90mTrace" + RESET, builder.trace("Trace").toString());
         builder.clear();
         assertEquals(COLOR_START + "36mTimestamp" + RESET, builder.timestamp("Timestamp").toString());
         builder.clear();
-        assertEquals(COLOR_START + "35mMessage" + RESET, builder.message("Message").toString());
+        assertEquals(COLOR_START + "30mMessage" + RESET, builder.message("Message").toString());
     }
 
     @Test
@@ -215,7 +215,7 @@ public class ANSIBuilderTest {
         assertEquals(
                 COLOR_START + "96m10:30:45" + RESET + " " +
                         COLOR_START + "92m[INFO]" + RESET + " " +
-                        COLOR_START + "95mStarted" + RESET,
+                        COLOR_START + "37mStarted" + RESET,
                 result);
     }
 
