@@ -103,7 +103,7 @@ public class TerminalColorCapabilityTest {
         assertEquals(92, cap.getSuggestedInfoCode()); // bright green for dark bg
         assertEquals(96, cap.getSuggestedDebugCode()); // bright cyan for dark bg
         assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
-        assertEquals(96, cap.getSuggestedTimestampCode()); // bright cyan for dark bg
+        assertEquals(252, cap.getSuggestedTimestampCode()); // light gray for dark bg (~rgb 208,208,208)
         assertEquals(37, cap.getSuggestedMessageCode()); // white for dark bg
     }
 
@@ -119,7 +119,7 @@ public class TerminalColorCapabilityTest {
         assertEquals(32, cap.getSuggestedInfoCode()); // dark green for light bg
         assertEquals(36, cap.getSuggestedDebugCode()); // dark cyan for light bg
         assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
-        assertEquals(36, cap.getSuggestedTimestampCode()); // dark cyan for light bg
+        assertEquals(240, cap.getSuggestedTimestampCode()); // dark gray for light bg (~rgb 88,88,88)
         assertEquals(30, cap.getSuggestedMessageCode()); // black for light bg
     }
 
@@ -285,15 +285,15 @@ public class TerminalColorCapabilityTest {
         String coloredMessage = "\u001B[" + msgCode + "m" + message + "\u001B[0m";
 
         // Verify the codes are correct for dark theme
-        assertEquals(96, tsCode); // bright cyan
+        assertEquals(252, tsCode); // light gray (~rgb 208,208,208)
         assertEquals(37, msgCode); // white
 
         // Verify the formatted strings contain the expected escape sequences
-        assertTrue(coloredTimestamp.contains("\u001B[96m"));
+        assertTrue(coloredTimestamp.contains("\u001B[252m"));
         assertTrue(coloredMessage.contains("\u001B[37m"));
 
         // For light terminal, codes should be different (darker variants)
-        assertEquals(36, lightTerminal.getSuggestedTimestampCode()); // dark cyan
+        assertEquals(240, lightTerminal.getSuggestedTimestampCode()); // dark gray (~rgb 88,88,88)
         assertEquals(30, lightTerminal.getSuggestedMessageCode()); // black
     }
 
@@ -403,7 +403,7 @@ public class TerminalColorCapabilityTest {
 
         // Other colors should still use theme-based defaults
         assertEquals(92, custom.getSuggestedSuccessCode()); // bright green for dark
-        assertEquals(96, custom.getSuggestedTimestampCode()); // bright cyan for dark
+        assertEquals(252, custom.getSuggestedTimestampCode()); // light gray for dark
     }
 
     @Test

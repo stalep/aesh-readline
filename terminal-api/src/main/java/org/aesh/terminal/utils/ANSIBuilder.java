@@ -1967,11 +1967,11 @@ public class ANSIBuilder {
     }
 
     /**
-     * Sets the foreground color to the theme-appropriate timestamp color (cyan).
+     * Sets the foreground color to the theme-appropriate timestamp color (gray).
      * <p>
      * Color priority: RGB override > code override > capability > default.
      * <p>
-     * Timestamps use a subdued cyan color that is visible but doesn't
+     * Timestamps use a neutral gray color that is visible but doesn't
      * distract from the main message content.
      *
      * @return this builder for method chaining
@@ -1987,7 +1987,7 @@ public class ANSIBuilder {
             this.textCode = capability.getSuggestedTimestampCode();
             this.textRgb = null;
         } else {
-            this.textCode = 96; // bright cyan default
+            this.textCode = 252; // 256-color light gray default (~rgb 208,208,208)
             this.textRgb = null;
         }
         this.text = Color.DEFAULT;
@@ -1997,7 +1997,7 @@ public class ANSIBuilder {
     }
 
     /**
-     * Appends text with timestamp styling (cyan) and resets.
+     * Appends text with timestamp styling (gray) and resets.
      *
      * @param text the text to append
      * @return this builder for method chaining

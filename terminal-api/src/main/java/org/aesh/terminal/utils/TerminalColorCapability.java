@@ -496,11 +496,12 @@ public class TerminalColorCapability {
      * Get the suggested "timestamp" foreground ANSI color code.
      * <p>
      * If a custom timestamp code was set via the {@link Builder}, it is returned.
-     * Otherwise, returns a cyan variant that is subdued compared to the main message,
-     * commonly used for timestamps in log output.
+     * Otherwise, returns a neutral gray that is subdued compared to the main message,
+     * commonly used for timestamps in log output. Uses 256-color palette grays
+     * to closely match JBoss LogManager's DATE color.
      * <ul>
-     * <li>For dark themes: bright cyan (96)</li>
-     * <li>For light themes: dark cyan (36)</li>
+     * <li>For dark themes: 252 (light gray, ~rgb 208,208,208)</li>
+     * <li>For light themes: 240 (dark gray, ~rgb 88,88,88)</li>
      * </ul>
      *
      * @return ANSI color code for suggested timestamp foreground
@@ -509,7 +510,7 @@ public class TerminalColorCapability {
         if (timestampCodeOverride != null) {
             return timestampCodeOverride;
         }
-        return theme.isLight() ? 36 : 96; // dark cyan for light bg, bright cyan for dark bg
+        return theme.isLight() ? 240 : 252; // dark gray for light bg, light gray for dark bg
     }
 
     /**
