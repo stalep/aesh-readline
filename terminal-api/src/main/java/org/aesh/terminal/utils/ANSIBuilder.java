@@ -1842,7 +1842,7 @@ public class ANSIBuilder {
     }
 
     /**
-     * Sets the foreground color to the theme-appropriate info color (blue/cyan).
+     * Sets the foreground color to the theme-appropriate info color (green).
      * <p>
      * Color priority: RGB override > code override > capability > default.
      *
@@ -1859,7 +1859,7 @@ public class ANSIBuilder {
             this.textCode = capability.getSuggestedInfoCode();
             this.textRgb = null;
         } else {
-            this.textCode = 96; // bright cyan default
+            this.textCode = 92; // bright green default
             this.textRgb = null;
         }
         this.text = Color.DEFAULT;
@@ -1869,7 +1869,7 @@ public class ANSIBuilder {
     }
 
     /**
-     * Appends text with info styling (blue/cyan) and resets.
+     * Appends text with info styling (green) and resets.
      *
      * @param text the text to append
      * @return this builder for method chaining
@@ -1879,14 +1879,15 @@ public class ANSIBuilder {
     }
 
     /**
-     * Sets the foreground color to the theme-appropriate debug color.
+     * Sets the foreground color to the theme-appropriate debug color (cyan).
      * <p>
      * Color priority: RGB override > code override > capability > default.
      * <p>
-     * Debug uses a subdued color that is less prominent than info level:
+     * Debug uses cyan, aligning with JBoss LogManager's color spectrum
+     * where DEBUG maps to teal/cyan:
      * <ul>
-     * <li>For dark themes: white (37) - visible but not colorful</li>
-     * <li>For light themes: gray (90) - subdued</li>
+     * <li>For dark themes: bright cyan (96)</li>
+     * <li>For light themes: dark cyan (36)</li>
      * </ul>
      *
      * @return this builder for method chaining
@@ -1902,7 +1903,7 @@ public class ANSIBuilder {
             this.textCode = capability.getSuggestedDebugCode();
             this.textRgb = null;
         } else {
-            this.textCode = 95; // bright magenta default
+            this.textCode = 96; // bright cyan default
             this.textRgb = null;
         }
         this.text = Color.DEFAULT;

@@ -440,7 +440,8 @@ public class TerminalColorCapability {
      * Get the suggested "info" foreground ANSI color code.
      * <p>
      * If a custom info code was set via the {@link Builder}, it is returned.
-     * Otherwise, returns a cyan/blue variant that contrasts well with the detected background.
+     * Otherwise, returns a green variant that contrasts well with the detected background.
+     * Aligns with JBoss LogManager's color spectrum where INFO maps to yellow-green.
      *
      * @return ANSI color code for suggested info foreground
      */
@@ -448,17 +449,18 @@ public class TerminalColorCapability {
         if (infoCodeOverride != null) {
             return infoCodeOverride;
         }
-        return theme.isLight() ? 36 : 96; // dark cyan for light bg, bright cyan for dark bg
+        return theme.isLight() ? 32 : 92; // dark green for light bg, bright green for dark bg
     }
 
     /**
      * Get the suggested "debug" foreground ANSI color code.
      * <p>
      * If a custom debug code was set via the {@link Builder}, it is returned.
-     * Otherwise, returns a subdued color for debug-level log messages:
+     * Otherwise, returns a cyan variant for debug-level log messages.
+     * Aligns with JBoss LogManager's color spectrum where DEBUG maps to teal/cyan.
      * <ul>
-     * <li>For dark themes: white (37) - visible but not colorful</li>
-     * <li>For light themes: bright black/gray (90) - subdued</li>
+     * <li>For dark themes: bright cyan (96)</li>
+     * <li>For light themes: dark cyan (36)</li>
      * </ul>
      *
      * @return ANSI color code for suggested debug foreground
@@ -467,7 +469,7 @@ public class TerminalColorCapability {
         if (debugCodeOverride != null) {
             return debugCodeOverride;
         }
-        return theme.isLight() ? 35 : 95; // dark magenta for light bg, bright magenta for dark bg
+        return theme.isLight() ? 36 : 96; // dark cyan for light bg, bright cyan for dark bg
     }
 
     /**

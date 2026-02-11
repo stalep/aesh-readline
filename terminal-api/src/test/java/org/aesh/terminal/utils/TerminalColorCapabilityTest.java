@@ -100,8 +100,8 @@ public class TerminalColorCapabilityTest {
         assertEquals(91, cap.getSuggestedErrorCode()); // bright red for dark bg
         assertEquals(92, cap.getSuggestedSuccessCode()); // bright green for dark bg
         assertEquals(93, cap.getSuggestedWarningCode()); // bright yellow for dark bg
-        assertEquals(96, cap.getSuggestedInfoCode()); // bright cyan for dark bg
-        assertEquals(95, cap.getSuggestedDebugCode()); // bright magenta for dark bg
+        assertEquals(92, cap.getSuggestedInfoCode()); // bright green for dark bg
+        assertEquals(96, cap.getSuggestedDebugCode()); // bright cyan for dark bg
         assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
         assertEquals(96, cap.getSuggestedTimestampCode()); // bright cyan for dark bg
         assertEquals(37, cap.getSuggestedMessageCode()); // white for dark bg
@@ -116,8 +116,8 @@ public class TerminalColorCapabilityTest {
         assertEquals(31, cap.getSuggestedErrorCode()); // dark red for light bg
         assertEquals(32, cap.getSuggestedSuccessCode()); // dark green for light bg
         assertEquals(33, cap.getSuggestedWarningCode()); // dark yellow for light bg
-        assertEquals(36, cap.getSuggestedInfoCode()); // dark cyan for light bg
-        assertEquals(35, cap.getSuggestedDebugCode()); // dark magenta for light bg
+        assertEquals(32, cap.getSuggestedInfoCode()); // dark green for light bg
+        assertEquals(36, cap.getSuggestedDebugCode()); // dark cyan for light bg
         assertEquals(90, cap.getSuggestedTraceCode()); // gray for all themes
         assertEquals(36, cap.getSuggestedTimestampCode()); // dark cyan for light bg
         assertEquals(30, cap.getSuggestedMessageCode()); // black for light bg
@@ -316,15 +316,15 @@ public class TerminalColorCapabilityTest {
         int traceCode = darkTerminal.getSuggestedTraceCode();
 
         // Verify the codes are correct for dark theme
-        assertEquals(95, debugCode); // bright magenta
+        assertEquals(96, debugCode); // bright cyan
         assertEquals(90, traceCode); // gray for all themes
 
         // For light terminal, debug and trace use dark colors
-        assertEquals(35, lightTerminal.getSuggestedDebugCode()); // dark magenta
+        assertEquals(36, lightTerminal.getSuggestedDebugCode()); // dark cyan
         assertEquals(90, lightTerminal.getSuggestedTraceCode()); // gray (visible on light bg)
 
-        // Log level color hierarchy (most to least prominent):
-        // ERROR (91/31) > WARN (93/33) > INFO (96/36) > DEBUG (95/35) > TRACE (90)
+        // Log level color hierarchy follows JBoss LogManager spectrum (red to blue):
+        // ERROR (91/31) > WARN (93/33) > INFO (92/32) > DEBUG (96/36) > TRACE (90)
         int errorCode = darkTerminal.getSuggestedErrorCode();
         int warnCode = darkTerminal.getSuggestedWarningCode();
         int infoCode = darkTerminal.getSuggestedInfoCode();
@@ -332,8 +332,8 @@ public class TerminalColorCapabilityTest {
         // Verify the hierarchy - bright colors for dark theme
         assertEquals(91, errorCode); // bright red
         assertEquals(93, warnCode); // bright yellow
-        assertEquals(96, infoCode); // bright cyan
-        assertEquals(95, debugCode); // bright magenta
+        assertEquals(92, infoCode); // bright green
+        assertEquals(96, debugCode); // bright cyan
         assertEquals(90, traceCode); // gray (least prominent)
     }
 
