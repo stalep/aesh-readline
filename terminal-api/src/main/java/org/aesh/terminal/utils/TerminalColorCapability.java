@@ -588,9 +588,10 @@ public class TerminalColorCapability {
             if (parts.length >= 2) {
                 try {
                     int bg = Integer.parseInt(parts[parts.length - 1]);
-                    // Colors 0, 1, 2, 3, 4, 5, 6 are typically dark
-                    // Colors 7 and above are typically light
-                    return bg < 7 ? TerminalTheme.DARK : TerminalTheme.LIGHT;
+                    // Colors 0-6 are dark, 8 is bright black (also dark)
+                    // Color 7 (white) and 9-15 (bright colors) are light
+                    boolean isDark = bg < 7 || bg == 8;
+                    return isDark ? TerminalTheme.DARK : TerminalTheme.LIGHT;
                 } catch (NumberFormatException e) {
                     // Ignore, continue with other methods
                 }

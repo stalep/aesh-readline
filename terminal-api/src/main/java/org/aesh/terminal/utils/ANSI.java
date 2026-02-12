@@ -301,15 +301,13 @@ public class ANSI {
     private static int getAsciiSize(int value) {
         if (value < 10)
             return 1;
-        //very simple way of getting the length
-        if (value > 9 && value < 99)
+        if (value < 100)
             return 2;
-        else if (value > 99 && value < 999)
+        if (value < 1000)
             return 3;
-        else if (value > 999 && value < 9999)
+        if (value < 10000)
             return 4;
-        else
-            return 5;
+        return 5;
     }
 
     /**

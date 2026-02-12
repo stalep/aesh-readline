@@ -45,7 +45,6 @@ public class WinExternalTerminal extends ExternalTerminal {
             throws IOException {
         super(name, type, masterInput, masterOutput);
         Attributes attributes = new Attributes();
-        attributes.setInputFlag(Attributes.InputFlag.IGNCR, true);
         attributes.setInputFlag(Attributes.InputFlag.ICRNL, true);
         setAttributes(attributes);
     }

@@ -69,7 +69,7 @@ public final class Signals {
                             return null;
                         }
                     });
-            doRegister(name, signalHandler);
+            return doRegister(name, signalHandler);
         } catch (Exception e) {
             // Ignore this one too, if the above failed, the signal API is incompatible with what we're expecting
         }
@@ -86,7 +86,7 @@ public final class Signals {
     public static Object registerDefault(String name) {
         try {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
-            doRegister(name, signalHandlerClass.getField("SIG_DFL").get(null));
+            return doRegister(name, signalHandlerClass.getField("SIG_DFL").get(null));
         } catch (Exception e) {
             // Ignore this one too, if the above failed, the signal API is incompatible with what we're expecting
         }
@@ -103,7 +103,7 @@ public final class Signals {
     public static Object registerIgnore(String name) {
         try {
             Class<?> signalHandlerClass = Class.forName("sun.misc.SignalHandler");
-            doRegister(name, signalHandlerClass.getField("SIG_IGN").get(null));
+            return doRegister(name, signalHandlerClass.getField("SIG_IGN").get(null));
         } catch (Exception e) {
             // Ignore this one too, if the above failed, the signal API is incompatible with what we're expecting
         }

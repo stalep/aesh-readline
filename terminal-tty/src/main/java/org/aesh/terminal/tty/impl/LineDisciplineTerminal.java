@@ -266,7 +266,14 @@ public class LineDisciplineTerminal extends AbstractTerminal {
 
         @Override
         public void write(byte[] b) throws IOException {
-            masterOutput.write(b);
+            write(b, 0, b.length);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            for (int i = off; i < off + len; i++) {
+                processOutputByte(b[i]);
+            }
         }
 
         @Override
