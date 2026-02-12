@@ -82,10 +82,15 @@ public final class TerminalColorDetector {
     private static final String OSC_QUERY_BACKGROUND = "\u001B]11;?\u0007";
 
     /**
-     * Default timeout for OSC queries in milliseconds.
-     * Terminal responses can take 200-500ms depending on the terminal and system load.
+     * Default timeout for full OSC queries (FG + BG + cursor + palette) in milliseconds.
      */
     private static final long DEFAULT_TIMEOUT_MS = 500;
+
+    /**
+     * Timeout for fast OSC queries (FG + BG only) in milliseconds.
+     * Modern terminals respond within a few milliseconds, so this is generous.
+     */
+    private static final long FAST_TIMEOUT_MS = 150;
 
     private TerminalColorDetector() {
         // Utility class
@@ -139,8 +144,10 @@ public final class TerminalColorDetector {
     /**
      * Detect terminal color capabilities using all available methods.
      * <p>
-     * This method combines environment variable detection, terminfo database,
-     * and optional OSC terminal queries for the most complete detection.
+     * This method performs a fast detection that queries only foreground and
+     * background colors (OSC 10/11). This is sufficient for theme detection
+     * and is significantly faster than {@link #detectFull(Connection)} which
+     * also queries cursor and palette colors.
      *
      * @param connection the terminal connection
      * @return detected color capabilities
@@ -151,6 +158,10 @@ public final class TerminalColorDetector {
 
     /**
      * Detect terminal color capabilities.
+     * <p>
+     * When {@code queryTerminal} is true, this performs a fast OSC query for
+     * foreground and background colors only. For full detection including
+     * cursor and palette colors, use {@link #detectFull(Connection)}.
      *
      * @param connection the terminal connection
      * @param queryTerminal if true, send OSC queries to the terminal to detect
@@ -158,6 +169,34 @@ public final class TerminalColorDetector {
      * @return detected color capabilities
      */
     public static TerminalColorCapability detect(Connection connection, boolean queryTerminal) {
+        return doDetect(connection, queryTerminal, false);
+    }
+
+    /**
+     * Detect terminal color capabilities including cursor and all 16 palette colors.
+     * <p>
+     * This performs a comprehensive detection by querying OSC 10 (foreground),
+     * OSC 11 (background), OSC 12 (cursor), and OSC 4 (palette colors 0-15).
+     * This is slower than {@link #detect(Connection)} but provides full color
+     * information.
+     *
+     * @param connection the terminal connection
+     * @return detected color capabilities including palette colors
+     */
+    public static TerminalColorCapability detectFull(Connection connection) {
+        return doDetect(connection, true, true);
+    }
+
+    /**
+     * Internal detection method.
+     *
+     * @param connection the terminal connection
+     * @param queryTerminal if true, send OSC queries to the terminal
+     * @param fullDetection if true, also query cursor and palette colors
+     * @return detected color capabilities
+     */
+    private static TerminalColorCapability doDetect(Connection connection, boolean queryTerminal,
+            boolean fullDetection) {
         ColorDepth colorDepth = detectColorDepth(connection);
         TerminalTheme theme = TerminalTheme.UNKNOWN;
         int[] foregroundRGB = null;
@@ -167,9 +206,13 @@ public final class TerminalColorDetector {
 
         if (queryTerminal && connection != null && connection.supportsAnsi()) {
             try {
-                // Use the Connection's synchronous query method
-                // This uses direct terminal I/O and doesn't require an active reading thread
-                TerminalColorCapability queryResult = connection.queryColorCapability(DEFAULT_TIMEOUT_MS);
+                long timeoutMs = fullDetection ? DEFAULT_TIMEOUT_MS : FAST_TIMEOUT_MS;
+                TerminalColorCapability queryResult;
+                if (fullDetection) {
+                    queryResult = connection.queryColorCapability(timeoutMs);
+                } else {
+                    queryResult = queryThemeColors(connection, timeoutMs);
+                }
                 if (queryResult != null) {
                     foregroundRGB = queryResult.getForegroundRGB();
                     backgroundRGB = queryResult.getBackgroundRGB();
@@ -300,6 +343,63 @@ public final class TerminalColorDetector {
     }
 
     /**
+     * Fast query for theme-relevant colors only (foreground and background).
+     * <p>
+     * This method only sends OSC 10 and OSC 11 queries, expecting just 2 responses.
+     * This is significantly faster than {@link #queryColorCapability} which also
+     * queries cursor color and 16 palette colors (19 responses total).
+     *
+     * @param connection the terminal connection (must be a TerminalConnection)
+     * @param timeoutMs timeout in milliseconds
+     * @return TerminalColorCapability with FG/BG colors, or null if not supported
+     */
+    public static TerminalColorCapability queryThemeColors(Connection connection, long timeoutMs) {
+        if (connection == null || !connection.supportsAnsi()) {
+            return null;
+        }
+
+        Terminal terminal = null;
+        if (connection instanceof TerminalConnection) {
+            terminal = ((TerminalConnection) connection).getTerminal();
+        }
+        if (terminal == null) {
+            return null;
+        }
+
+        // Check for terminals that don't support OSC queries
+        String terminalEmulator = System.getenv("TERMINAL_EMULATOR");
+        if (terminalEmulator != null &&
+                terminalEmulator.toLowerCase().contains("jetbrains")) {
+            return null;
+        }
+
+        boolean inTmux = isRunningInTmux();
+
+        if (!inTmux) {
+            Device device = connection.device();
+            if (device != null && !device.supportsOscQueries()) {
+                return null;
+            }
+        }
+
+        // Fast path: only query FG + BG (no cursor, no palette)
+        LOGGER.log(Level.FINE, "Trying fast OSC color query (FG+BG only)");
+        TerminalColorCapability result = doSynchronousColorQuery(
+                connection, terminal, timeoutMs, false, false, false);
+
+        if (result == null || !hasColors(result)) {
+            // Try tmux DCS passthrough if in tmux
+            if (inTmux && shouldUseTmuxPassthrough()) {
+                LOGGER.log(Level.FINE, "Trying tmux DCS passthrough for FG+BG");
+                result = doSynchronousColorQuery(
+                        connection, terminal, timeoutMs, false, false, true);
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Check if any colors were detected.
      */
     private static boolean hasColors(TerminalColorCapability cap) {
@@ -376,8 +476,10 @@ public final class TerminalColorDetector {
                 }
             }
 
-            // Drain any remaining input to prevent leakage
-            drainInput(input, 100);
+            // Drain any remaining input to prevent leakage.
+            // Use a short timeout — we just need to catch trailing bytes, not wait for
+            // responses that haven't arrived yet.
+            drainInput(input, 20);
 
             // Parse the collected responses
             String responseStr = response.toString();

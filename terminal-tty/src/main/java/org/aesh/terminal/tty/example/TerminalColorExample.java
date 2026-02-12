@@ -96,9 +96,14 @@ public class TerminalColorExample {
         TerminalColorCapability envCap = TerminalColorCapability.detectFromEnvironment();
         long envTime = System.currentTimeMillis() - envStart;
 
-        // Detect with OSC queries for full capability
+        // Fast detect (FG+BG only, for theme detection)
+        long fastStart = System.currentTimeMillis();
+        TerminalColorCapability fastCap = TerminalColorDetector.detect(connection);
+        long fastTime = System.currentTimeMillis() - fastStart;
+
+        // Full detect (FG+BG+cursor+palette)
         long fullStart = System.currentTimeMillis();
-        TerminalColorCapability fullCap = TerminalColorDetector.detect(connection);
+        TerminalColorCapability fullCap = TerminalColorDetector.detectFull(connection);
         long fullTime = System.currentTimeMillis() - fullStart;
 
         // Create a single reusable ANSIBuilder with the detected capability
@@ -110,7 +115,7 @@ public class TerminalColorExample {
 
         // First, show environment-based detection (fast, no terminal query)
         builder.reset();
-        connection.write(builder.bold("1. Environment-Based Detection (Fast)").toLine());
+        connection.write(builder.bold("1. Environment-Based Detection").toLine());
         connection.write("   This uses environment variables only, no terminal queries.\n");
         connection.write("   Detection time: " + envTime + "ms\n");
         connection.write("\n");
@@ -119,8 +124,17 @@ public class TerminalColorExample {
 
         connection.write("\n");
         builder.reset();
-        connection.write(builder.bold("2. Full Detection with Terminal Query").toLine());
-        connection.write("   This queries the terminal for actual colors using OSC sequences.\n");
+        connection.write(builder.bold("2. Fast Detection (FG+BG only)").toLine());
+        connection.write("   Queries only foreground and background colors (OSC 10/11).\n");
+        connection.write("   Detection time: " + fastTime + "ms\n");
+        connection.write("\n");
+
+        printCapability(connection, "   ", fastCap);
+
+        connection.write("\n");
+        builder.reset();
+        connection.write(builder.bold("3. Full Detection (FG+BG+cursor+palette)").toLine());
+        connection.write("   Queries all colors including cursor and 16 palette colors.\n");
         connection.write("   Detection time: " + fullTime + "ms\n");
         connection.write("\n");
 
@@ -128,7 +142,7 @@ public class TerminalColorExample {
 
         connection.write("\n");
         builder.reset();
-        connection.write(builder.bold("3. Color Demonstration").toLine());
+        connection.write(builder.bold("4. Color Demonstration").toLine());
         connection.write("   Using suggested colors based on detected theme:\n");
         connection.write("\n");
 
@@ -136,14 +150,14 @@ public class TerminalColorExample {
 
         connection.write("\n");
         builder.reset();
-        connection.write(builder.bold("4. Color Depth Capabilities").toLine());
+        connection.write(builder.bold("5. Color Depth Capabilities").toLine());
         connection.write("\n");
 
         demonstrateColorDepth(connection, builder, fullCap.getColorDepth());
 
         connection.write("\n");
         builder.reset();
-        connection.write(builder.bold("5. Environment Variables").toLine());
+        connection.write(builder.bold("6. Environment Variables").toLine());
         connection.write("\n");
         printEnvironmentVariables(connection, builder);
 
