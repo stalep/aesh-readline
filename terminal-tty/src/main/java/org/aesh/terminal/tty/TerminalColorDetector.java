@@ -340,6 +340,9 @@ public final class TerminalColorDetector {
             String combinedQuery = buildSyncColorQuery(supportsCursor, supportsPalette, useDcsPassthrough);
             connection.stdoutHandler().accept(combinedQuery.codePoints().toArray());
 
+            // Flush to ensure the query reaches the terminal before we start reading
+            terminal.output().flush();
+
             // Calculate expected responses
             int expectedResponses = 2; // FG + BG
             if (supportsCursor)
@@ -623,14 +626,20 @@ public final class TerminalColorDetector {
         if (!isJetBrainsTerminal && !isVSCodeTerminal) {
             String colorfgbg = System.getenv("COLORFGBG");
             if (colorfgbg != null) {
-                // Format is typically "fg;bg" where values < 7 are dark, >= 7 are light
+                // Format is typically "fg;bg" where values are ANSI color indices
                 String[] parts = colorfgbg.split(";");
                 if (parts.length >= 2) {
                     try {
                         int bg = Integer.parseInt(parts[parts.length - 1]);
-                        // Colors 0, 1, 2, 3, 4, 5, 6 are typically dark
-                        // Colors 7 and above are typically light
-                        return bg < 7 ? TerminalTheme.DARK : TerminalTheme.LIGHT;
+                        // ANSI color indices and their typical brightness:
+                        // 0 (black), 1 (red), 2 (green), 3 (yellow), 4 (blue),
+                        // 5 (magenta), 6 (cyan) = dark backgrounds
+                        // 7 (white/light gray) = light background
+                        // 8 (bright black/dark gray) = dark background
+                        // 9-14 (bright colors) = light backgrounds
+                        // 15 (bright white) = light background
+                        boolean isDark = bg < 7 || bg == 8;
+                        return isDark ? TerminalTheme.DARK : TerminalTheme.LIGHT;
                     } catch (NumberFormatException e) {
                         // Ignore, continue with other methods
                     }
@@ -646,6 +655,17 @@ public final class TerminalColorDetector {
                     : TerminalTheme.LIGHT;
         }
 
+        // macOS fallback: query system dark mode via 'defaults read' command.
+        // Some terminals (e.g., kitty) don't propagate APPLE_INTERFACE_STYLE as
+        // an environment variable, but the system setting is still accessible.
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        if (osName.contains("mac")) {
+            TerminalTheme macTheme = detectMacOsDarkMode();
+            if (macTheme != TerminalTheme.UNKNOWN) {
+                return macTheme;
+            }
+        }
+
         // Check for Alacritty terminal
         String term = System.getenv("TERM");
         if (term != null && term.toLowerCase().contains("alacritty")) {
@@ -656,7 +676,6 @@ public final class TerminalColorDetector {
         }
 
         // Check Windows-specific detection
-        String osName = System.getProperty("os.name", "").toLowerCase();
         if (osName.contains("win")) {
             // Try Windows Terminal settings first
             TerminalTheme theme = detectWindowsTerminalTheme();
@@ -1264,6 +1283,57 @@ public final class TerminalColorDetector {
      *
      * @return the detected theme, or UNKNOWN if not detectable
      */
+    /**
+     * Detect macOS system dark mode using 'defaults read' command.
+     * <p>
+     * On macOS, the system appearance setting can be queried via:
+     * {@code defaults read -g AppleInterfaceStyle}
+     * <p>
+     * This returns "Dark" when dark mode is active, and exits with a non-zero
+     * status (key not found) when light mode is active.
+     * <p>
+     * This is more reliable than checking the APPLE_INTERFACE_STYLE environment
+     * variable, which some terminal emulators (e.g., kitty) do not propagate
+     * to child processes.
+     *
+     * @return the detected theme, or UNKNOWN if detection fails
+     */
+    private static TerminalTheme detectMacOsDarkMode() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("defaults", "read", "-g", "AppleInterfaceStyle");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            StringBuilder output = new StringBuilder();
+            byte[] buffer = new byte[256];
+            java.io.InputStream is = process.getInputStream();
+            int read;
+            while ((read = is.read(buffer)) != -1) {
+                output.append(new String(buffer, 0, read));
+            }
+
+            int exitCode = process.waitFor();
+            String result = output.toString().trim();
+
+            if (exitCode == 0 && "Dark".equalsIgnoreCase(result)) {
+                LOGGER.log(Level.FINE, "macOS dark mode detected via defaults read");
+                return TerminalTheme.DARK;
+            } else if (exitCode != 0) {
+                // Key not found means light mode (AppleInterfaceStyle is only
+                // present when dark mode is active)
+                LOGGER.log(Level.FINE, "macOS light mode detected via defaults read (key not found)");
+                return TerminalTheme.LIGHT;
+            } else {
+                // exitCode == 0 but value is not "Dark" - treat as light
+                LOGGER.log(Level.FINE, "macOS light mode detected via defaults read: " + result);
+                return TerminalTheme.LIGHT;
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Failed to detect macOS dark mode via defaults read", e);
+            return TerminalTheme.UNKNOWN;
+        }
+    }
+
     private static TerminalTheme detectAlacrittyTheme() {
         String userHome = System.getProperty("user.home");
         if (userHome == null) {

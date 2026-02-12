@@ -559,14 +559,29 @@ public class ANSI {
             for (int i = 0; i < 3; i++) {
                 String hex = parts[i].trim();
                 int value;
-                if (hex.length() == 4) {
-                    // 4-digit hex (e.g., FFFF), take high byte
-                    value = Integer.parseInt(hex, 16) >> 8;
-                } else if (hex.length() == 2) {
-                    // 2-digit hex
-                    value = Integer.parseInt(hex, 16);
-                } else {
+                if (hex.isEmpty() || hex.length() > 4) {
                     return null;
+                }
+                int raw = Integer.parseInt(hex, 16);
+                switch (hex.length()) {
+                    case 1:
+                        // 1-digit hex (e.g., F), scale from 0-15 to 0-255
+                        value = raw * 17; // 0x0 -> 0, 0xF -> 255
+                        break;
+                    case 2:
+                        // 2-digit hex (e.g., FF)
+                        value = raw;
+                        break;
+                    case 3:
+                        // 3-digit hex (e.g., FFF), take high byte
+                        value = raw >> 4;
+                        break;
+                    case 4:
+                        // 4-digit hex (e.g., FFFF), take high byte
+                        value = raw >> 8;
+                        break;
+                    default:
+                        return null;
                 }
                 rgb[i] = Math.min(255, Math.max(0, value));
             }
@@ -703,14 +718,29 @@ public class ANSI {
             for (int i = 0; i < 3; i++) {
                 String hex = parts[i].trim();
                 int value;
-                if (hex.length() == 4) {
-                    // 4-digit hex (e.g., FFFF), take high byte
-                    value = Integer.parseInt(hex, 16) >> 8;
-                } else if (hex.length() == 2) {
-                    // 2-digit hex
-                    value = Integer.parseInt(hex, 16);
-                } else {
+                if (hex.isEmpty() || hex.length() > 4) {
                     return null;
+                }
+                int raw = Integer.parseInt(hex, 16);
+                switch (hex.length()) {
+                    case 1:
+                        // 1-digit hex (e.g., F), scale from 0-15 to 0-255
+                        value = raw * 17; // 0x0 -> 0, 0xF -> 255
+                        break;
+                    case 2:
+                        // 2-digit hex (e.g., FF)
+                        value = raw;
+                        break;
+                    case 3:
+                        // 3-digit hex (e.g., FFF), take high byte
+                        value = raw >> 4;
+                        break;
+                    case 4:
+                        // 4-digit hex (e.g., FFFF), take high byte
+                        value = raw >> 8;
+                        break;
+                    default:
+                        return null;
                 }
                 rgb[i] = Math.min(255, Math.max(0, value));
             }

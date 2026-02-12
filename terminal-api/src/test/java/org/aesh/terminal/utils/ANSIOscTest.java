@@ -107,6 +107,34 @@ public class ANSIOscTest {
     }
 
     @Test
+    public void testParseOscColorResponse_With1DigitHex() {
+        // X11 color spec allows 1-digit hex per channel
+        String response = "\u001B]10;rgb:F/8/0\u0007";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, 10);
+
+        assertNotNull("Should parse 1-digit hex response", rgb);
+        assertEquals(255, rgb[0]); // F * 17 = 255
+        assertEquals(136, rgb[1]); // 8 * 17 = 136
+        assertEquals(0, rgb[2]); // 0 * 17 = 0
+    }
+
+    @Test
+    public void testParseOscColorResponse_With3DigitHex() {
+        // X11 color spec allows 3-digit hex per channel
+        String response = "\u001B]11;rgb:FFF/800/000\u0007";
+        int[] input = response.codePoints().toArray();
+
+        int[] rgb = ANSI.parseOscColorResponse(input, 11);
+
+        assertNotNull("Should parse 3-digit hex response", rgb);
+        assertEquals(255, rgb[0]); // FFF >> 4 = 255
+        assertEquals(128, rgb[1]); // 800 >> 4 = 128
+        assertEquals(0, rgb[2]); // 000 >> 4 = 0
+    }
+
+    @Test
     public void testParseOscColorResponse_WithSTTerminator() {
         // Some terminals use ESC \ as terminator instead of BEL
         String response = "\u001B]10;rgb:FFFF/0000/FFFF\u001B\\";
