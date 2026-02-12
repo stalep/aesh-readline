@@ -31,9 +31,8 @@ public class Config {
         // utility class
     }
 
-    private static final boolean macOS = System.getProperty("os.name").startsWith("Mac") ||
-            System.getProperty("os.name").startsWith("darwin");
-    private static final boolean windows = System.getProperty("os.name").startsWith("Windows");
+    private static final boolean macOS = OSUtils.IS_OSX;
+    private static final boolean windows = OSUtils.IS_WINDOWS;
     private static final String lineSeparator = System.getProperty("line.separator");
     private static final String pathSeparator = System.getProperty("file.separator");
     private static final String tmpDir = System.getProperty("java.io.tmpdir");

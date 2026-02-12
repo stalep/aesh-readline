@@ -548,45 +548,7 @@ public class ANSI {
 
         // Parse RRRR/GGGG/BBBB
         String[] parts = rgbPart.split("/");
-        if (parts.length != 3) {
-            return null;
-        }
-
-        try {
-            int[] rgb = new int[3];
-            for (int i = 0; i < 3; i++) {
-                String hex = parts[i].trim();
-                int value;
-                if (hex.isEmpty() || hex.length() > 4) {
-                    return null;
-                }
-                int raw = Integer.parseInt(hex, 16);
-                switch (hex.length()) {
-                    case 1:
-                        // 1-digit hex (e.g., F), scale from 0-15 to 0-255
-                        value = raw * 17; // 0x0 -> 0, 0xF -> 255
-                        break;
-                    case 2:
-                        // 2-digit hex (e.g., FF)
-                        value = raw;
-                        break;
-                    case 3:
-                        // 3-digit hex (e.g., FFF), take high byte
-                        value = raw >> 4;
-                        break;
-                    case 4:
-                        // 4-digit hex (e.g., FFFF), take high byte
-                        value = raw >> 8;
-                        break;
-                    default:
-                        return null;
-                }
-                rgb[i] = Math.min(255, Math.max(0, value));
-            }
-            return rgb;
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return parseHexRgbParts(parts);
     }
 
     /**
@@ -707,6 +669,18 @@ public class ANSI {
 
         // Parse RRRR/GGGG/BBBB
         String[] parts = rgbPart.split("/");
+        return parseHexRgbParts(parts);
+    }
+
+    /**
+     * Parse hex RGB parts from an OSC color response.
+     * <p>
+     * Handles 1-4 digit hex values per component, scaling to 0-255 range.
+     *
+     * @param parts the split RGB hex strings (expected length 3)
+     * @return RGB array [r, g, b] (0-255 each), or null if parsing failed
+     */
+    private static int[] parseHexRgbParts(String[] parts) {
         if (parts.length != 3) {
             return null;
         }

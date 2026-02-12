@@ -29,12 +29,9 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.tty.Size;
@@ -47,11 +44,9 @@ import org.aesh.terminal.utils.OSUtils;
  * PTY implementation that uses external commands (stty, tty) to interact with the terminal.
  * This is the default PTY implementation for POSIX systems.
  */
-public class ExecPty implements Pty {
+public class ExecPty extends AbstractExecPty {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(ExecPty.class.getName());
-
-    private final String name;
 
     private final boolean validTTYFile;
     private static final String NOT_A_TTY = "not a tty";
@@ -84,7 +79,7 @@ public class ExecPty implements Pty {
      * @param name the name of the TTY device
      */
     protected ExecPty(String name) {
-        this.name = name;
+        super(name);
         /*
          * There are some contexts (eg lxc container) in which tty returns 'not a tty' without
          * error. This file shouldn't exist on the file system but in case it exists
@@ -92,29 +87,6 @@ public class ExecPty implements Pty {
          */
         validTTYFile = new File(name).exists() && !NOT_A_TTY.equals(name);
         LOGGER.log(Level.FINE, "tty file " + name + " valid? " + validTTYFile);
-    }
-
-    @Override
-    public void close() throws IOException {
-    }
-
-    /**
-     * Returns the name of the TTY device.
-     *
-     * @return the TTY device name
-     */
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public InputStream getMasterInput() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public OutputStream getMasterOutput() {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -340,91 +312,6 @@ public class ExecPty implements Pty {
         return null;
     }
 
-    static Attributes doGetAttr(String cfg) throws IOException {
-        Attributes attributes = new Attributes();
-        for (Attributes.InputFlag flag : Attributes.InputFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setInputFlag(flag, value);
-            }
-        }
-        for (Attributes.OutputFlag flag : Attributes.OutputFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setOutputFlag(flag, value);
-            }
-        }
-        for (Attributes.ControlFlag flag : Attributes.ControlFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setControlFlag(flag, value);
-            }
-        }
-        for (Attributes.LocalFlag flag : Attributes.LocalFlag.values()) {
-            Boolean value = doGetFlag(cfg, flag);
-            if (value != null) {
-                attributes.setLocalFlag(flag, value);
-            }
-        }
-        for (Attributes.ControlChar cchar : Attributes.ControlChar.values()) {
-            String name = cchar.name().toLowerCase().substring(1);
-            if ("reprint".endsWith(name)) {
-                name = "(?:reprint|rprnt)";
-            }
-            Matcher matcher = Pattern.compile("[\\s;]" + name + "\\s*=\\s*(.+?)[\\s;]").matcher(cfg);
-            if (matcher.find()) {
-                attributes.setControlChar(cchar, parseControlChar(matcher.group(1).toUpperCase()));
-            }
-        }
-        return attributes;
-    }
-
-    private static Boolean doGetFlag(String cfg, Enum<?> flag) {
-        Matcher matcher = Pattern.compile("(?:^|[\\s;])(\\-?" + flag.name().toLowerCase() + ")(?:[\\s;]|$)").matcher(cfg);
-        return matcher.find() ? !matcher.group(1).startsWith("-") : null;
-    }
-
-    static int parseControlChar(String str) {
-        // octal
-        if (str.charAt(0) == '0') {
-            return Integer.parseInt(str, 8);
-        }
-        // decimal
-        if (str.charAt(0) >= '1' && str.charAt(0) <= '9') {
-            return Integer.parseInt(str, 10);
-        }
-        // control char
-        if (str.charAt(0) == '^') {
-            if (str.charAt(1) == '?') {
-                return 127;
-            } else {
-                return str.charAt(1) - 64;
-            }
-        } else if (str.charAt(0) == 'M' && str.charAt(1) == '-') {
-            if (str.charAt(2) == '^') {
-                if (str.charAt(3) == '?') {
-                    return 127 + 128;
-                } else {
-                    return str.charAt(3) - 64 + 128;
-                }
-            } else {
-                return str.charAt(2) + 128;
-            }
-        }
-        // undef
-        if ("<UNDEF>".equals(str) || "<undef>".equals(str)) {
-            return -1;
-        }
-        // del
-        if ("DEL".equalsIgnoreCase(str)) {
-            return 127;
-        }
-
-        else {
-            return str.charAt(0);
-        }
-    }
-
     /**
      * There is only a 4 line output from ttytype -s:
      * TERM='vt200'; export TERM;
@@ -444,43 +331,6 @@ public class ExecPty implements Pty {
     private static Size doGetOptimalSize(String cfg) throws IOException {
         final String[] size = cfg.split(" ");
         return new Size(Integer.parseInt(size[1].trim()), Integer.parseInt(size[0].trim()));
-    }
-
-    static Size doGetSize(String cfg) throws IOException {
-        return new Size(doGetInt("columns", cfg), doGetInt("rows", cfg));
-    }
-
-    private static int doGetInt(String name, String cfg) throws IOException {
-        String[] patterns = new String[] {
-                "\\b([0-9]+)\\s+" + name + "\\b",
-                "\\b" + name + "\\s+([0-9]+)\\b",
-                "\\b" + name + "\\s*=\\s*([0-9]+)\\b"
-        };
-        for (String pattern : patterns) {
-            Matcher matcher = Pattern.compile(pattern).matcher(cfg);
-            if (matcher.find()) {
-                return Integer.parseInt(matcher.group(1));
-            }
-        }
-        throw new IOException("Unable to parse " + name);
-    }
-
-    private static String exec(final String... cmd) throws IOException {
-        assert cmd != null && cmd[0].length() > 0;
-        try {
-            LOGGER.log(Level.FINE, "Running: " + Arrays.toString(cmd));
-            ProcessBuilder processBuilder = new ProcessBuilder(cmd);
-            processBuilder.redirectInput(Redirect.INHERIT);
-            Process p = processBuilder.start();
-            String result = ExecHelper.waitAndCapture(p);
-            LOGGER.log(Level.FINE, "Result: " + result);
-            if (p.exitValue() != 0) {
-                throw new IOException("Error executing '" + String.join(" ", cmd) + "': " + result);
-            }
-            return result;
-        } catch (InterruptedException e) {
-            throw (IOException) new InterruptedIOException("Command interrupted").initCause(e);
-        }
     }
 
 }

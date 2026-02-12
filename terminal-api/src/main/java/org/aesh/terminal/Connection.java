@@ -548,6 +548,59 @@ public interface Connection extends AutoCloseable {
     // ==================== Batch OSC Queries ====================
 
     /**
+     * Shared orchestration for batch OSC queries with response buffering.
+     * <p>
+     * This method handles the common pattern of saving the stdin handler,
+     * entering raw mode, buffering responses, parsing them, and restoring state.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for all responses
+     * @param expectedCount the number of expected responses
+     * @param batchQuery the concatenated query string to send
+     * @param parser function to parse the buffered response into a result map
+     * @return map from key to RGB array [r, g, b] (0-255 each)
+     */
+    default java.util.Map<Integer, int[]> queryWithResponseBuffering(
+            long timeoutMs, int expectedCount,
+            String batchQuery,
+            java.util.function.Function<int[], java.util.Map<Integer, int[]>> parser) {
+
+        Consumer<int[]> prevInputHandler = getStdinHandler();
+        CountDownLatch latch = new CountDownLatch(1);
+        final java.util.Map<Integer, int[]> results = new java.util.concurrent.ConcurrentHashMap<>();
+        final StringBuilder responseBuffer = new StringBuilder();
+        Attributes savedAttributes = enterRawMode();
+
+        setStdinHandler(ints -> {
+            // Append to response buffer
+            for (int c : ints) {
+                responseBuffer.appendCodePoint(c);
+            }
+
+            // Try to parse all expected responses
+            java.util.Map<Integer, int[]> parsed = parser.apply(
+                    responseBuffer.toString().codePoints().toArray());
+            results.putAll(parsed);
+
+            // If we got all expected responses, signal completion
+            if (results.size() >= expectedCount) {
+                latch.countDown();
+            }
+        });
+
+        try {
+            stdoutHandler().accept(batchQuery.codePoints().toArray());
+            latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            setStdinHandler(prevInputHandler);
+            setAttributes(savedAttributes);
+        }
+
+        return results;
+    }
+
+    /**
      * Query multiple OSC color codes in a single batch operation.
      * <p>
      * This method is much more efficient than calling individual query methods
@@ -575,45 +628,9 @@ public interface Connection extends AutoCloseable {
             return java.util.Collections.emptyMap();
         }
 
-        Consumer<int[]> prevInputHandler = getStdinHandler();
-        CountDownLatch latch = new CountDownLatch(1);
-        final java.util.Map<Integer, int[]> results = new java.util.concurrent.ConcurrentHashMap<>();
-        final StringBuilder responseBuffer = new StringBuilder();
-        final int[] expectedCount = { oscCodes.length };
-        Attributes savedAttributes = enterRawMode();
-
-        setStdinHandler(ints -> {
-            // Append to response buffer
-            for (int c : ints) {
-                responseBuffer.appendCodePoint(c);
-            }
-
-            // Try to parse all expected responses
-            java.util.Map<Integer, int[]> parsed = ANSI.parseMultipleOscColorResponses(
-                    responseBuffer.toString().codePoints().toArray(), oscCodes);
-            results.putAll(parsed);
-
-            // If we got all expected responses, signal completion
-            if (results.size() >= expectedCount[0]) {
-                latch.countDown();
-            }
-        });
-
-        try {
-            // Build and send batch query
-            String batchQuery = ANSI.buildBatchOscQuery(oscCodes);
-            stdoutHandler().accept(batchQuery.codePoints().toArray());
-
-            // Wait for responses
-            latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            setStdinHandler(prevInputHandler);
-            setAttributes(savedAttributes);
-        }
-
-        return results;
+        String batchQuery = ANSI.buildBatchOscQuery(oscCodes);
+        return queryWithResponseBuffering(timeoutMs, oscCodes.length, batchQuery,
+                input -> ANSI.parseMultipleOscColorResponses(input, oscCodes));
     }
 
     /**
@@ -663,45 +680,9 @@ public interface Connection extends AutoCloseable {
             return java.util.Collections.emptyMap();
         }
 
-        Consumer<int[]> prevInputHandler = getStdinHandler();
-        CountDownLatch latch = new CountDownLatch(1);
-        final java.util.Map<Integer, int[]> results = new java.util.concurrent.ConcurrentHashMap<>();
-        final StringBuilder responseBuffer = new StringBuilder();
-        final int[] expectedCount = { indices.length };
-        Attributes savedAttributes = enterRawMode();
-
-        setStdinHandler(ints -> {
-            // Append to response buffer
-            for (int c : ints) {
-                responseBuffer.appendCodePoint(c);
-            }
-
-            // Try to parse all expected responses
-            java.util.Map<Integer, int[]> parsed = ANSI.parseMultiplePaletteResponses(
-                    responseBuffer.toString().codePoints().toArray(), indices);
-            results.putAll(parsed);
-
-            // If we got all expected responses, signal completion
-            if (results.size() >= expectedCount[0]) {
-                latch.countDown();
-            }
-        });
-
-        try {
-            // Build and send batch query
-            String batchQuery = ANSI.buildBatchOscQueryWithIndices(ANSI.OSC_PALETTE, indices);
-            stdoutHandler().accept(batchQuery.codePoints().toArray());
-
-            // Wait for responses
-            latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            setStdinHandler(prevInputHandler);
-            setAttributes(savedAttributes);
-        }
-
-        return results;
+        String batchQuery = ANSI.buildBatchOscQueryWithIndices(ANSI.OSC_PALETTE, indices);
+        return queryWithResponseBuffering(timeoutMs, indices.length, batchQuery,
+                input -> ANSI.parseMultiplePaletteResponses(input, indices));
     }
 
     /**

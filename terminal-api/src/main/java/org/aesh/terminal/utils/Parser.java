@@ -43,9 +43,9 @@ public final class Parser {
     /** Space string constant. */
     public static final String SPACE = " ";
     /** Space character constant. */
-    public static final char SPACE_CHAR = ' ';
+    public static final char SPACE_CHAR = CodePointUtils.SPACE_CHAR;
     /** Backslash character constant. */
-    public static final char BACK_SLASH = '\\';
+    public static final char BACK_SLASH = CodePointUtils.BACK_SLASH;
     /** Single quote character constant. */
     public static final char SINGLE_QUOTE = '\'';
     /** Double quote character constant. */
@@ -53,7 +53,6 @@ public final class Parser {
     /** Dollar sign character constant. */
     public static final char DOLLAR = '$';
     private static final Pattern spaceEscapedPattern = Pattern.compile("\\\\ ");
-    private static final Pattern spacePattern = Pattern.compile("(?<!\\\\)\\s");
     private static final Pattern ansiPattern = Pattern.compile("\\u001B\\[[\\?]?[0-9;]*[a-zA-Z]?");
     // command text which starts with '#' is a comment
     private static final Pattern commentPattern = Pattern.compile("^(\\s*)(#)(.*)");
@@ -100,20 +99,9 @@ public final class Parser {
         if (maxLength + 2 <= termWidth) {
             maxLength = maxLength + 2; // adding two spaces for better readability
         }
-        int numColumns = termWidth / maxLength;
-        if (numColumns > displayList.size()) // we dont need more columns than items
-        {
-            numColumns = displayList.size();
-        }
-        if (numColumns < 1) {
-            numColumns = 1;
-        }
-        int numRows = displayList.size() / numColumns;
-
-        // add a row if we cant display all the items
-        if (numRows * numColumns < displayList.size()) {
-            numRows++;
-        }
+        int[] layout = calculateColumnLayout(displayList.size(), maxLength, termWidth);
+        int numColumns = layout[0];
+        int numRows = layout[1];
 
         // create the completion listing
         StringBuilder completionOutput = new StringBuilder();
@@ -153,16 +141,9 @@ public final class Parser {
                 maxLength = completion.getCharacters().length();
 
         maxLength = maxLength + 2; // adding two spaces for better readability
-        int numColumns = termWidth / maxLength;
-        if (numColumns > displayList.size()) // we dont need more columns than items
-            numColumns = displayList.size();
-        if (numColumns < 1)
-            numColumns = 1;
-        int numRows = displayList.size() / numColumns;
-
-        // add a row if we cant display all the items
-        if (numRows * numColumns < displayList.size())
-            numRows++;
+        int[] layout = calculateColumnLayout(displayList.size(), maxLength, termWidth);
+        int numColumns = layout[0];
+        int numRows = layout[1];
 
         StringBuilder completionOutput = new StringBuilder();
         if (numRows > 1) {
@@ -285,6 +266,29 @@ public final class Parser {
         }
 
         return columnSizes;
+    }
+
+    /**
+     * Calculate column layout for a display list.
+     *
+     * @param itemCount the number of items to display
+     * @param maxItemLength the maximum item length (including padding)
+     * @param termWidth the terminal width
+     * @return array of {numColumns, numRows}
+     */
+    private static int[] calculateColumnLayout(int itemCount, int maxItemLength, int termWidth) {
+        int numColumns = termWidth / maxItemLength;
+        if (numColumns > itemCount) {
+            numColumns = itemCount;
+        }
+        if (numColumns < 1) {
+            numColumns = 1;
+        }
+        int numRows = itemCount / numColumns;
+        if (numRows * numColumns < itemCount) {
+            numRows++;
+        }
+        return new int[] { numColumns, numRows };
     }
 
     /**
@@ -673,7 +677,7 @@ public final class Parser {
      * @return the word with spaces escaped
      */
     public static String switchSpacesToEscapedSpacesInWord(String word) {
-        return spacePattern.matcher(word).replaceAll("\\\\ ");
+        return CodePointUtils.switchSpacesToEscapedSpacesInWord(word);
     }
 
     /**
@@ -818,14 +822,7 @@ public final class Parser {
         if (s == null || s.isEmpty()) {
             return new int[0];
         }
-        int[] result = new int[s.codePointCount(0, s.length())];
-        int i = 0;
-        for (int offset = 0; offset < s.length();) {
-            int cp = s.codePointAt(offset);
-            result[i++] = cp;
-            offset += Character.charCount(cp);
-        }
-        return result;
+        return CodePointUtils.toCodePoints(s);
     }
 
     /**
@@ -835,7 +832,7 @@ public final class Parser {
      * @return the resulting string
      */
     public static String fromCodePoints(int[] input) {
-        return new String(input, 0, input.length);
+        return CodePointUtils.fromCodePoints(input);
     }
 
     /**
