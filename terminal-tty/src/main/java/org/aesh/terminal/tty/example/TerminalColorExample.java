@@ -415,19 +415,20 @@ public class TerminalColorExample {
             }
         }
 
+        TerminalEnvironment env = TerminalEnvironment.getInstance();
+
         connection.write("\n");
         builder.reset();
         connection.write(builder.append(indent).append("OSC query supported: ")
-                .append(TerminalColorDetector.isOscColorQuerySupported() ? "Yes" : "No").toLine());
+                .append(env.supportsOscQueries() ? "Yes" : "No").toLine());
         builder.reset();
         connection.write(builder.append(indent).append("Running in multiplexer: ")
-                .append(TerminalColorDetector.isRunningInMultiplexer() ? "Yes" : "No").toLine());
+                .append(env.isInMultiplexer() ? "Yes" : "No").toLine());
         builder.reset();
         connection.write(builder.append(indent).append("Tmux passthrough: ")
-                .append(TerminalColorDetector.shouldUseTmuxPassthrough() ? "Yes" : "No").toLine());
+                .append(env.isTmuxPassthroughEnabled() ? "Yes" : "No").toLine());
 
         // Additional info for JetBrains
-        TerminalEnvironment env = TerminalEnvironment.getInstance();
         if (env.isJetBrains()) {
             connection.write("\n");
             builder.reset();
@@ -477,36 +478,10 @@ public class TerminalColorExample {
         String osName = System.getProperty("os.name", "Unknown");
         String osVersion = System.getProperty("os.version", "Unknown");
 
-        // Try to get more detailed build number from registry
-        try {
-            ProcessBuilder pb = new ProcessBuilder("reg", "query",
-                    "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
-                    "/v", "CurrentBuildNumber");
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-
-            StringBuilder output = new StringBuilder();
-            byte[] buffer = new byte[256];
-            java.io.InputStream is = process.getInputStream();
-            int read;
-            while ((read = is.read(buffer)) != -1) {
-                output.append(new String(buffer, 0, read));
-            }
-
-            int exitCode = process.waitFor();
-            if (exitCode == 0) {
-                String result = output.toString();
-                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("CurrentBuildNumber\\s+REG_SZ\\s+(\\d+)");
-                java.util.regex.Matcher matcher = pattern.matcher(result);
-                if (matcher.find()) {
-                    String buildNumber = matcher.group(1);
-                    int build = Integer.parseInt(buildNumber);
-                    String vtSupport = build >= 14931 ? " (VT sequences supported)" : " (VT sequences NOT supported)";
-                    return osName + " " + osVersion + " Build " + buildNumber + vtSupport;
-                }
-            }
-        } catch (Exception e) {
-            // Ignore and return basic info
+        int build = org.aesh.terminal.tty.PlatformThemeDetector.getWindowsBuildNumber();
+        if (build > 0) {
+            String vtSupport = build >= 14931 ? " (VT sequences supported)" : " (VT sequences NOT supported)";
+            return osName + " " + osVersion + " Build " + build + vtSupport;
         }
 
         return osName + " " + osVersion;
