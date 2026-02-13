@@ -32,6 +32,40 @@ import org.apache.sshd.server.Environment;
  */
 public class SSHAttributesBuilder {
 
+    private static final Map<PtyMode, Attributes.ControlChar> CONTROL_CHARS = Map.ofEntries(
+            Map.entry(PtyMode.VINTR, Attributes.ControlChar.VINTR),
+            Map.entry(PtyMode.VQUIT, Attributes.ControlChar.VQUIT),
+            Map.entry(PtyMode.VERASE, Attributes.ControlChar.VERASE),
+            Map.entry(PtyMode.VKILL, Attributes.ControlChar.VKILL),
+            Map.entry(PtyMode.VEOF, Attributes.ControlChar.VEOF),
+            Map.entry(PtyMode.VEOL, Attributes.ControlChar.VEOL),
+            Map.entry(PtyMode.VEOL2, Attributes.ControlChar.VEOL2),
+            Map.entry(PtyMode.VSTART, Attributes.ControlChar.VSTART),
+            Map.entry(PtyMode.VSTOP, Attributes.ControlChar.VSTOP),
+            Map.entry(PtyMode.VSUSP, Attributes.ControlChar.VSUSP),
+            Map.entry(PtyMode.VDSUSP, Attributes.ControlChar.VDSUSP),
+            Map.entry(PtyMode.VREPRINT, Attributes.ControlChar.VREPRINT),
+            Map.entry(PtyMode.VWERASE, Attributes.ControlChar.VWERASE),
+            Map.entry(PtyMode.VLNEXT, Attributes.ControlChar.VLNEXT),
+            Map.entry(PtyMode.VSTATUS, Attributes.ControlChar.VSTATUS),
+            Map.entry(PtyMode.VDISCARD, Attributes.ControlChar.VDISCARD));
+
+    private static final Map<PtyMode, Attributes.LocalFlag> LOCAL_FLAGS = Map.of(
+            PtyMode.ECHO, Attributes.LocalFlag.ECHO,
+            PtyMode.ICANON, Attributes.LocalFlag.ICANON,
+            PtyMode.ISIG, Attributes.LocalFlag.ISIG);
+
+    private static final Map<PtyMode, Attributes.InputFlag> INPUT_FLAGS = Map.of(
+            PtyMode.ICRNL, Attributes.InputFlag.ICRNL,
+            PtyMode.INLCR, Attributes.InputFlag.INLCR,
+            PtyMode.IGNCR, Attributes.InputFlag.IGNCR);
+
+    private static final Map<PtyMode, Attributes.OutputFlag> OUTPUT_FLAGS = Map.of(
+            PtyMode.OCRNL, Attributes.OutputFlag.OCRNL,
+            PtyMode.ONLCR, Attributes.OutputFlag.ONLCR,
+            PtyMode.ONLRET, Attributes.OutputFlag.ONLRET,
+            PtyMode.OPOST, Attributes.OutputFlag.OPOST);
+
     private Environment environment;
 
     private SSHAttributesBuilder() {
@@ -66,85 +100,24 @@ public class SSHAttributesBuilder {
     public Attributes build() {
         Attributes attr = new Attributes();
         for (Map.Entry<PtyMode, Integer> e : environment.getPtyModes().entrySet()) {
-            switch (e.getKey()) {
-                case VINTR:
-                    attr.setControlChar(Attributes.ControlChar.VINTR, e.getValue());
-                    break;
-                case VQUIT:
-                    attr.setControlChar(Attributes.ControlChar.VQUIT, e.getValue());
-                    break;
-                case VERASE:
-                    attr.setControlChar(Attributes.ControlChar.VERASE, e.getValue());
-                    break;
-                case VKILL:
-                    attr.setControlChar(Attributes.ControlChar.VKILL, e.getValue());
-                    break;
-                case VEOF:
-                    attr.setControlChar(Attributes.ControlChar.VEOF, e.getValue());
-                    break;
-                case VEOL:
-                    attr.setControlChar(Attributes.ControlChar.VEOL, e.getValue());
-                    break;
-                case VEOL2:
-                    attr.setControlChar(Attributes.ControlChar.VEOL2, e.getValue());
-                    break;
-                case VSTART:
-                    attr.setControlChar(Attributes.ControlChar.VSTART, e.getValue());
-                    break;
-                case VSTOP:
-                    attr.setControlChar(Attributes.ControlChar.VSTOP, e.getValue());
-                    break;
-                case VSUSP:
-                    attr.setControlChar(Attributes.ControlChar.VSUSP, e.getValue());
-                    break;
-                case VDSUSP:
-                    attr.setControlChar(Attributes.ControlChar.VDSUSP, e.getValue());
-                    break;
-                case VREPRINT:
-                    attr.setControlChar(Attributes.ControlChar.VREPRINT, e.getValue());
-                    break;
-                case VWERASE:
-                    attr.setControlChar(Attributes.ControlChar.VWERASE, e.getValue());
-                    break;
-                case VLNEXT:
-                    attr.setControlChar(Attributes.ControlChar.VLNEXT, e.getValue());
-                    break;
-                case VSTATUS:
-                    attr.setControlChar(Attributes.ControlChar.VSTATUS, e.getValue());
-                    break;
-                case VDISCARD:
-                    attr.setControlChar(Attributes.ControlChar.VDISCARD, e.getValue());
-                    break;
-                case ECHO:
-                    attr.setLocalFlag(Attributes.LocalFlag.ECHO, e.getValue() != 0);
-                    break;
-                case ICANON:
-                    attr.setLocalFlag(Attributes.LocalFlag.ICANON, e.getValue() != 0);
-                    break;
-                case ISIG:
-                    attr.setLocalFlag(Attributes.LocalFlag.ISIG, e.getValue() != 0);
-                    break;
-                case ICRNL:
-                    attr.setInputFlag(Attributes.InputFlag.ICRNL, e.getValue() != 0);
-                    break;
-                case INLCR:
-                    attr.setInputFlag(Attributes.InputFlag.INLCR, e.getValue() != 0);
-                    break;
-                case IGNCR:
-                    attr.setInputFlag(Attributes.InputFlag.IGNCR, e.getValue() != 0);
-                    break;
-                case OCRNL:
-                    attr.setOutputFlag(Attributes.OutputFlag.OCRNL, e.getValue() != 0);
-                    break;
-                case ONLCR:
-                    attr.setOutputFlag(Attributes.OutputFlag.ONLCR, e.getValue() != 0);
-                    break;
-                case ONLRET:
-                    attr.setOutputFlag(Attributes.OutputFlag.ONLRET, e.getValue() != 0);
-                    break;
-                case OPOST:
-                    attr.setOutputFlag(Attributes.OutputFlag.OPOST, e.getValue() != 0);
-                    break;
+            Attributes.ControlChar cc = CONTROL_CHARS.get(e.getKey());
+            if (cc != null) {
+                attr.setControlChar(cc, e.getValue());
+                continue;
+            }
+            Attributes.LocalFlag lf = LOCAL_FLAGS.get(e.getKey());
+            if (lf != null) {
+                attr.setLocalFlag(lf, e.getValue() != 0);
+                continue;
+            }
+            Attributes.InputFlag inf = INPUT_FLAGS.get(e.getKey());
+            if (inf != null) {
+                attr.setInputFlag(inf, e.getValue() != 0);
+                continue;
+            }
+            Attributes.OutputFlag of = OUTPUT_FLAGS.get(e.getKey());
+            if (of != null) {
+                attr.setOutputFlag(of, e.getValue() != 0);
             }
         }
 

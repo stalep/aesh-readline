@@ -21,6 +21,7 @@ package org.aesh.terminal.http.netty;
 
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,6 +52,10 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
     private final String resourcePath;
 
     private static final Logger LOGGER = Logger.getLogger(HttpRequestHandler.class.getName());
+    private static final Map<String, String> CONTENT_TYPES = Map.of(
+            "html", "text/html",
+            "js", "application/javascript",
+            "css", "text/css");
 
     /**
      * Creates a new HTTP request handler with the specified WebSocket URI.
@@ -111,21 +116,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                     int li = path.lastIndexOf('.');
                     if (li != -1 && li != path.length() - 1) {
                         String ext = path.substring(li + 1, path.length());
-                        String contentType;
-                        switch (ext) {
-                            case "html":
-                                contentType = "text/html";
-                                break;
-                            case "js":
-                                contentType = "application/javascript";
-                                break;
-                            case "css":
-                                contentType = "text/css";
-                                break;
-                            default:
-                                contentType = null;
-                                break;
-                        }
+                        String contentType = CONTENT_TYPES.get(ext);
                         if (contentType != null) {
                             fullResp.headers().set(HttpHeaders.Names.CONTENT_TYPE, contentType);
                         }
@@ -135,7 +126,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                     response.setStatus(HttpResponseStatus.NOT_FOUND);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Failed to serve static resource", e);
             } finally {
                 ctx.write(response);
                 ChannelFuture future = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);

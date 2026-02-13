@@ -41,7 +41,6 @@ import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.TtyOutputMode;
-import org.apache.sshd.common.channel.PtyMode;
 import org.apache.sshd.common.io.IoInputStream;
 import org.apache.sshd.common.io.IoOutputStream;
 import org.apache.sshd.common.io.IoWriteFuture;
@@ -164,11 +163,6 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         env.addSignalListener((ch, signal) -> updateSize(env), EnumSet.of(org.apache.sshd.server.Signal.WINCH));
         updateSize(env);
 
-        // Event handling
-        int vintr = getControlChar(env, PtyMode.VINTR, 3);
-        int veof = getControlChar(env, PtyMode.VEOF, 4);
-        int vsusp = getControlChar(env, PtyMode.VSUSP, 26);
-
         device = new SSHDevice(env.getEnv().get("TERM"));
 
         org.aesh.terminal.Attributes attrs = SSHAttributesBuilder.builder().environment(env).build();
@@ -180,11 +174,6 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         session.setDataReceiver(this);
         conn.setReading(true);
         handler.accept(conn);
-    }
-
-    private int getControlChar(Environment env, PtyMode key, int def) {
-        Integer controlChar = env.getPtyModes().get(key);
-        return controlChar != null ? controlChar : def;
     }
 
     /**

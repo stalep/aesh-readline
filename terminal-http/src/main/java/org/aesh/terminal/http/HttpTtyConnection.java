@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
@@ -89,6 +91,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
 public abstract class HttpTtyConnection extends AbstractConnection {
+
+    private static final Logger LOGGER = Logger.getLogger(HttpTtyConnection.class.getName());
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** Default terminal size (80 columns x 24 rows). */
     public static final Size DEFAULT_SIZE = new Size(80, 24);
@@ -188,14 +193,13 @@ public abstract class HttpTtyConnection extends AbstractConnection {
      */
     @SuppressWarnings("unchecked")
     public void writeToDecoder(String msg) {
-        ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> obj;
         String action;
         try {
-            obj = mapper.readValue(msg, Map.class);
+            obj = MAPPER.readValue(msg, Map.class);
             action = (String) obj.get("action");
         } catch (IOException e) {
-            // Log this
+            LOGGER.log(Level.WARNING, "Failed to parse JSON message", e);
             return;
         }
         if (action != null) {
@@ -279,7 +283,7 @@ public abstract class HttpTtyConnection extends AbstractConnection {
                 }
             }
         } catch (Exception e) {
-            // Invalid size - ignore
+            LOGGER.log(Level.FINE, "Invalid resize data, ignoring", e);
         }
     }
 
