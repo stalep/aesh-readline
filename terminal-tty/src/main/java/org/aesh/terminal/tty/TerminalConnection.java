@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
@@ -45,7 +46,7 @@ import org.aesh.terminal.utils.LoggerUtil;
  *
  * @author <a href="mailto:spederse@redhat.com">Stale W. Pedersen</a>
  */
-public class TerminalConnection implements Connection {
+public class TerminalConnection extends AbstractConnection {
 
     private final Charset inputCharset;
     private final Charset outputCharset;
@@ -53,13 +54,7 @@ public class TerminalConnection implements Connection {
 
     private static final Logger LOGGER = LoggerUtil.getLogger(TerminalConnection.class.getName());
 
-    private Consumer<Size> sizeHandler;
     private Decoder decoder;
-    private Consumer<int[]> stdOut;
-    private Attributes attributes;
-    private EventDecoder eventDecoder;
-    private volatile boolean reading = false;
-    private Consumer<Void> closeHandler;
     private Consumer<Connection> handler;
     private CountDownLatch latch;
     private volatile boolean waiting = false;
@@ -180,9 +175,9 @@ public class TerminalConnection implements Connection {
         decoder = new Decoder(512, inputEncoding(), eventDecoder);
 
         if (terminal.getCodePointConsumer() == null) {
-            stdOut = new Encoder(outputEncoding(), this::write);
+            stdout = new Encoder(outputEncoding(), this::write);
         } else {
-            stdOut = terminal.getCodePointConsumer();
+            stdout = terminal.getCodePointConsumer();
         }
         if (terminal instanceof ExternalTerminal)
             ansi = false;
@@ -353,57 +348,12 @@ public class TerminalConnection implements Connection {
     }
 
     @Override
-    public Consumer<Size> getSizeHandler() {
-        return sizeHandler;
-    }
-
-    @Override
-    public void setSizeHandler(Consumer<Size> handler) {
-        sizeHandler = handler;
-    }
-
-    @Override
-    public Consumer<Signal> getSignalHandler() {
-        return eventDecoder.getSignalHandler();
-    }
-
-    @Override
-    public void setSignalHandler(Consumer<Signal> handler) {
-        eventDecoder.setSignalHandler(handler);
-    }
-
-    @Override
-    public Consumer<int[]> getStdinHandler() {
-        return eventDecoder.getInputHandler();
-    }
-
-    @Override
     public void setStdinHandler(Consumer<int[]> handler) {
         eventDecoder.setInputHandler(handler);
         if (handler == null)
             suspend();
         else
             awake();
-    }
-
-    @Override
-    public Consumer<int[]> stdoutHandler() {
-        return stdOut;
-    }
-
-    @Override
-    public void setCloseHandler(Consumer<Void> closeHandler) {
-        this.closeHandler = closeHandler;
-    }
-
-    @Override
-    public Consumer<Void> getCloseHandler() {
-        return closeHandler;
-    }
-
-    @Override
-    public boolean reading() {
-        return reading;
     }
 
     /**

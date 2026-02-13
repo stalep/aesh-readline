@@ -26,14 +26,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Attributes;
-import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.TtyOutputMode;
 
@@ -89,7 +88,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  * @author <a href="mailto:matejonnet@gmail.com">Matej Lazar</a>
  */
-public abstract class HttpTtyConnection implements Connection {
+public abstract class HttpTtyConnection extends AbstractConnection {
 
     /** Default terminal size (80 columns x 24 rows). */
     public static final Size DEFAULT_SIZE = new Size(80, 24);
@@ -97,16 +96,10 @@ public abstract class HttpTtyConnection implements Connection {
 
     private Charset charset;
     private Size size;
-    private Consumer<Size> sizeHandler;
-    private final EventDecoder eventDecoder;
     private final Decoder decoder;
-    private final Consumer<int[]> stdout;
-    private Consumer<Void> closeHandler;
     private Consumer<String> termHandler;
     private long lastAccessedTime = System.currentTimeMillis();
-    private Attributes attributes;
     private boolean initialized = false;
-    private volatile boolean reading = false;
 
     /**
      * Creates a new HTTP TTY connection with default charset (UTF-8) and size (80x24).
@@ -129,7 +122,7 @@ public abstract class HttpTtyConnection implements Connection {
         this.stdout = new TtyOutputMode(new Encoder(charset, this::write));
 
         this.device = new HttpDevice();
-        attributes = new Attributes();
+        this.attributes = new Attributes();
     }
 
     /**
@@ -317,83 +310,6 @@ public abstract class HttpTtyConnection implements Connection {
     }
 
     /**
-     * Returns the handler for terminal size change events.
-     *
-     * @return the size handler, or null if not set
-     */
-    public Consumer<Size> getSizeHandler() {
-        return sizeHandler;
-    }
-
-    /**
-     * Sets the handler for terminal size change events.
-     *
-     * @param handler the handler to invoke when terminal size changes
-     */
-    public void setSizeHandler(Consumer<Size> handler) {
-        this.sizeHandler = handler;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Consumer<Signal> getSignalHandler() {
-        return eventDecoder.getSignalHandler();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setSignalHandler(Consumer<Signal> handler) {
-        eventDecoder.setSignalHandler(handler);
-    }
-
-    /**
-     * Returns the handler for standard input data.
-     *
-     * @return the stdin handler, or null if not set
-     */
-    public Consumer<int[]> getStdinHandler() {
-        return eventDecoder.getInputHandler();
-    }
-
-    /**
-     * Sets the handler for standard input data.
-     *
-     * @param handler the handler to invoke when input is received
-     */
-    public void setStdinHandler(Consumer<int[]> handler) {
-        eventDecoder.setInputHandler(handler);
-    }
-
-    /**
-     * Returns the standard output handler for writing terminal output.
-     *
-     * @return the stdout handler
-     */
-    public Consumer<int[]> stdoutHandler() {
-        return stdout;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setCloseHandler(Consumer<Void> closeHandler) {
-        this.closeHandler = closeHandler;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Consumer<Void> getCloseHandler() {
-        return closeHandler;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -424,24 +340,8 @@ public abstract class HttpTtyConnection implements Connection {
      * {@inheritDoc}
      */
     @Override
-    public boolean reading() {
-        return reading;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public boolean put(Capability capability, Object... params) {
         return false;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Attributes getAttributes() {
-        return attributes;
     }
 
     /**

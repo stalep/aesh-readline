@@ -32,14 +32,13 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.aesh.terminal.Attributes;
+import org.aesh.terminal.AbstractConnection;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.EventDecoder;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.Capability;
-import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.tty.TtyOutputMode;
 import org.apache.sshd.common.channel.PtyMode;
@@ -67,24 +66,18 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     private final Consumer<Connection> handler;
     private final Charset defaultCharset;
     private Charset charset;
-    private EventDecoder eventDecoder;
     private Decoder decoder;
-    private Consumer<int[]> stdout;
     private Consumer<byte[]> out;
     private Size size = null;
-    private Consumer<Size> sizeHandler;
-    private Consumer<Void> closeHandler;
     /** The SSH channel session associated with this command. */
     protected ChannelSession session;
     private final AtomicBoolean closed = new AtomicBoolean();
     private ExitCallback exitCallback;
-    private Connection conn;
+    private SSHConnection conn;
     private IoOutputStream ioOut;
     private long lastAccessedTime = System.currentTimeMillis();
     private Device device;
     private IoWriteFuture writeFuture;
-    private Attributes attributes;
-    private volatile boolean reading = false;
 
     /**
      * Creates a new TtyCommand with the specified charset and connection handler.
@@ -177,14 +170,15 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         int vsusp = getControlChar(env, PtyMode.VSUSP, 26);
 
         device = new SSHDevice(env.getEnv().get("TERM"));
-        attributes = SSHAttributesBuilder.builder().environment(env).build();
-        eventDecoder = new EventDecoder(attributes);
-        decoder = new Decoder(512, charset, eventDecoder);
-        stdout = new TtyOutputMode(new Encoder(charset, out));
-        conn = new SSHConnection();
+
+        org.aesh.terminal.Attributes attrs = SSHAttributesBuilder.builder().environment(env).build();
+        EventDecoder ed = new EventDecoder(attrs);
+        Consumer<int[]> stdoutHandler = new TtyOutputMode(new Encoder(charset, out));
+        conn = new SSHConnection(attrs, ed, stdoutHandler);
+        decoder = new Decoder(512, charset, ed);
 
         session.setDataReceiver(this);
-        reading = true;
+        conn.setReading(true);
         handler.accept(conn);
     }
 
@@ -212,8 +206,8 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             }
             if (size != null) {
                 this.size = size;
-                if (sizeHandler != null) {
-                    sizeHandler.accept(size);
+                if (conn != null && conn.getSizeHandler() != null) {
+                    conn.getSizeHandler().accept(size);
                 }
             }
         }
@@ -225,14 +219,14 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
     }
 
     private void close(int exit) throws IOException {
-        reading = false;
+        if (conn != null) {
+            conn.setReading(false);
+        }
         ioOut.close(false).addListener(future -> {
             exitCallback.onExit(exit);
             if (closed.compareAndSet(false, true)) {
-                if (closeHandler != null) {
-                    closeHandler.accept(null);
-                } else {
-                    // This happen : report it to the SSHD project
+                if (conn != null && conn.getCloseHandler() != null) {
+                    conn.getCloseHandler().accept(null);
                 }
             }
         });
@@ -274,7 +268,18 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         return null;
     }
 
-    private class SSHConnection implements Connection {
+    private class SSHConnection extends AbstractConnection {
+
+        SSHConnection(org.aesh.terminal.Attributes attributes, EventDecoder eventDecoder,
+                Consumer<int[]> stdout) {
+            this.attributes = attributes;
+            this.eventDecoder = eventDecoder;
+            this.stdout = stdout;
+        }
+
+        void setReading(boolean reading) {
+            this.reading = reading;
+        }
 
         @Override
         public Charset inputEncoding() {
@@ -295,58 +300,14 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
             return lastAccessedTime;
         }
 
+        @Override
         public Device device() {
             return device;
         }
 
         @Override
-        public Consumer<int[]> getStdinHandler() {
-            return eventDecoder.getInputHandler();
-        }
-
-        @Override
-        public void setStdinHandler(Consumer<int[]> handler) {
-            eventDecoder.setInputHandler(handler);
-        }
-
-        @Override
         public Size size() {
             return size;
-        }
-
-        @Override
-        public Consumer<Size> getSizeHandler() {
-            return sizeHandler;
-        }
-
-        @Override
-        public void setSizeHandler(Consumer<Size> handler) {
-            sizeHandler = handler;
-        }
-
-        @Override
-        public Consumer<Signal> getSignalHandler() {
-            return eventDecoder.getSignalHandler();
-        }
-
-        @Override
-        public void setSignalHandler(Consumer<Signal> handler) {
-            eventDecoder.setSignalHandler(handler);
-        }
-
-        @Override
-        public Consumer<int[]> stdoutHandler() {
-            return stdout;
-        }
-
-        @Override
-        public void setCloseHandler(Consumer<Void> handler) {
-            closeHandler = handler;
-        }
-
-        @Override
-        public Consumer<Void> getCloseHandler() {
-            return closeHandler;
         }
 
         @Override
@@ -367,17 +328,10 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
 
         @Override
         public void openBlocking() {
-
         }
 
         @Override
         public void openNonBlocking() {
-
-        }
-
-        @Override
-        public boolean reading() {
-            return reading;
         }
 
         @Override
@@ -386,12 +340,7 @@ public class TtyCommand implements AsyncCommand, ChannelDataReceiver, ChannelSes
         }
 
         @Override
-        public Attributes getAttributes() {
-            return attributes;
-        }
-
-        @Override
-        public void setAttributes(Attributes attr) {
+        public void setAttributes(org.aesh.terminal.Attributes attr) {
         }
 
     }
