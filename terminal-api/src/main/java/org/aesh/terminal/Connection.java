@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 
 import org.aesh.terminal.image.ImageProtocol;
 import org.aesh.terminal.image.ImageProtocolDetector;
+import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
@@ -213,13 +214,20 @@ public interface Connection extends AutoCloseable {
     boolean supportsAnsi();
 
     /**
-     * Write a string to the output handler
+     * Write a string to the output handler.
+     * When the stdout handler is an Encoder, this uses a fast path that
+     * encodes the String directly to bytes without an intermediate int[] allocation.
      *
      * @param s string
      * @return this connection
      */
     default Connection write(String s) {
-        stdoutHandler().accept(Parser.toCodePoints(s));
+        Consumer<int[]> handler = stdoutHandler();
+        if (handler instanceof Encoder) {
+            ((Encoder) handler).accept(s);
+        } else {
+            handler.accept(Parser.toCodePoints(s));
+        }
         return this;
     }
 
@@ -327,7 +335,7 @@ public interface Connection extends AutoCloseable {
         });
 
         try {
-            stdoutHandler().accept(CodePointUtils.toCodePoints(query));
+            write(query);
             latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -589,7 +597,7 @@ public interface Connection extends AutoCloseable {
         });
 
         try {
-            stdoutHandler().accept(CodePointUtils.toCodePoints(batchQuery));
+            write(batchQuery);
             latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

@@ -81,6 +81,7 @@ public class TuiOutputBenchmark {
     private static final int[] ANSI_HEAVY_BLOCK = buildAnsiHeavyBlock();
     private static final int[] LARGE_ANSI_BLOCK = buildLargeAnsiBlock();
     private static final int[][] SCREEN_LINES = buildScreenLines();
+    private static final String[] SCREEN_LINE_STRINGS = buildScreenLineStrings();
 
     // Capture consumer that stores int[] output
     private int[] capturedOutput;
@@ -263,6 +264,42 @@ public class TuiOutputBenchmark {
         bh.consume(byteStream.size());
     }
 
+    @Benchmark
+    public void fullScreenRedrawViaConnectionWrite(Blackhole bh) {
+        byteStream.reset();
+        // Same as fullScreenRedraw but using connection.write(String) like tamboui's aesh backend
+        for (int row = 0; row < TERMINAL_HEIGHT; row++) {
+            connectionWithEncoder.write("\u001b[" + (row + 1) + ";1H");
+            connectionWithEncoder.write(SCREEN_LINE_STRINGS[row]);
+        }
+        bh.consume(byteStream.size());
+    }
+
+    @Benchmark
+    public void fullScreenRedrawBufferedThenWrite(Blackhole bh) {
+        byteStream.reset();
+        // Matches real tamboui pattern: buffer into StringBuilder, single connection.write()
+        StringBuilder sb = new StringBuilder(4096);
+        for (int row = 0; row < TERMINAL_HEIGHT; row++) {
+            sb.append("\u001b[").append(row + 1).append(";1H");
+            sb.append(SCREEN_LINE_STRINGS[row]);
+        }
+        connectionWithEncoder.write(sb.toString());
+        bh.consume(byteStream.size());
+    }
+
+    @Benchmark
+    public void fullScreenRedrawViaOldWritePath(Blackhole bh) {
+        byteStream.reset();
+        // Simulates the old connection.write(String) path: String → int[] → Encoder
+        for (int row = 0; row < TERMINAL_HEIGHT; row++) {
+            String cursor = "\u001b[" + (row + 1) + ";1H";
+            encoder.accept(Parser.toCodePoints(cursor));
+            encoder.accept(Parser.toCodePoints(SCREEN_LINE_STRINGS[row]));
+        }
+        bh.consume(byteStream.size());
+    }
+
     // ========== Buffer.replace() (common TUI operation) ==========
 
     @Benchmark
@@ -365,6 +402,17 @@ public class TuiOutputBenchmark {
             builder.append(content.codePoints().toArray());
             builder.append(Parser.toCodePoints(ANSI.RESET));
             lines[row] = builder.toArray();
+        }
+        return lines;
+    }
+
+    private static String[] buildScreenLineStrings() {
+        String[] colors = {ANSI.RED_TEXT, ANSI.GREEN_TEXT, ANSI.BLUE_TEXT,
+                ANSI.YELLOW_TEXT, ANSI.CYAN_TEXT, ANSI.MAGENTA_TEXT};
+        String[] lines = new String[TERMINAL_HEIGHT];
+        for (int row = 0; row < TERMINAL_HEIGHT; row++) {
+            String content = String.format("%-76s", "Line " + (row + 1) + ": TUI content with color codes");
+            lines[row] = colors[row % colors.length] + content + ANSI.RESET;
         }
         return lines;
     }

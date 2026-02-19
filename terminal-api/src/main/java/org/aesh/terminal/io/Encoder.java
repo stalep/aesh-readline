@@ -29,6 +29,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.utils.CodePointUtils;
+
 /**
  * Encodes int arrays (unicode code points) to byte arrays using a specified charset.
  *
@@ -99,6 +101,24 @@ public class Encoder implements Consumer<int[]> {
             acceptUtf8(input);
         } else {
             acceptGeneral(input);
+        }
+    }
+
+    /**
+     * Encode a String directly to bytes, bypassing the int[] intermediary.
+     * For UTF-8 with ASCII-only strings (the common case for ANSI sequences),
+     * this converts directly from String chars to byte[] in a single pass.
+     *
+     * @param s the string to encode
+     */
+    public void accept(String s) {
+        if (s.isEmpty())
+            return;
+
+        if (isUtf8) {
+            out.accept(s.getBytes(StandardCharsets.UTF_8));
+        } else {
+            accept(CodePointUtils.toCodePoints(s));
         }
     }
 

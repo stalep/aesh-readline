@@ -694,7 +694,7 @@ public final class TerminalColorDetector {
             }
 
             String combinedQuery = buildSyncColorQuery(supportsCursor, supportsPalette, useDcsPassthrough);
-            connection.stdoutHandler().accept(CodePointUtils.toCodePoints(combinedQuery));
+            connection.write(combinedQuery);
 
             terminal.output().flush();
 

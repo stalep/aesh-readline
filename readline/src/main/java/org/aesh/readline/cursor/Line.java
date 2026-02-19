@@ -30,7 +30,6 @@ import org.aesh.terminal.formatting.Color;
 import org.aesh.terminal.formatting.TerminalCharacter;
 import org.aesh.terminal.formatting.TerminalColor;
 import org.aesh.terminal.utils.ANSI;
-import org.aesh.terminal.utils.Parser;
 
 /**
  * A command line. This line abstract commands spread-out on multiple lines.
@@ -116,11 +115,11 @@ public class Line {
             //if (OSUtils.IS_WINDOWS) {
             TerminalCharacter characterData = new TerminalCharacter(c, new TerminalColor(text, background));
             if (bright) {
-                connection.stdoutHandler().accept(Parser.toCodePoints(ANSI.BOLD));
+                connection.write(ANSI.BOLD);
             } else {
-                connection.stdoutHandler().accept(Parser.toCodePoints(ANSI.BOLD_OFF));
+                connection.write(ANSI.BOLD_OFF);
             }
-            connection.stdoutHandler().accept(Parser.toCodePoints(characterData.toString()));
+            connection.write(characterData.toString());
             //} else {
             //   TerminalColor color = bright ? new TerminalColor(text, background, Color.Intensity.BRIGHT) : new TerminalColor(text, background);
             //   TerminalCharacter characterData = new TerminalCharacter(c, color);
@@ -447,11 +446,11 @@ public class Line {
     }
 
     private void saveCursor() {
-        connection.stdoutHandler().accept(Parser.toCodePoints(ANSI.CURSOR_SAVE));
+        connection.write(ANSI.CURSOR_SAVE);
     }
 
     private void restoreCursor() {
-        connection.stdoutHandler().accept(Parser.toCodePoints(ANSI.CURSOR_RESTORE));
+        connection.write(ANSI.CURSOR_RESTORE);
     }
 
 }
