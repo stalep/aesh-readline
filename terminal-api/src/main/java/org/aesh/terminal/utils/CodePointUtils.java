@@ -55,12 +55,40 @@ public final class CodePointUtils {
 
     /**
      * Convert a String to an array of code points.
+     * Uses a direct loop instead of the Stream API for better performance.
      *
      * @param s the string
      * @return the code points
      */
     public static int[] toCodePoints(String s) {
-        return s.codePoints().toArray();
+        int len = s.length();
+        // Fast path for BMP-only strings (no surrogate pairs).
+        // This covers ASCII, Latin, ANSI escape sequences, and most terminal output.
+        int[] result = new int[len];
+        for (int i = 0; i < len; i++) {
+            char c = s.charAt(i);
+            if (Character.isHighSurrogate(c)) {
+                return toCodePointsGeneral(s);
+            }
+            result[i] = c;
+        }
+        return result;
+    }
+
+    /**
+     * General path for strings containing surrogate pairs (supplementary code points).
+     */
+    private static int[] toCodePointsGeneral(String s) {
+        int len = s.length();
+        int cpCount = s.codePointCount(0, len);
+        int[] result = new int[cpCount];
+        int i = 0, j = 0;
+        while (i < len) {
+            int cp = s.codePointAt(i);
+            result[j++] = cp;
+            i += Character.charCount(cp);
+        }
+        return result;
     }
 
     /**

@@ -40,6 +40,12 @@ java -jar benchmark/target/benchmarks.jar TtyConnectionBenchmark
 
 # Buffer operations benchmarks
 java -jar benchmark/target/benchmarks.jar BufferBenchmark
+
+# TUI output pipeline benchmarks
+java -jar benchmark/target/benchmarks.jar TuiOutputBenchmark
+
+# IntArrayBuilder benchmarks
+java -jar benchmark/target/benchmarks.jar IntArrayBuilderBenchmark
 ```
 
 ### Run Specific Benchmark Methods
@@ -174,6 +180,50 @@ Measures the performance of buffer operations used for line editing.
 | `clearBuffer` | Clear entire buffer |
 | `copyBuffer` | Copy buffer contents |
 
+### TuiOutputBenchmark
+
+Measures the full TUI output pipeline: Buffer ANSI generation -> IntArrayBuilder -> Encoder -> OutputStream. Existing benchmarks use `NO_OP_CONSUMER` for output, so the output pipeline is never measured. These benchmarks exercise it with realistic TUI workloads.
+
+| Benchmark | Description |
+|-----------|-------------|
+| `bufferInsertWithCapture` | Buffer.insert() with int[] capture consumer |
+| `bufferInsertWithEncoding` | Buffer.insert() chained through Encoder |
+| `bufferInsertWithEncodingAndStream` | Full pipeline to ByteArrayOutputStream |
+| `encoderAnsiHeavy` | Pre-built ANSI-dense int[] fed to Encoder |
+| `fullScreenRedraw` | 24 lines of colored text with cursor positioning |
+| `partialScreenUpdate` | Update 3 of 24 lines (dirty region pattern) |
+| `rapidRedraws` | 10 consecutive full redraws (scrolling simulation) |
+| `largeOutputBurst` | Write ~4KB ANSI block in one shot |
+| `writeUnbuffered` | 24 lines via separate Encoder.accept() calls |
+| `writeWithBufferedStream` | Same with BufferedOutputStream(8192) |
+| `writeBatchedIntArrays` | All 24 lines batched into single Encoder.accept() |
+| `writeManySmallWrites` | Per-character writes through Connection.write() |
+| `bufferReplaceEntireLine` | Replace full 80-char line (status bar pattern) |
+| `bufferReplaceWithEncoding` | Same with full encoding pipeline |
+| `fullScreenRedrawThroughput` | Throughput variant of fullScreenRedraw |
+
+### IntArrayBuilderBenchmark
+
+Micro-benchmarks for `IntArrayBuilder`, the dynamic int[] builder used in all ANSI sequence construction. Quantifies the cost of the default growth strategy (capacity 1, grows by `2*len + 2`) versus pre-sized builders.
+
+| Benchmark | Description |
+|-----------|-------------|
+| `appendSingleIntsFromEmpty` | 100 single-int appends to default builder |
+| `appendSmallArraysFromEmpty` | 20 five-int array appends (100 total ints) |
+| `appendOneArrayFromEmpty` | Single 100-int array append |
+| `appendSingleIntsPreSized` | 100 single-int appends to pre-sized(100) builder |
+| `appendSmallArraysPreSized` | 20 five-int arrays to pre-sized builder |
+| `appendOneArrayPreSized` | Single 100-int array to pre-sized builder |
+| `simulatePromptOutput` | Prompt ANSI + content + cursor sync (default) |
+| `simulatePromptOutputPreSized` | Same, pre-sized to 200 |
+| `simulateFullLinePrint` | 80-column line with color codes (default) |
+| `simulateFullLinePrintPreSized` | Same, pre-sized to 128 |
+| `toArraySmall` | toArray() with 10 ints |
+| `toArrayMedium` | toArray() with 100 ints |
+| `toArrayLarge` | toArray() with 1000 ints |
+| `growFromEmptyParameterized` | Growth from empty (parameterized: 10-1000) |
+| `growPreSizedParameterized` | Growth pre-sized (parameterized: 10-1000) |
+
 ## Comparing Results
 
 To compare performance before and after changes:
@@ -227,6 +277,50 @@ ActionDecoderBenchmark.singleCharacter avgt   20  189.860 ± 12.345  ns/op
 - **Units**: `ns/op` = nanoseconds per operation, `ops/ms` = operations per millisecond
 
 Lower is better for `avgt` mode, higher is better for `thrpt` mode.
+
+## Profiling for TUI Bottleneck Analysis
+
+The TUI output benchmarks are designed for use with profilers to identify the root cause of TUI rendering lag.
+
+### Recommended Profiling Commands
+
+```bash
+# CPU profiling with async-profiler flame graph
+java -jar benchmark/target/benchmarks.jar "TuiOutputBenchmark.fullScreenRedraw$" \
+  -prof "async:libPath=/path/to/libasyncProfiler.so;output=flamegraph;dir=profile-results"
+
+# Allocation profiling
+java -jar benchmark/target/benchmarks.jar "TuiOutputBenchmark.fullScreenRedraw$" \
+  -prof "async:libPath=/path/to/libasyncProfiler.so;event=alloc;output=flamegraph;dir=profile-results"
+
+# GC pressure (built-in, no external deps)
+java -jar benchmark/target/benchmarks.jar "TuiOutputBenchmark.*" -prof gc
+
+# Stack profiling (built-in)
+java -jar benchmark/target/benchmarks.jar "TuiOutputBenchmark.fullScreenRedraw$" -prof stack
+```
+
+### Recommended Analysis Sequence
+
+1. Run `fullScreenRedraw` vs `partialScreenUpdate` to measure absolute redraw cost
+2. Run `writeBatchedIntArrays` vs `writeUnbuffered` to test if batching helps
+3. Run `growFromEmpty*` vs `*PreSized*` to quantify IntArrayBuilder resize overhead
+4. Run with `-prof gc` to check GC pressure from allocations
+5. Use async-profiler allocation profiling to find the biggest allocators
+
+### Quick Smoke Test
+
+```bash
+java -jar benchmark/target/benchmarks.jar "TuiOutputBenchmark.*" -wi 1 -i 2 -f 1
+java -jar benchmark/target/benchmarks.jar "IntArrayBuilderBenchmark.*" -wi 1 -i 2 -f 1
+```
+
+### Full Run with JSON Output
+
+```bash
+java -jar benchmark/target/benchmarks.jar "TuiOutputBenchmark.*" -rf json -rff tui-results.json
+java -jar benchmark/target/benchmarks.jar "IntArrayBuilderBenchmark.*" -rf json -rff builder-results.json
+```
 
 ## Tips
 

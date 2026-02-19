@@ -55,7 +55,7 @@ public class InfoCmpHelper {
         String s = getCurrentTranslatedCapability(cap, new String(defaultValue, 0, defaultValue.length));
         if (s.length() == 0)
             return defaultValue;
-        return s.codePoints().toArray();
+        return CodePointUtils.toCodePoints(s);
     }
 
     /**

@@ -227,7 +227,7 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
             buffer.move(connection.stdoutHandler(), buffer.length() - cursorPosition, size().getWidth());
         }
         //move cursor to correct position
-        connection.stdoutHandler().accept(new int[] { 27, '[', '1', ';', '1', 'H' });
+        connection.stdoutHandler().accept(ANSI.cursorPosition(1, 1));
         //then write prompt
         if (!includeBuffer)
             buffer().reset();

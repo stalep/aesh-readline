@@ -100,6 +100,8 @@ public class ANSI {
     public static final int[] ERASE_WHOLE_LINE = new int[] { 27, '[', '2', 'K' };
     /** ANSI escape code to query cursor row position. */
     public static final String CURSOR_ROW = "\u001B[6n";
+    /** ANSI escape code to query cursor position as int array (Device Status Report). */
+    public static final int[] CURSOR_POSITION_QUERY = new int[] { 27, '[', '6', 'n' };
     /** ANSI escape sequence to clear the entire screen. */
     public static final int[] CLEAR_SCREEN = InfoCmpHelper.getCurrentTranslatedCapability("clear", "\u001B[2J").codePoints()
             .toArray();
@@ -308,6 +310,48 @@ public class ANSI {
         if (value < 10000)
             return 4;
         return 5;
+    }
+
+    /**
+     * Build an ANSI cursor position sequence: ESC[row;colH
+     * <p>
+     * Uses exact-size allocation to avoid oversized buffers and array copying.
+     *
+     * @param row the 1-based row number
+     * @param col the 1-based column number
+     * @return ANSI cursor position sequence as int array
+     */
+    public static int[] cursorPosition(int row, int col) {
+        int rowSize = getAsciiSize(row);
+        int colSize = getAsciiSize(col);
+        // ESC [ <row digits> ; <col digits> H
+        int[] out = new int[4 + rowSize + colSize];
+        int pos = 0;
+        out[pos++] = 27; // ESC
+        out[pos++] = '[';
+        pos = writeAsciiInt(out, pos, row, rowSize);
+        out[pos++] = ';';
+        pos = writeAsciiInt(out, pos, col, colSize);
+        out[pos] = 'H';
+        return out;
+    }
+
+    /**
+     * Write an integer as ASCII decimal digits into an int array.
+     *
+     * @param buf the target array
+     * @param pos the starting position in the array
+     * @param value the integer value to write
+     * @param digits the number of digits (from getAsciiSize)
+     * @return the position after the last written digit
+     */
+    private static int writeAsciiInt(int[] buf, int pos, int value, int digits) {
+        int end = pos + digits;
+        for (int i = end - 1; i >= pos; i--) {
+            buf[i] = '0' + value % 10;
+            value /= 10;
+        }
+        return end;
     }
 
     /**

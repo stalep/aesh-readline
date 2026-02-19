@@ -416,7 +416,7 @@ public final class Buffer {
     }
 
     private int[] syncCursor(int currentPos, int newPos, int width, boolean edge) {
-        IntArrayBuilder builder = new IntArrayBuilder();
+        IntArrayBuilder builder = new IntArrayBuilder(16);
         if (newPos < 0)
             newPos = 0;
         if (currentPos / width == newPos / width) {
@@ -454,7 +454,7 @@ public final class Buffer {
      * @return out buffer
      */
     private int[] syncCursorWhenBufferIsAtTerminalEdge(int currentPos, int newPos, int width) {
-        IntArrayBuilder builder = new IntArrayBuilder();
+        IntArrayBuilder builder = new IntArrayBuilder(16);
         if (Config.isMacOS()) {
             int moveToLine = currentPos / width - newPos / width;
             char rowDirection = 'A';
@@ -656,7 +656,7 @@ public final class Buffer {
 
     private void printInsertedData(Consumer<int[]> out, int width) {
         //print out prompt first if needed
-        IntArrayBuilder builder = new IntArrayBuilder();
+        IntArrayBuilder builder = new IntArrayBuilder(promptLength() + size + 32);
         if (!isPromptDisplayed) {
             //only print the prompt if its longer than 0
             if (promptLength() > 0)
@@ -721,7 +721,7 @@ public final class Buffer {
         //if we're masking and the mask is no output we just return
         if (width == 0 || (isMasking() && prompt.getMask() == 0))
             return;
-        IntArrayBuilder builder = new IntArrayBuilder();
+        IntArrayBuilder builder = new IntArrayBuilder(32);
         if (size + promptLength() + Math.abs(delta) >= width) {
             if (deletingBackward) {
                 //lets optimize deletes at the end
@@ -748,7 +748,7 @@ public final class Buffer {
 
     private void quickDeleteAtEnd(Consumer<int[]> out, boolean viMode) {
         //move cursor delta then clear the rest of the line
-        IntArrayBuilder builder = new IntArrayBuilder();
+        IntArrayBuilder builder = new IntArrayBuilder(16);
         //only have to move when deleting backwards
         if (deletingBackward)
             builder.append(moveNumberOfColumns(Math.abs(delta), 'D'));
@@ -798,7 +798,7 @@ public final class Buffer {
         //deltaChangedAtEndOfBuffer = false;
         deltaChangedAtEndOfBuffer = (cursor == size);
 
-        IntArrayBuilder builder = new IntArrayBuilder();
+        IntArrayBuilder builder = new IntArrayBuilder(32);
         if (oldSize >= width)
             clearAllLinesAndReturnToFirstLine(builder, width, oldCursor, oldSize);
 

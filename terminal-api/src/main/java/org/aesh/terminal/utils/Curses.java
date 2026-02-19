@@ -31,9 +31,6 @@ import java.util.ArrayDeque;
  */
 public final class Curses {
 
-    private static Object[] sv = new Object[26];
-    private static Object[] dv = new Object[26];
-
     private static final int IFTE_NONE = 0;
     private static final int IFTE_IF = 1;
     private static final int IFTE_THEN = 2;
@@ -72,6 +69,8 @@ public final class Curses {
         int length = str.length();
         int ifte = IFTE_NONE;
         boolean exec = true;
+        Object[] sv = new Object[26];
+        Object[] dv = new Object[26];
         ArrayDeque<Object> stack = new ArrayDeque<>();
         while (index < length) {
             char ch = str.charAt(index++);

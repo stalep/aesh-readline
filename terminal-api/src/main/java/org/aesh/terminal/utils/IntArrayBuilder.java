@@ -12,11 +12,13 @@ public class IntArrayBuilder {
     private int[] data;
     private int size;
 
+    private static final int DEFAULT_CAPACITY = 16;
+
     /**
-     * Create an empty IntArrayBuilder with initial capacity of 1.
+     * Create an empty IntArrayBuilder with default initial capacity.
      */
     public IntArrayBuilder() {
-        data = new int[1];
+        data = new int[DEFAULT_CAPACITY];
         size = 0;
     }
 
@@ -69,14 +71,17 @@ public class IntArrayBuilder {
 
     /**
      * Return the contents of this builder as a new int array.
+     * If the internal buffer is exactly the right size, it is returned directly
+     * to avoid a copy. The builder should not be used after calling this method.
      *
-     * @return a new array containing all appended integers
+     * @return an array containing all appended integers
      */
     public int[] toArray() {
         if (size == 0)
             return new int[] {};
-        else
-            return Arrays.copyOf(data, size);
+        if (size == data.length)
+            return data;
+        return Arrays.copyOf(data, size);
     }
 
     /**

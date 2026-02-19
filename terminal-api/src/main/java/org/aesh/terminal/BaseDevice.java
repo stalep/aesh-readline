@@ -29,6 +29,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.utils.CodePointUtils;
 import org.aesh.terminal.utils.Curses;
 
 /**
@@ -92,7 +93,7 @@ public class BaseDevice implements Device {
         if (str != null) {
             StringBuilder sb = new StringBuilder();
             Curses.tputs(sb, str, params);
-            return sb.toString().codePoints().toArray();
+            return CodePointUtils.toCodePoints(sb.toString());
         } else
             return null;
     }

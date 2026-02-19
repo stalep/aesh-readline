@@ -31,6 +31,7 @@ import org.aesh.terminal.tty.Point;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.CodePointUtils;
 import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.Parser;
 import org.aesh.terminal.utils.TerminalColorCapability;
@@ -265,7 +266,7 @@ public interface Connection extends AutoCloseable {
             latch.countDown();
             setAttributes(attributes);
         });
-        stdoutHandler().accept("\u001B[6n".codePoints().toArray());
+        stdoutHandler().accept(ANSI.CURSOR_POSITION_QUERY);
         try {
             latch.await();
         } catch (InterruptedException e) {
@@ -326,7 +327,7 @@ public interface Connection extends AutoCloseable {
         });
 
         try {
-            stdoutHandler().accept(query.codePoints().toArray());
+            stdoutHandler().accept(CodePointUtils.toCodePoints(query));
             latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -578,7 +579,7 @@ public interface Connection extends AutoCloseable {
 
             // Try to parse all expected responses
             java.util.Map<Integer, int[]> parsed = parser.apply(
-                    responseBuffer.toString().codePoints().toArray());
+                    CodePointUtils.toCodePoints(responseBuffer.toString()));
             results.putAll(parsed);
 
             // If we got all expected responses, signal completion
@@ -588,7 +589,7 @@ public interface Connection extends AutoCloseable {
         });
 
         try {
-            stdoutHandler().accept(batchQuery.codePoints().toArray());
+            stdoutHandler().accept(CodePointUtils.toCodePoints(batchQuery));
             latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

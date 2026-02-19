@@ -34,6 +34,7 @@ import org.aesh.terminal.Device;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.tty.utils.ColorUtils;
 import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.CodePointUtils;
 import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.TerminalColorCapability;
@@ -693,7 +694,7 @@ public final class TerminalColorDetector {
             }
 
             String combinedQuery = buildSyncColorQuery(supportsCursor, supportsPalette, useDcsPassthrough);
-            connection.stdoutHandler().accept(combinedQuery.codePoints().toArray());
+            connection.stdoutHandler().accept(CodePointUtils.toCodePoints(combinedQuery));
 
             terminal.output().flush();
 
@@ -734,8 +735,9 @@ public final class TerminalColorDetector {
             if (!responseStr.isEmpty()) {
                 LOGGER.log(Level.FINE, "OSC color response received, length: " + responseStr.length());
 
+                int[] responseCodePoints = CodePointUtils.toCodePoints(responseStr);
                 Map<Integer, int[]> fgBgColors = ANSI.parseMultipleOscColorResponses(
-                        responseStr.codePoints().toArray(),
+                        responseCodePoints,
                         ANSI.OSC_FOREGROUND,
                         ANSI.OSC_BACKGROUND);
                 foregroundRGB = fgBgColors.get(ANSI.OSC_FOREGROUND);
@@ -743,13 +745,13 @@ public final class TerminalColorDetector {
 
                 if (supportsCursor) {
                     cursorRGB = ANSI.parseOscColorResponse(
-                            responseStr.codePoints().toArray(),
+                            responseCodePoints,
                             ANSI.OSC_CURSOR_COLOR);
                 }
 
                 if (supportsPalette) {
                     paletteColors = ANSI.parseMultiplePaletteResponses(
-                            responseStr.codePoints().toArray(),
+                            responseCodePoints,
                             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
                 }
             }

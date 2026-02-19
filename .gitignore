@@ -32,3 +32,5 @@ classes
 dependency-reduced-pom.xml
 
 *.factorypath
+
+profile-results/*
