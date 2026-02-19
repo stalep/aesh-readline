@@ -35,7 +35,6 @@ import org.aesh.terminal.tty.Capability;
 public class InfoCmpHelper {
 
     private InfoCmpHelper() {
-        // utility class
     }
 
     private static boolean initialized = false;
@@ -91,7 +90,6 @@ public class InfoCmpHelper {
                 }
             }
         } catch (Exception e) {
-            // Ignore
         }
         return defaultValue;
     }

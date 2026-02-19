@@ -39,7 +39,6 @@ import org.aesh.terminal.utils.TerminalEnvironment;
 public final class ImageProtocolDetector {
 
     private ImageProtocolDetector() {
-        // Utility class
     }
 
     /**

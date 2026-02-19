@@ -161,7 +161,6 @@ public final class PlatformThemeDetector {
             try {
                 return Integer.parseInt(parts[2]);
             } catch (NumberFormatException e) {
-                // Ignore
             }
         }
 

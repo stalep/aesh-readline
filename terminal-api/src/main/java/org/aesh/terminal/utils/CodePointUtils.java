@@ -40,7 +40,6 @@ public final class CodePointUtils {
     private static final Pattern spacePattern = Pattern.compile("(?<!\\\\)\\s");
 
     private CodePointUtils() {
-        // utility class
     }
 
     /**

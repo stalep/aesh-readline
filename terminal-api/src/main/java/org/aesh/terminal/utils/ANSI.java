@@ -450,7 +450,6 @@ public class ANSI {
             return results;
         }
 
-        // Convert to string for easier parsing
         StringBuilder sb = new StringBuilder();
         for (int c : input) {
             sb.appendCodePoint(c);
@@ -483,7 +482,6 @@ public class ANSI {
             return results;
         }
 
-        // Convert to string for easier parsing
         StringBuilder sb = new StringBuilder();
         for (int c : input) {
             sb.appendCodePoint(c);
@@ -641,7 +639,6 @@ public class ANSI {
             return null;
         }
 
-        // Convert to string for easier parsing
         StringBuilder sb = new StringBuilder();
         for (int c : input) {
             sb.appendCodePoint(c);
@@ -787,7 +784,6 @@ public class ANSI {
      * @return the nearest 256-color palette index (16-255)
      */
     public static int rgbTo256Color(int r, int g, int b) {
-        // Clamp values to valid range
         r = Math.max(0, Math.min(255, r));
         g = Math.max(0, Math.min(255, g));
         b = Math.max(0, Math.min(255, b));
@@ -906,7 +902,6 @@ public class ANSI {
      * @return basic ANSI color code (30-37)
      */
     public static int rgbToBasicColorCode(int r, int g, int b) {
-        // Clamp values
         r = Math.max(0, Math.min(255, r));
         g = Math.max(0, Math.min(255, g));
         b = Math.max(0, Math.min(255, b));
@@ -1048,7 +1043,6 @@ public class ANSI {
             return null;
         }
 
-        // Convert to string for easier parsing
         StringBuilder sb = new StringBuilder();
         for (int c : input) {
             sb.appendCodePoint(c);
@@ -1118,7 +1112,6 @@ public class ANSI {
             return null;
         }
 
-        // Convert to string for easier parsing
         StringBuilder sb = new StringBuilder();
         for (int c : input) {
             sb.appendCodePoint(c);

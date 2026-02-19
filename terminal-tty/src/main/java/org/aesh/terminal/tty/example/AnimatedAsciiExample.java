@@ -39,11 +39,7 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class AnimatedAsciiExample {
 
-    /**
-     * Creates a new AnimatedAsciiExample instance.
-     */
     public AnimatedAsciiExample() {
-        // Default constructor
     }
 
     private static final String[] SPINNER = { "|", "/", "-", "\\" };

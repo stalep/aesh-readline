@@ -139,7 +139,6 @@ public final class Signals {
                 doRegister(name, previous);
             }
         } catch (Exception e) {
-            // Ignore
         }
     }
 

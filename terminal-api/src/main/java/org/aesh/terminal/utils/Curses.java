@@ -98,9 +98,6 @@ public final class Curses {
                             case 'n':
                                 out.append('\n');
                                 break;
-                            //                        case 'l':
-                            //                            rawPrint('\l');
-                            //                            break;
                             case 'r':
                                 if (exec) {
                                     out.append('\r');
@@ -445,12 +442,6 @@ public final class Curses {
                         while ((ch = str.charAt(++index)) != '>') {
                             if (ch >= '0' && ch <= '9') {
                                 nb = nb * 10 + (ch - '0');
-                            } else if (ch == '*') {
-                                // ignore
-                            } else if (ch == '/') {
-                                // ignore
-                            } else {
-                                // illegal, but ...
                             }
                         }
                         index++;

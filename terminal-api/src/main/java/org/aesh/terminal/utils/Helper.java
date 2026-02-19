@@ -30,7 +30,6 @@ import java.util.function.Consumer;
 public class Helper {
 
     private Helper() {
-        // utility class
     }
 
     /**

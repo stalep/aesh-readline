@@ -41,11 +41,7 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class ImageExample {
 
-    /**
-     * Creates a new ImageExample instance.
-     */
     public ImageExample() {
-        // Default constructor
     }
 
     /**

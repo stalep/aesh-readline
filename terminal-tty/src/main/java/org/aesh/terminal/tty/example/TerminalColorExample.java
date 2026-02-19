@@ -50,11 +50,7 @@ import org.aesh.terminal.utils.TerminalEnvironment;
  */
 public class TerminalColorExample {
 
-    /**
-     * Creates a new TerminalColorExample instance.
-     */
     public TerminalColorExample() {
-        // Default constructor
     }
 
     /**

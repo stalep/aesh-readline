@@ -74,7 +74,6 @@ public final class ExecHelper {
                 try {
                     c.close();
                 } catch (Exception e) {
-                    // Ignore
                 }
             }
         }

@@ -41,11 +41,7 @@ import org.aesh.terminal.utils.ANSI;
  */
 public class AsciiArtExample {
 
-    /**
-     * Creates a new AsciiArtExample instance.
-     */
     public AsciiArtExample() {
-        // Default constructor
     }
 
     private static final String[] AESH_LOGO = {

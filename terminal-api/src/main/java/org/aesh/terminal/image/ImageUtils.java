@@ -33,7 +33,6 @@ import javax.imageio.ImageIO;
 public final class ImageUtils {
 
     private ImageUtils() {
-        // Utility class
     }
 
     /**

@@ -28,7 +28,6 @@ package org.aesh.terminal.utils;
 public class Config {
 
     private Config() {
-        // utility class
     }
 
     private static final boolean macOS = OSUtils.IS_OSX;
