@@ -90,8 +90,13 @@ public class GraphemeClusterModeReadlineTest {
         readline.readline(conn, new Prompt(": "), s -> {
         }, null, null, null, null, flags);
 
+        // Simulate pressing Enter to complete the readline interaction
+        conn.simulateInput(new int[] { '\r' });
+
         assertFalse("Mode 2027 enable sequence should NOT be sent when flag is set",
                 output.stream().anyMatch(s -> s.contains(ANSI.MODE_2027_ENABLE)));
+        assertFalse("Mode 2027 disable sequence should NOT be sent when flag is set",
+                output.stream().anyMatch(s -> s.contains(ANSI.MODE_2027_DISABLE)));
     }
 
     @Test
@@ -104,8 +109,13 @@ public class GraphemeClusterModeReadlineTest {
         }, null, null, null, null,
                 new EnumMap<>(ReadlineFlag.class));
 
+        // Simulate pressing Enter to finish the readline interaction
+        conn.simulateInput(new int[] { '\r' });
+
         assertFalse("Mode 2027 enable sequence should NOT be sent for unsupporting terminal",
                 output.stream().anyMatch(s -> s.contains(ANSI.MODE_2027_ENABLE)));
+        assertFalse("Mode 2027 disable sequence should NOT be sent for unsupporting terminal",
+                output.stream().anyMatch(s -> s.contains(ANSI.MODE_2027_DISABLE)));
     }
 
     /**
