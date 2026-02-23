@@ -389,6 +389,10 @@ public class Readline {
                             break;
                         case CONT:
                             conn.enterRawMode();
+                            // Re-enable Mode 2027 since terminal modes are lost during suspension
+                            if (graphemeClusterModeActive) {
+                                conn.enableGraphemeClusterMode();
+                            }
                             //just call resize since it will redraw the buffer and set size
                             resize(conn.size());
                             break;
