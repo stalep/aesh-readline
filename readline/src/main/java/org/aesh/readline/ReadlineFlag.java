@@ -38,6 +38,12 @@ public enum ReadlineFlag {
     /**
      * Do not discard lines starting with '#'
      */
-    NO_COMMENT_DISCARD
+    NO_COMMENT_DISCARD,
+
+    /**
+     * Do not automatically enable Mode 2027 (grapheme cluster segmentation)
+     * for terminals that support it
+     */
+    NO_GRAPHEME_CLUSTER_MODE
 
 }
