@@ -310,14 +310,14 @@ public class Readline {
             conn.setSizeHandler(prevSizeHandler);
             conn.setSignalHandler(prevSignalHandler);
             synchronized (Readline.this) {
+                if (graphemeClusterModeActive) {
+                    conn.disableGraphemeClusterMode();
+                    graphemeClusterModeActive = false;
+                }
+                //revert back to the old attributes
+                conn.setAttributes(attributes);
                 inputProcessor = null;
             }
-            if (graphemeClusterModeActive) {
-                conn.disableGraphemeClusterMode();
-                graphemeClusterModeActive = false;
-            }
-            //revert back to the old attributes
-            conn.setAttributes(attributes);
 
             //call requestHandler with the output
             requestHandler.accept(s);
