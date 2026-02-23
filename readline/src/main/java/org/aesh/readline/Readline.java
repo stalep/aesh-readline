@@ -280,6 +280,7 @@ public class Readline {
         private List<Function<String, Optional<String>>> preProcessors;
         private Attributes attributes;
         private final EnumMap<ReadlineFlag, Integer> flags;
+        private boolean graphemeClusterModeActive;
 
         private AeshInputProcessor(
                 Connection conn,
@@ -310,6 +311,10 @@ public class Readline {
             conn.setSignalHandler(prevSignalHandler);
             synchronized (Readline.this) {
                 inputProcessor = null;
+            }
+            if (graphemeClusterModeActive) {
+                conn.disableGraphemeClusterMode();
+                graphemeClusterModeActive = false;
             }
             //revert back to the old attributes
             conn.setAttributes(attributes);
@@ -406,6 +411,13 @@ public class Readline {
 
             //setting attributes to previous values
             attributes = conn.enterRawMode();
+
+            // Enable Mode 2027 for terminals that support grapheme cluster segmentation
+            if (!flags.containsKey(ReadlineFlag.NO_GRAPHEME_CLUSTER_MODE)
+                    && conn.supportsGraphemeClusterMode()) {
+                conn.enableGraphemeClusterMode();
+                graphemeClusterModeActive = true;
+            }
 
             //last, display prompt
             consoleBuffer.drawLine();
