@@ -36,6 +36,7 @@ public class TerminalString implements Comparable<TerminalString> {
     private TerminalColor color;
     private boolean ignoreRendering;
     private int ansiLength = 0;
+    private String hyperlinkUrl;
 
     /**
      * Create a terminal string with the specified color and style.
@@ -97,6 +98,20 @@ public class TerminalString implements Comparable<TerminalString> {
     }
 
     /**
+     * Create a terminal string with a hyperlink URL, color and style.
+     * When rendered, the text will be wrapped in OSC 8 hyperlink escape sequences.
+     *
+     * @param chars the character content
+     * @param hyperlinkUrl the URL for the hyperlink
+     * @param color the terminal color
+     * @param style the text style
+     */
+    public TerminalString(String chars, String hyperlinkUrl, TerminalColor color, TerminalTextStyle style) {
+        this(chars, color, style);
+        this.hyperlinkUrl = hyperlinkUrl;
+    }
+
+    /**
      * Get the character content.
      *
      * @return the characters
@@ -112,6 +127,25 @@ public class TerminalString implements Comparable<TerminalString> {
      */
     public void setCharacters(String chars) {
         this.characters = chars;
+    }
+
+    /**
+     * Get the hyperlink URL.
+     *
+     * @return the hyperlink URL, or null if not set
+     */
+    public String getHyperlinkUrl() {
+        return hyperlinkUrl;
+    }
+
+    /**
+     * Set the hyperlink URL.
+     *
+     * @param url the hyperlink URL
+     */
+    public void setHyperlinkUrl(String url) {
+        this.hyperlinkUrl = url;
+        this.ansiLength = 0; // reset cached length
     }
 
     /**
@@ -148,9 +182,14 @@ public class TerminalString implements Comparable<TerminalString> {
         if (ignoreRendering)
             return 0;
         else {
-            if (ansiLength == 0)
+            if (ansiLength == 0) {
                 ansiLength = ANSI.START.length() + color.getLength() +
                         style.getLength() + ANSI.RESET.length() + 2; // ; + m
+                if (hyperlinkUrl != null) {
+                    ansiLength += ANSI.buildHyperlinkStart(hyperlinkUrl, null).length()
+                            + ANSI.buildHyperlinkEnd().length();
+                }
+            }
             return ansiLength;
         }
     }
@@ -164,8 +203,11 @@ public class TerminalString implements Comparable<TerminalString> {
     public TerminalString cloneRenderingAttributes(String chars) {
         if (ignoreRendering)
             return new TerminalString(chars, true);
-        else
-            return new TerminalString(chars, color, style);
+        else {
+            TerminalString ts = new TerminalString(chars, color, style);
+            ts.hyperlinkUrl = this.hyperlinkUrl;
+            return ts;
+        }
     }
 
     /**
@@ -191,6 +233,9 @@ public class TerminalString implements Comparable<TerminalString> {
             return characters;
         else {
             StringBuilder builder = new StringBuilder();
+            if (hyperlinkUrl != null) {
+                builder.append(ANSI.buildHyperlinkStart(hyperlinkUrl, null));
+            }
             builder.append(ANSI.START)
                     .append(style.getValueComparedToPrev(prev.getStyle()));
 
@@ -202,6 +247,9 @@ public class TerminalString implements Comparable<TerminalString> {
             }
 
             builder.append('m').append(getCharacters());
+            if (hyperlinkUrl != null) {
+                builder.append(ANSI.buildHyperlinkEnd());
+            }
             return builder.toString();
         }
     }
@@ -210,9 +258,13 @@ public class TerminalString implements Comparable<TerminalString> {
     public String toString() {
         if (ignoreRendering)
             return characters;
-        return ANSI.START + style.toString() + ';' +
+        String content = ANSI.START + style.toString() + ';' +
                 this.color.toString() +
                 'm' + getCharacters() + ANSI.RESET;
+        if (hyperlinkUrl != null) {
+            return ANSI.buildHyperlinkStart(hyperlinkUrl, null) + content + ANSI.buildHyperlinkEnd();
+        }
+        return content;
     }
 
     /**
