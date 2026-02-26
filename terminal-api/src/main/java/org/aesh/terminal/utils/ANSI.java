@@ -150,6 +150,29 @@ public class ANSI {
     /** OSC code for cursor color query/set. */
     public static final int OSC_CURSOR_COLOR = 12;
 
+    // ==================== OSC 133 Shell Integration ====================
+
+    /** OSC code for shell integration (semantic prompt). */
+    public static final int OSC_SHELL_INTEGRATION = 133;
+    /** OSC 133;A — Prompt Start: emitted before the prompt text. */
+    public static final String OSC_133_PROMPT_START = OSC_START + "133;A" + ST;
+    /** OSC 133;B — Prompt End: emitted after the prompt, before user input. */
+    public static final String OSC_133_PROMPT_END = OSC_START + "133;B" + ST;
+    /** OSC 133;C — Command Start: emitted when the user presses Enter. */
+    public static final String OSC_133_COMMAND_START = OSC_START + "133;C" + ST;
+    /** OSC 133;D — Command Finished: emitted after command completes (no exit code). */
+    public static final String OSC_133_COMMAND_FINISHED = OSC_START + "133;D" + ST;
+
+    /**
+     * Build an OSC 133;D sequence with an exit code.
+     *
+     * @param exitCode the command exit code
+     * @return the OSC 133;D;exitCode sequence
+     */
+    public static String osc133CommandFinished(int exitCode) {
+        return OSC_START + "133;D;" + exitCode + ST;
+    }
+
     // ==================== Theme Mode DSR (CSI ? 996 n) ====================
 
     /**

@@ -292,6 +292,7 @@ public class Readline {
         private final EnumMap<ReadlineFlag, Integer> flags;
         private boolean graphemeClusterModeActive;
         private boolean synchronizedOutputSupported;
+        private boolean shellIntegrationEnabled;
 
         private AeshInputProcessor(
                 Connection conn,
@@ -354,6 +355,8 @@ public class Readline {
                 if (this.returnValue() != null) {
                     consoleBuffer.clearGhostText();
                     conn.stdoutHandler().accept(Config.CR);
+                    if (shellIntegrationEnabled)
+                        conn.writeCommandStart();
                     finish(this.returnValue());
                 } else {
                     showGhostTextIfApplicable();
@@ -458,12 +461,22 @@ public class Readline {
                 synchronizedOutputSupported = true;
             }
 
+            // Detect OSC 133 shell integration support
+            if (!flags.containsKey(ReadlineFlag.NO_SHELL_INTEGRATION)
+                    && conn.supportsShellIntegration()) {
+                shellIntegrationEnabled = true;
+            }
+
             //last, display prompt
+            if (shellIntegrationEnabled)
+                conn.writePromptStart();
             if (synchronizedOutputSupported)
                 conn.enableSynchronizedOutput();
             consoleBuffer.drawLine();
             if (synchronizedOutputSupported)
                 conn.disableSynchronizedOutput();
+            if (shellIntegrationEnabled)
+                conn.writePromptEnd();
             //last process input, the readInput() can read/finish in one go
             //since EventDecoder might have queued up data
             conn.setStdinHandler(data -> {

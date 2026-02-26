@@ -50,6 +50,14 @@ public enum ReadlineFlag {
      * Do not automatically use Mode 2026 (synchronized output)
      * for terminals that support it
      */
-    NO_SYNCHRONIZED_OUTPUT
+    NO_SYNCHRONIZED_OUTPUT,
+
+    /**
+     * Do not emit OSC 133 shell integration sequences.
+     * <p>
+     * When set, Readline will not emit OSC 133 prompt start (A),
+     * prompt end (B), or command start (C) markers.
+     */
+    NO_SHELL_INTEGRATION
 
 }
