@@ -291,6 +291,12 @@
        </modules>
      </profile>
      <profile>
+       <id>examples</id>
+       <modules>
+         <module>examples</module>
+       </modules>
+     </profile>
+     <profile>
        <id>format</id>
        <activation>
          <activeByDefault>true</activeByDefault>
