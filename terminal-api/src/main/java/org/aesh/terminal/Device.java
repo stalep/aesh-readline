@@ -286,6 +286,44 @@ public interface Device {
         }
 
         /**
+         * Check if this terminal supports OSC 133 shell integration.
+         * <p>
+         * OSC 133 marks semantic zones in terminal output (prompt, user input,
+         * command output) enabling features like click-to-scroll-to-prompt,
+         * command output selection, and visual prompt highlighting.
+         * <p>
+         * Known supporting terminals: iTerm2, Kitty, Ghostty, WezTerm, Foot,
+         * Contour, VS Code, Windows Terminal, GNOME Terminal (VTE 0.70+),
+         * Konsole (22.04+).
+         *
+         * @return true if OSC 133 shell integration is expected to be supported
+         */
+        public boolean supportsShellIntegration() {
+            switch (this) {
+                case ITERM2:
+                case KITTY:
+                case GHOSTTY:
+                case WEZTERM:
+                case FOOT:
+                case CONTOUR:
+                case VSCODE:
+                case WINDOWS_TERMINAL:
+                case GNOME_TERMINAL:
+                case KONSOLE:
+                case WARP:
+                case RIO:
+                case WAVE:
+                case HYPER:
+                case TABBY:
+                case EXTRATERM:
+                case MINTTY:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /**
          * Check if this terminal supports OSC 8 hyperlinks.
          *
          * @return true if OSC 8 hyperlinks are supported
@@ -485,6 +523,19 @@ public interface Device {
     default boolean supportsSynchronizedOutput() {
         return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
                 .supportsSynchronizedOutput();
+    }
+
+    /**
+     * Check if this device supports OSC 133 shell integration.
+     * <p>
+     * This method uses {@link org.aesh.terminal.utils.TerminalEnvironment} for
+     * environment-based detection.
+     *
+     * @return true if OSC 133 shell integration is likely supported
+     */
+    default boolean supportsShellIntegration() {
+        return org.aesh.terminal.utils.TerminalEnvironment.getInstance()
+                .supportsShellIntegration();
     }
 
     /**

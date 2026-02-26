@@ -400,6 +400,17 @@ public final class TerminalEnvironment {
     }
 
     /**
+     * Check if OSC 133 shell integration is likely supported.
+     * <p>
+     * This delegates to the detected terminal type's shell integration support.
+     *
+     * @return true if OSC 133 shell integration is likely supported
+     */
+    public boolean supportsShellIntegration() {
+        return terminalType.supportsShellIntegration();
+    }
+
+    /**
      * Check if OSC 8 hyperlinks are likely supported.
      * <p>
      * This delegates to the detected terminal type's hyperlink support.

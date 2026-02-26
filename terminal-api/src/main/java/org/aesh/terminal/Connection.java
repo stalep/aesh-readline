@@ -996,6 +996,81 @@ public interface Connection extends AutoCloseable {
         return write(ANSI.MODE_2026_DISABLE);
     }
 
+    // ==================== OSC 133 Shell Integration ====================
+
+    /**
+     * Check if OSC 133 (shell integration) is likely supported.
+     * <p>
+     * This delegates to the device's capability detection based on terminal type.
+     * Returns false for dumb terminals or when the device is null.
+     *
+     * @return true if OSC 133 shell integration is likely supported
+     */
+    default boolean supportsShellIntegration() {
+        if (device() == null || !supportsAnsi()) {
+            return false;
+        }
+        return device().supportsShellIntegration();
+    }
+
+    /**
+     * Write OSC 133;A (Prompt Start) to the terminal.
+     * <p>
+     * This marks the beginning of the prompt region. Terminals that support
+     * shell integration use this to identify prompt boundaries for features
+     * like click-to-scroll-to-prompt and visual prompt highlighting.
+     *
+     * @return this connection
+     */
+    default Connection writePromptStart() {
+        return write(ANSI.OSC_133_PROMPT_START);
+    }
+
+    /**
+     * Write OSC 133;B (Prompt End) to the terminal.
+     * <p>
+     * This marks the end of the prompt and the start of the user input area.
+     *
+     * @return this connection
+     */
+    default Connection writePromptEnd() {
+        return write(ANSI.OSC_133_PROMPT_END);
+    }
+
+    /**
+     * Write OSC 133;C (Command Start) to the terminal.
+     * <p>
+     * This marks that the user has pressed Enter and command output is about
+     * to begin.
+     *
+     * @return this connection
+     */
+    default Connection writeCommandStart() {
+        return write(ANSI.OSC_133_COMMAND_START);
+    }
+
+    /**
+     * Write OSC 133;D (Command Finished) to the terminal without an exit code.
+     *
+     * @return this connection
+     */
+    default Connection writeCommandFinished() {
+        return write(ANSI.OSC_133_COMMAND_FINISHED);
+    }
+
+    /**
+     * Write OSC 133;D (Command Finished) to the terminal with an exit code.
+     * <p>
+     * The exit code allows the terminal to visually distinguish successful
+     * commands (exit code 0) from failed commands.
+     *
+     * @param exitCode the command exit code
+     * @return this connection
+     */
+    default Connection writeCommandFinished(int exitCode) {
+        return write(ANSI.osc133CommandFinished(exitCode));
+    }
+
     // ==================== Mode 2027 (Grapheme Cluster Mode) ====================
 
     /**
