@@ -33,6 +33,9 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - uses: ilammy/msvc-dev-cmd@v1
+    - name: Install dependencies
+      shell: bash
+      run: mvn clean install -pl terminal-api -am -DskipTests -Dformat.skip=true
     - name: Build and test terminal-tty
       shell: bash
-      run: mvn clean test -pl terminal-tty -am -Dformat.skip=true
+      run: mvn clean test -pl terminal-tty -Dformat.skip=true
