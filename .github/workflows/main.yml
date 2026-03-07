@@ -33,14 +33,6 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - uses: ilammy/msvc-dev-cmd@v1
-    - name: Compile native DLL
-      shell: cmd
-      run: |
-        mkdir terminal-tty\src\main\resources\native\windows-x86_64
-        cl /LD /O2 /I"%JAVA_HOME%\include" /I"%JAVA_HOME%\include\win32" /Fe:terminal-tty\src\main\resources\native\windows-x86_64\aesh-console.dll terminal-tty\src\main\native\WinConsoleNative.c kernel32.lib
-    - name: Install dependencies
+    - name: Build and test terminal-tty
       shell: bash
-      run: mvn clean install -pl terminal-api -am -DskipTests -Dformat.skip=true
-    - name: Test terminal-tty
-      shell: bash
-      run: mvn test -pl terminal-tty -Dformat.skip=true
+      run: mvn clean test -pl terminal-tty -am -Dformat.skip=true

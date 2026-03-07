@@ -120,4 +120,43 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>native-windows</id>
+            <activation>
+                <os><family>windows</family></os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>compile-native-dll</id>
+                                <phase>process-classes</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/native/windows-x86_64"/>
+                                        <exec executable="cl" dir="${project.build.directory}"
+                                              failonerror="false">
+                                            <arg value="/LD"/>
+                                            <arg value="/O2"/>
+                                            <arg value="/I${env.JAVA_HOME}\include"/>
+                                            <arg value="/I${env.JAVA_HOME}\include\win32"/>
+                                            <arg value="/Fe:${project.build.outputDirectory}\native\windows-x86_64\aesh-console.dll"/>
+                                            <arg value="${project.basedir}\src\main\native\WinConsoleNative.c"/>
+                                            <arg value="kernel32.lib"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

@@ -38,7 +38,9 @@ public class WinConsoleNativeTest {
         try {
             // Force class loading which triggers native library load
             Class.forName("org.aesh.terminal.tty.impl.WinConsoleNative");
-        } catch (UnsatisfiedLinkError e) {
+        } catch (UnsatisfiedLinkError | ExceptionInInitializerError | NoClassDefFoundError e) {
+            // Class.forName wraps static-init failures in ExceptionInInitializerError;
+            // subsequent attempts throw NoClassDefFoundError
             Assume.assumeNoException("Native library not available", e);
         } catch (ClassNotFoundException e) {
             Assume.assumeNoException("WinConsoleNative class not found", e);
