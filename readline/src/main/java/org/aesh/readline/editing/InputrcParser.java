@@ -91,7 +91,7 @@ public class InputrcParser {
         Pattern startConstructs = Pattern.compile("^\\$if");
         Pattern endConstructs = Pattern.compile("^\\$endif");
 
-        Scanner scanner = new Scanner(inputStream).useDelimiter(Config.getLineSeparator());
+        Scanner scanner = new Scanner(inputStream).useDelimiter("\\R");
 
         String line;
         boolean constructMode = false;

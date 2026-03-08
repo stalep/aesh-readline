@@ -89,12 +89,11 @@ public class Vi implements EditMode {
 
     private void remap(Key key, int[] newMapping) {
         if (newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
-            ActionStatus action = actions.remove(key);
-            addAction(newMapping, action);
+            // Keep the original mapping and also add the device mapping
+            addAction(newMapping, actions.get(key));
         } else if (newMapping != null && actionGroups.containsKey(key) && !key.equalTo(newMapping)) {
-            ActionStatusGroup statusGroup = actionGroups.remove(key);
-            addActionGroup(newMapping, statusGroup);
-
+            // Keep the original mapping and also add the device mapping
+            addActionGroup(newMapping, actionGroups.get(key));
         }
     }
 

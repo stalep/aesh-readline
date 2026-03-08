@@ -111,8 +111,9 @@ public class Emacs implements EditMode {
      */
     private void remap(Key key, int[] newMapping) {
         if (newMapping != null && actions.containsKey(key) && !key.equalTo(newMapping)) {
-            Action homeAction = actions.remove(key);
-            addAction(newMapping, homeAction.name());
+            // Keep the original mapping and also add the device mapping so both
+            // escape sequence formats (CSI and SS3) are recognized.
+            addAction(newMapping, actions.get(key).name());
         }
     }
 
