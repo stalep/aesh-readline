@@ -140,7 +140,7 @@
                                     <target>
                                         <mkdir dir="${project.build.outputDirectory}/native/windows-x86_64"/>
                                         <exec executable="cl" dir="${project.build.directory}"
-                                              failonerror="false">
+                                              failonerror="false" failifexecutionfails="false">
                                             <arg value="/LD"/>
                                             <arg value="/O2"/>
                                             <arg value="/I${env.JAVA_HOME}\include"/>
