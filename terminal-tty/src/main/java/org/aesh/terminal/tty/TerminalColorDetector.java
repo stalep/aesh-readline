@@ -759,18 +759,20 @@ public final class TerminalColorDetector {
             byte[] buffer = new byte[256];
 
             while (System.currentTimeMillis() < endTime) {
-                int read = input.read(buffer);
-                if (read > 0) {
-                    for (int i = 0; i < read; i++) {
-                        response.append((char) (buffer[i] & 0xFF));
-                    }
-                    // Check if we have a complete response (terminated by 'n')
-                    String resp = response.toString();
-                    if (resp.contains("n") && resp.contains("\u001B[?997;")) {
+                if (input.available() > 0) {
+                    int read = input.read(buffer);
+                    if (read > 0) {
+                        for (int i = 0; i < read; i++) {
+                            response.append((char) (buffer[i] & 0xFF));
+                        }
+                        // Check if we have a complete response (terminated by 'n')
+                        String resp = response.toString();
+                        if (resp.contains("n") && resp.contains("\u001B[?997;")) {
+                            break;
+                        }
+                    } else if (read < 0) {
                         break;
                     }
-                } else if (read < 0) {
-                    break;
                 }
                 try {
                     Thread.sleep(5);
@@ -842,17 +844,19 @@ public final class TerminalColorDetector {
             byte[] buffer = new byte[1024];
 
             while (System.currentTimeMillis() < endTime) {
-                int read = input.read(buffer);
-                if (read > 0) {
-                    for (int i = 0; i < read; i++) {
-                        response.append((char) (buffer[i] & 0xFF));
-                    }
-                    int responseCount = countResponses(response.toString());
-                    if (responseCount >= expectedResponses) {
+                if (input.available() > 0) {
+                    int read = input.read(buffer);
+                    if (read > 0) {
+                        for (int i = 0; i < read; i++) {
+                            response.append((char) (buffer[i] & 0xFF));
+                        }
+                        int responseCount = countResponses(response.toString());
+                        if (responseCount >= expectedResponses) {
+                            break;
+                        }
+                    } else if (read < 0) {
                         break;
                     }
-                } else if (read < 0) {
-                    break;
                 }
                 try {
                     Thread.sleep(5);
