@@ -19,10 +19,14 @@
  */
 package org.aesh.terminal.tty.example;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import javax.imageio.ImageIO;
 
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.image.ImageProtocol;
@@ -156,27 +160,22 @@ public class ImageExample {
     }
 
     /**
-     * Generate a minimal valid PNG for testing.
-     * Creates a small 8x8 pixel pattern.
+     * Generate a test PNG with a colorful gradient pattern.
+     * Creates a 64x64 pixel image using ImageIO.
      */
-    private static byte[] generateTestPng() {
-        // This is a pre-computed minimal PNG with a simple pattern
-        // For real usage, you'd use ImageIO or similar
-        return new byte[] {
-                (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
-                0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-                0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x08, // 8x8 pixels
-                0x08, 0x02, 0x00, 0x00, 0x00, 0x4B, 0x6D, 0x29, // 8-bit RGB
-                (byte) 0xDE,
-                0x00, 0x00, 0x00, 0x31, 0x49, 0x44, 0x41, 0x54, // IDAT chunk
-                0x78, (byte) 0x9C, 0x62, (byte) 0xFC, (byte) 0xCF, 0x00, 0x04, (byte) 0x8C,
-                0x19, (byte) 0xFE, 0x03, 0x31, 0x23, 0x03, 0x03, 0x03,
-                0x23, 0x03, 0x23, 0x10, 0x33, 0x32, 0x30, 0x30,
-                0x30, 0x32, 0x30, 0x02, 0x31, 0x23, 0x03, 0x03,
-                0x03, 0x23, 0x03, 0x23, 0x10, 0x33, 0x00, 0x00,
-                0x00, (byte) 0xAF, 0x00, 0x1F, (byte) 0xF6, (byte) 0xB7, (byte) 0xEC, 0x11,
-                0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND chunk
-                (byte) 0xAE, 0x42, 0x60, (byte) 0x82
-        };
+    private static byte[] generateTestPng() throws IOException {
+        int size = 64;
+        BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                int r = x * 255 / (size - 1);
+                int g = y * 255 / (size - 1);
+                int b = 128;
+                image.setRGB(x, y, (r << 16) | (g << 8) | b);
+            }
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "PNG", baos);
+        return baos.toByteArray();
     }
 }
