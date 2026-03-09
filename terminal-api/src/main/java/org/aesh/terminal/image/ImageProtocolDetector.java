@@ -172,6 +172,7 @@ public final class ImageProtocolDetector {
             // Sixel graphics
             case FOOT:
             case CONTOUR:
+            case WINDOWS_TERMINAL:
                 return ImageProtocol.SIXEL;
 
             // These terminals may support images but detection is unreliable
