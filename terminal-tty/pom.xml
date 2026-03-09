@@ -201,6 +201,11 @@
                                             <arg value="WinConsoleNative.c"/>
                                             <arg value="-lkernel32"/>
                                         </exec>
+                                        <!-- Copy the compiled DLL back to src/main/resources so it can be committed -->
+                                        <mkdir dir="${project.basedir}/src/main/resources/native/windows-x86_64"/>
+                                        <copy file="${project.build.outputDirectory}/native/windows-x86_64/aesh-console.dll"
+                                              todir="${project.basedir}/src/main/resources/native/windows-x86_64"
+                                              overwrite="true"/>
                                     </target>
                                 </configuration>
                             </execution>
