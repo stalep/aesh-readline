@@ -137,9 +137,11 @@
                                 <phase>process-classes</phase>
                                 <goals><goal>run</goal></goals>
                                 <configuration>
-                                    <target>
+                                    <target xmlns:if="ant:if">
                                         <mkdir dir="${project.build.outputDirectory}/native/windows-x86_64"/>
+                                        <!-- Try MSVC (cl) first -->
                                         <exec executable="cl" dir="${project.build.directory}"
+                                              resultproperty="cl.result"
                                               failonerror="false" failifexecutionfails="false">
                                             <arg value="/LD"/>
                                             <arg value="/O2"/>
@@ -148,6 +150,56 @@
                                             <arg value="/Fe:${project.build.outputDirectory}\native\windows-x86_64\aesh-console.dll"/>
                                             <arg value="${project.basedir}\src\main\native\WinConsoleNative.c"/>
                                             <arg value="kernel32.lib"/>
+                                        </exec>
+                                        <!-- Fall back to MinGW gcc if cl is not available -->
+                                        <condition property="cl.failed">
+                                            <not><equals arg1="${cl.result}" arg2="0"/></not>
+                                        </condition>
+                                        <exec executable="gcc" dir="${project.build.directory}"
+                                              failonerror="false" failifexecutionfails="false"
+                                              if:set="cl.failed">
+                                            <arg value="-shared"/>
+                                            <arg value="-O2"/>
+                                            <arg value="-I${env.JAVA_HOME}\include"/>
+                                            <arg value="-I${env.JAVA_HOME}\include\win32"/>
+                                            <arg value="-o"/>
+                                            <arg value="${project.build.outputDirectory}\native\windows-x86_64\aesh-console.dll"/>
+                                            <arg value="${project.basedir}\src\main\native\WinConsoleNative.c"/>
+                                            <arg value="-lkernel32"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>cross-windows</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cross-compile-native-dll</id>
+                                <phase>process-classes</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.outputDirectory}/native/windows-x86_64"/>
+                                        <exec executable="x86_64-w64-mingw32-gcc" dir="${project.basedir}/src/main/native"
+                                              failonerror="true">
+                                            <arg value="-shared"/>
+                                            <arg value="-O2"/>
+                                            <arg value="-I${env.JAVA_HOME}/include"/>
+                                            <arg value="-I${project.basedir}/src/main/native/win32"/>
+                                            <arg value="-o"/>
+                                            <arg value="${project.build.outputDirectory}/native/windows-x86_64/aesh-console.dll"/>
+                                            <arg value="WinConsoleNative.c"/>
+                                            <arg value="-lkernel32"/>
                                         </exec>
                                     </target>
                                 </configuration>
