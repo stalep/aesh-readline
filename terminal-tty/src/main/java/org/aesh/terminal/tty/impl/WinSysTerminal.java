@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 
 import org.aesh.terminal.tty.Capability;
+import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 
 /**
@@ -97,22 +98,33 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         if (hConsole == WinConsoleNative.INVALID_HANDLE) {
             return new byte[0];
         }
-        int[] keyEvent;
+        int[] event;
         try {
-            keyEvent = WinConsoleNative.readConsoleKeyEvent(hConsole);
+            event = WinConsoleNative.readConsoleInputEvent(hConsole);
         } catch (Exception e) {
             LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
             return new byte[0];
         }
-        if (keyEvent == null) {
+        if (event == null) {
             return new byte[0];
         }
-        // keyEvent: {keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
-        boolean keyDown = keyEvent[0] != 0;
-        int repeatCount = keyEvent[1];
-        short vKeyCode = (short) keyEvent[2];
-        char unicodeChar = (char) keyEvent[3];
-        int controlKeyState = keyEvent[4];
+
+        // Check event type (first element)
+        if (event[0] == WinConsoleNative.WINDOW_BUFFER_SIZE_EVENT) {
+            raise(Signal.WINCH);
+            return new byte[0];
+        }
+
+        if (event[0] != WinConsoleNative.KEY_EVENT) {
+            return new byte[0];
+        }
+
+        // Key event: {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+        boolean keyDown = event[1] != 0;
+        int repeatCount = event[2];
+        short vKeyCode = (short) event[3];
+        char unicodeChar = (char) event[4];
+        int controlKeyState = event[5];
 
         StringBuilder sb = new StringBuilder();
         // support some C1 control sequences: ALT + [@-_] (and [a-z]?) => ESC <ascii>

@@ -8,6 +8,7 @@
       { "name": "getConsoleOutputCP", "parameterTypes": [] },
       { "name": "getConsoleSize", "parameterTypes": ["long"] },
       { "name": "readConsoleKeyEvent", "parameterTypes": ["long"] },
+      { "name": "readConsoleInputEvent", "parameterTypes": ["long"] },
       { "name": "writeConsole", "parameterTypes": ["long", "char[]", "int"] }
     ]
   }

@@ -143,6 +143,59 @@ JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_rea
 
 /*
  * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
+ * Method:    readConsoleInputEvent
+ * Returns:   int[] where first element is the event type:
+ *            KEY_EVENT (1):              {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
+ *            WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
+ *            or NULL if no relevant event was read
+ */
+JNIEXPORT jintArray JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_readConsoleInputEvent
+  (JNIEnv *env, jclass cls, jlong handle)
+{
+#ifdef _WIN32
+    INPUT_RECORD record;
+    DWORD eventsRead;
+    if (!ReadConsoleInputW((HANDLE)(intptr_t)handle, &record, 1, &eventsRead))
+        return NULL;
+    if (eventsRead == 0)
+        return NULL;
+
+    if (record.EventType == KEY_EVENT) {
+        KEY_EVENT_RECORD *ke = &record.Event.KeyEvent;
+        jint fields[6];
+        fields[0] = 1; /* KEY_EVENT */
+        fields[1] = ke->bKeyDown ? 1 : 0;
+        fields[2] = (jint)ke->wRepeatCount;
+        fields[3] = (jint)ke->wVirtualKeyCode;
+        fields[4] = (jint)ke->uChar.UnicodeChar;
+        fields[5] = (jint)ke->dwControlKeyState;
+        jintArray result = (*env)->NewIntArray(env, 6);
+        if (result == NULL) return NULL;
+        (*env)->SetIntArrayRegion(env, result, 0, 6, fields);
+        return result;
+    }
+
+    if (record.EventType == WINDOW_BUFFER_SIZE_EVENT) {
+        COORD size = record.Event.WindowBufferSizeEvent.dwSize;
+        jint fields[3];
+        fields[0] = 4; /* WINDOW_BUFFER_SIZE_EVENT */
+        fields[1] = (jint)size.X;
+        fields[2] = (jint)size.Y;
+        jintArray result = (*env)->NewIntArray(env, 3);
+        if (result == NULL) return NULL;
+        (*env)->SetIntArrayRegion(env, result, 0, 3, fields);
+        return result;
+    }
+
+    /* Other event types (mouse, menu, focus) - ignore */
+    return NULL;
+#else
+    return NULL;
+#endif
+}
+
+/*
+ * Class:     org_aesh_terminal_tty_impl_WinConsoleNative
  * Method:    writeConsole
  */
 JNIEXPORT jboolean JNICALL Java_org_aesh_terminal_tty_impl_WinConsoleNative_writeConsole
