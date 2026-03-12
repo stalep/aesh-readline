@@ -46,6 +46,18 @@ import org.aesh.terminal.utils.TerminalTheme;
 public interface Connection extends AutoCloseable {
 
     /**
+     * Default timeout in milliseconds for terminal queries (OSC, DA1, DA2, etc.).
+     * Suitable for most query operations where the terminal is expected to respond.
+     */
+    long DEFAULT_QUERY_TIMEOUT_MS = 500;
+
+    /**
+     * Fast timeout in milliseconds for lightweight terminal queries.
+     * Use for simple queries like theme DSR or when low latency is important.
+     */
+    long FAST_QUERY_TIMEOUT_MS = 150;
+
+    /**
      * Get the device associated with this connection.
      *
      * @return type of terminal
