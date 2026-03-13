@@ -173,6 +173,25 @@ public class ANSI {
         return OSC_START + "133;D;" + exitCode + ST;
     }
 
+    // ==================== OSC 52 Clipboard ====================
+
+    /** OSC code for clipboard access. */
+    public static final int OSC_CLIPBOARD = 52;
+
+    /**
+     * Build an OSC 52 sequence to write text to the system clipboard.
+     * <p>
+     * Format: {@code ESC ] 52 ; c ; <base64-encoded-text> ST}
+     *
+     * @param text the text to copy to the clipboard
+     * @return the OSC 52 escape sequence
+     */
+    public static String buildOsc52Write(String text) {
+        String encoded = java.util.Base64.getEncoder().encodeToString(
+                text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return OSC_START + OSC_CLIPBOARD + ";c;" + encoded + ST;
+    }
+
     // ==================== Theme Mode DSR (CSI ? 996 n) ====================
 
     /**

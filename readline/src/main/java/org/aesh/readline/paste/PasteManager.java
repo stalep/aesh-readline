@@ -21,6 +21,7 @@ package org.aesh.readline.paste;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Keep track of edits for paste
@@ -31,6 +32,7 @@ public class PasteManager {
 
     private static final int PASTE_SIZE = 10;
     private final List<int[]> pasteStack;
+    private Consumer<int[]> clipboardWriter;
 
     /**
      * Creates a new PasteManager with an empty paste stack.
@@ -45,9 +47,22 @@ public class PasteManager {
      *
      * @param buffer the text buffer (as code points) to add to the paste stack
      */
+    /**
+     * Sets a callback that is invoked whenever text is added to the paste stack.
+     * Used to write killed/copied text to the system clipboard via OSC 52.
+     *
+     * @param clipboardWriter the callback to invoke with the added text, or null to disable
+     */
+    public void setClipboardWriter(Consumer<int[]> clipboardWriter) {
+        this.clipboardWriter = clipboardWriter;
+    }
+
     public void addText(int[] buffer) {
         checkSize();
         pasteStack.add(buffer);
+        if (clipboardWriter != null) {
+            clipboardWriter.accept(buffer);
+        }
     }
 
     /**

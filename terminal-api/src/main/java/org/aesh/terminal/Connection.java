@@ -1234,6 +1234,23 @@ public interface Connection extends AutoCloseable {
     }
 
     /**
+     * Write text to the system clipboard via OSC 52.
+     * <p>
+     * This is a write-only operation that copies the given text to the
+     * system clipboard. Only writes if the text is non-empty and the
+     * terminal supports OSC 52 clipboard access.
+     *
+     * @param text the text to copy to the clipboard
+     * @return this connection
+     */
+    default Connection writeClipboard(String text) {
+        if (text != null && !text.isEmpty() && supportsClipboard()) {
+            write(ANSI.buildOsc52Write(text));
+        }
+        return this;
+    }
+
+    /**
      * Query palette color only if the terminal supports it.
      * <p>
      * This method first checks if the terminal is known to support OSC 4,

@@ -467,6 +467,14 @@ public class Readline {
                 shellIntegrationEnabled = true;
             }
 
+            // Wire OSC 52 clipboard writes for kill/copy actions
+            if (!flags.containsKey(ReadlineFlag.NO_CLIPBOARD)
+                    && conn.supportsClipboard()) {
+                consoleBuffer.pasteManager().setClipboardWriter(codePoints -> {
+                    conn.writeClipboard(new String(codePoints, 0, codePoints.length));
+                });
+            }
+
             //last, display prompt
             if (shellIntegrationEnabled)
                 conn.writePromptStart();

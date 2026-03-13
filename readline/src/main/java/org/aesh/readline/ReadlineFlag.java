@@ -58,6 +58,11 @@ public enum ReadlineFlag {
      * When set, Readline will not emit OSC 133 prompt start (A),
      * prompt end (B), or command start (C) markers.
      */
-    NO_SHELL_INTEGRATION
+    NO_SHELL_INTEGRATION,
+
+    /**
+     * Do not write killed/copied text to the system clipboard via OSC 52.
+     */
+    NO_CLIPBOARD
 
 }
