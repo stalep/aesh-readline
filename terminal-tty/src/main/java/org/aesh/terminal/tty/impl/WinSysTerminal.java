@@ -61,6 +61,7 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      */
     public WinSysTerminal(String name, boolean nativeSignals, SignalHandler signalHandler) throws IOException {
         super(setVTMode(), System.out, name, nativeSignals, signalHandler);
+        enableVTInput();
     }
 
     protected int getConsoleOutputCP() {
@@ -168,6 +169,26 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
             }
         }
         return sb.toString().getBytes();
+    }
+
+    /**
+     * Try to enable VT input mode on the console input handle.
+     * When enabled, Windows Terminal delivers special keys and mouse events
+     * as VT escape sequences through KEY_EVENT records instead of as
+     * virtual key codes or MOUSE_EVENT records.
+     */
+    private void enableVTInput() {
+        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+        if (hConsole == WinConsoleNative.INVALID_HANDLE) {
+            return;
+        }
+        int mode = WinConsoleNative.getConsoleMode(hConsole);
+        if (mode == -1) {
+            return;
+        }
+        if (WinConsoleNative.setConsoleMode(hConsole, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
+            vtInputEnabled = true;
+        }
     }
 
     // This allows to take benefit from Windows 10+ new features.

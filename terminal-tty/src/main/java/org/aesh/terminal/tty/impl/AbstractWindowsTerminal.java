@@ -80,6 +80,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     protected static final int ENABLE_INSERT_MODE = 0x0020;
     /** Enable quick edit mode. */
     protected static final int ENABLE_QUICK_EDIT_MODE = 0x0040;
+    /** Enable virtual terminal input (VT sequences for special keys and mouse). */
+    protected static final int ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200;
 
     /** Slave input pipe. */
     protected final OutputStream slaveInputPipe;
@@ -100,6 +102,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
 
     private volatile boolean closing;
     private final ConsoleOutput cpConsumer;
+    /** Whether VT input mode was successfully enabled on the input handle. */
+    protected boolean vtInputEnabled;
 
     AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals,
             SignalHandler signalHandler) throws IOException {
@@ -216,6 +220,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         }
         if (attr.getLocalFlag(Attributes.LocalFlag.ICANON)) {
             mode |= ENABLE_LINE_INPUT;
+        }
+        if (vtInputEnabled) {
+            mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
         }
         setConsoleMode(mode);
     }
