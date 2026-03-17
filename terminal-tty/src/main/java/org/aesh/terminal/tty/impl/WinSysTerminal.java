@@ -186,6 +186,8 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         if (mode == -1) {
             return;
         }
+        // Save original mode so it can be restored on close
+        originalInputMode = mode;
         if (WinConsoleNative.setConsoleMode(hConsole, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
             vtInputEnabled = true;
         }

@@ -104,6 +104,8 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     private final ConsoleOutput cpConsumer;
     /** Whether VT input mode was successfully enabled on the input handle. */
     protected boolean vtInputEnabled;
+    /** Original console input mode, saved for restoration on close. */
+    protected int originalInputMode = -1;
 
     AbstractWindowsTerminal(boolean consumeCP, OutputStream output, String name, boolean nativeSignals,
             SignalHandler signalHandler) throws IOException {
@@ -264,6 +266,10 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
     public void close() throws IOException {
         closing = true;
         pump.interrupt();
+        // Restore original console input mode before closing
+        if (originalInputMode != -1) {
+            setConsoleMode(originalInputMode);
+        }
         ShutdownHooks.remove(closer);
         for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {
             Signals.unregister(entry.getKey().name(), entry.getValue());
