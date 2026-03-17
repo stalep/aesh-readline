@@ -274,7 +274,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         for (Map.Entry<Signal, Object> entry : nativeHandlers.entrySet()) {
             Signals.unregister(entry.getKey().name(), entry.getValue());
         }
-        writer.close();
+        // Flush but do not close — the output stream (typically System.out)
+        // is not owned by this terminal and may still be used after close.
+        writer.flush();
     }
 
     /**
