@@ -27,28 +27,38 @@ import java.io.InputStream;
 /**
  * JNI bridge to Windows console API (Kernel32).
  * Replaces JNA for GraalVM native-image compatibility.
+ * <p>
+ * This class provides low-level access to Windows console functions
+ * via JNI. The native library ({@code aesh-console.dll}) is loaded
+ * from the system library path or extracted from the JAR at runtime.
  */
-final class WinConsoleNative {
+public final class WinConsoleNative {
 
-    static final int STD_INPUT_HANDLE = -10;
-    static final int STD_OUTPUT_HANDLE = -11;
-    static final long INVALID_HANDLE = -1L;
+    public static final int STD_INPUT_HANDLE = -10;
+    public static final int STD_OUTPUT_HANDLE = -11;
+    public static final int STD_ERROR_HANDLE = -12;
+    public static final long INVALID_HANDLE = -1L;
 
-    static native long getStdHandle(int nStdHandle);
+    public static native long getStdHandle(int nStdHandle);
 
-    static native int getConsoleMode(long handle);
+    public static native int getConsoleMode(long handle);
 
-    static native boolean setConsoleMode(long handle, int mode);
+    public static native boolean setConsoleMode(long handle, int mode);
 
-    static native int getConsoleOutputCP();
+    public static native int getConsoleOutputCP();
 
-    static native int[] getConsoleSize(long handle);
+    public static native int[] getConsoleSize(long handle);
 
-    static native int[] readConsoleKeyEvent(long handle);
+    public static native int[] readConsoleKeyEvent(long handle);
 
     /** Event type constants matching Windows INPUT_RECORD.EventType */
-    static final int KEY_EVENT = 1;
-    static final int WINDOW_BUFFER_SIZE_EVENT = 4;
+    public static final int KEY_EVENT = 1;
+    public static final int WINDOW_BUFFER_SIZE_EVENT = 4;
+
+    /** Console mode flag: enable virtual terminal processing on output handle */
+    public static final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+    /** Console mode flag: enable virtual terminal input on input handle */
+    public static final int ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200;
 
     /**
      * Read a console input event (key or window resize).
@@ -57,9 +67,9 @@ final class WinConsoleNative {
      * WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
      * Returns null for other event types or on error.
      */
-    static native int[] readConsoleInputEvent(long handle);
+    public static native int[] readConsoleInputEvent(long handle);
 
-    static native boolean writeConsole(long handle, char[] buffer, int length);
+    public static native boolean writeConsole(long handle, char[] buffer, int length);
 
     static {
         loadLibrary();
