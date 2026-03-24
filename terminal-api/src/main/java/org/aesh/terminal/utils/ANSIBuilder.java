@@ -1318,6 +1318,16 @@ public class ANSIBuilder {
     }
 
     /**
+     * Short alias for {@link #append(String)}.
+     *
+     * @param data the string to append
+     * @return this builder for method chaining
+     */
+    public ANSIBuilder a(String data) {
+        return append(data);
+    }
+
+    /**
      * Appends a string to the builder.
      *
      * @param data the string to append
