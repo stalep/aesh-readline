@@ -69,19 +69,8 @@ public interface CompleteOperation {
      * Check if offset should be ignored.
      *
      * @return true if offset is ignored
-     * @deprecated Use {@link #isIgnoreOffset()} instead.
      */
-    @Deprecated
-    boolean doIgnoreOffset();
-
-    /**
-     * Check if offset should be ignored.
-     *
-     * @return true if offset is ignored
-     */
-    default boolean isIgnoreOffset() {
-        return doIgnoreOffset();
-    }
+    boolean isIgnoreOffset();
 
     /**
      * Get the separator character, by default its space
@@ -99,34 +88,12 @@ public interface CompleteOperation {
     void setSeparator(char separator);
 
     /**
-     * Do this completion allow for appending a separator
-     * after completion? By default this is true.
-     *
-     * @return appendSeparator
-     * @deprecated Use {@link #isAppendSeparator()} instead.
-     */
-    @Deprecated
-    boolean hasAppendSeparator();
-
-    /**
      * Check if a separator should be appended after completion.
      * By default this is true.
      *
      * @return true if separator should be appended
      */
-    default boolean isAppendSeparator() {
-        return hasAppendSeparator();
-    }
-
-    /**
-     * Set if this CompletionOperation would allow an separator to
-     * be appended. By default this is true.
-     *
-     * @param appendSeparator appendSeparator
-     * @deprecated Use {@link #setAppendSeparator(boolean)} instead.
-     */
-    @Deprecated
-    void doAppendSeparator(boolean appendSeparator);
+    boolean isAppendSeparator();
 
     /**
      * Set if this CompletionOperation would allow a separator to
@@ -134,9 +101,7 @@ public interface CompleteOperation {
      *
      * @param appendSeparator whether to append separator
      */
-    default void setAppendSeparator(boolean appendSeparator) {
-        doAppendSeparator(appendSeparator);
-    }
+    void setAppendSeparator(boolean appendSeparator);
 
     /**
      * Get the list of completion candidates.
@@ -218,19 +183,8 @@ public interface CompleteOperation {
      * Check if non-escaped spaces should be ignored.
      *
      * @return true if non-escaped spaces are ignored
-     * @deprecated Use {@link #isIgnoreNonEscapedSpace()} instead.
      */
-    @Deprecated
-    boolean doIgnoreNonEscapedSpace();
-
-    /**
-     * Check if non-escaped spaces should be ignored.
-     *
-     * @return true if non-escaped spaces are ignored
-     */
-    default boolean isIgnoreNonEscapedSpace() {
-        return doIgnoreNonEscapedSpace();
-    }
+    boolean isIgnoreNonEscapedSpace();
 
     /**
      * Set whether to ignore non-escaped spaces.

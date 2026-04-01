@@ -116,34 +116,6 @@ public class InMemoryHistory extends History {
         return searchDirection;
     }
 
-    @Deprecated
-    @Override
-    public int[] getPreviousFetch() {
-        if (size() < 1)
-            return new int[] {};
-
-        if (lastId > 0)
-            return get(--lastId);
-        else {
-            return get(lastId);
-        }
-    }
-
-    @Deprecated
-    @Override
-    public int[] getNextFetch() {
-        if (size() < 1)
-            return null;
-
-        if (lastId < size() - 1)
-            return get(++lastId);
-        else if (lastId == size() - 1) {
-            lastId++;
-            return getCurrent();
-        } else
-            return getCurrent();
-    }
-
     @Override
     public Optional<int[]> previousFetch() {
         if (size() < 1)

@@ -90,15 +90,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
         return completionHandler;
     }
 
-    /**
-     * @deprecated Use {@link #completionHandler()} instead.
-     */
-    @Deprecated
-    @Override
-    public CompletionHandler completer() {
-        return completionHandler();
-    }
-
     @Override
     public void setSize(Size size) {
         this.size = size;
@@ -338,15 +329,6 @@ public class AeshConsoleBuffer implements ConsoleBuffer {
     @Override
     public String ghostText() {
         return ghostText;
-    }
-
-    /**
-     * @deprecated Use {@link #ghostText()} instead.
-     */
-    @Deprecated
-    @Override
-    public String getGhostText() {
-        return ghostText();
     }
 
     private boolean isViMode() {

@@ -24,6 +24,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.aesh.readline.action.Action;
 import org.aesh.readline.action.ActionEvent;
@@ -262,10 +263,9 @@ public class Emacs implements EditMode {
         return currentAction != null;
     }
 
-    @Deprecated
     @Override
-    public String variableValue(Variable variable) {
-        return variables.get(variable);
+    public Optional<String> variable(Variable variable) {
+        return Optional.ofNullable(variables.get(variable));
     }
 
     /**

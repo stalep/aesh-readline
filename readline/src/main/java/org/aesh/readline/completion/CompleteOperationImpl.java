@@ -137,12 +137,6 @@ public class CompleteOperationImpl implements CompleteOperation {
         this.ignoreOffset = ignoreOffset;
     }
 
-    @Deprecated
-    @Override
-    public boolean doIgnoreOffset() {
-        return ignoreOffset;
-    }
-
     @Override
     public boolean isIgnoreOffset() {
         return ignoreOffset;
@@ -169,33 +163,9 @@ public class CompleteOperationImpl implements CompleteOperation {
         this.separator = separator;
     }
 
-    /**
-     * Do this completion allow for appending a separator
-     * after completion? By default this is true.
-     *
-     * @return appendSeparator
-     */
-    @Deprecated
-    @Override
-    public boolean hasAppendSeparator() {
-        return appendSeparator;
-    }
-
     @Override
     public boolean isAppendSeparator() {
         return appendSeparator;
-    }
-
-    /**
-     * Set if this CompletionOperation would allow an separator to
-     * be appended. By default this is true.
-     *
-     * @param appendSeparator appendSeparator
-     */
-    @Deprecated
-    @Override
-    public void doAppendSeparator(boolean appendSeparator) {
-        this.appendSeparator = appendSeparator;
     }
 
     @Override
@@ -315,12 +285,6 @@ public class CompleteOperationImpl implements CompleteOperation {
     @Override
     public void setIgnoreStartsWith(boolean ignoreStartsWith) {
         this.ignoreStartsWith = ignoreStartsWith;
-    }
-
-    @Deprecated
-    @Override
-    public boolean doIgnoreNonEscapedSpace() {
-        return ignoreNonEscapedSpace;
     }
 
     @Override

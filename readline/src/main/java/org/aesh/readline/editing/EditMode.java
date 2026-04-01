@@ -98,19 +98,7 @@ public interface EditMode {
      * @param variable the variable to look up
      * @return an Optional containing the variable value, or empty if not set
      */
-    default Optional<String> variable(Variable variable) {
-        return Optional.ofNullable(variableValue(variable));
-    }
-
-    /**
-     * Get the value of a variable.
-     *
-     * @param variable the variable to look up
-     * @return the variable's value, or null if not set
-     * @deprecated Use {@link #variable(Variable)} instead which returns Optional&lt;String&gt;.
-     */
-    @Deprecated
-    String variableValue(Variable variable);
+    Optional<String> variable(Variable variable);
 
     /**
      * Add an action mapping for a key.

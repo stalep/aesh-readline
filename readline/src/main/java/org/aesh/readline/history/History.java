@@ -105,45 +105,18 @@ public abstract class History {
     public abstract SearchDirection getSearchDirection();
 
     /**
-     * Gets the next entry in the history (moving forward).
-     *
-     * @return the next history entry, or null if at the end
-     * @deprecated Use {@link #nextFetch()} instead for null-safe Optional handling.
-     */
-    @Deprecated
-    public abstract int[] getNextFetch();
-
-    /**
-     * Gets the previous entry in the history (moving backward).
-     *
-     * @return the previous history entry, or empty array if at the beginning
-     * @deprecated Use {@link #previousFetch()} instead for null-safe Optional handling.
-     */
-    @Deprecated
-    public abstract int[] getPreviousFetch();
-
-    /**
      * Fetch the next history entry.
      *
      * @return an Optional containing the next history entry, or empty if at the end
      */
-    public Optional<int[]> nextFetch() {
-        int[] result = getNextFetch();
-        return Optional.ofNullable(result);
-    }
+    public abstract Optional<int[]> nextFetch();
 
     /**
      * Fetch the previous history entry.
      *
      * @return an Optional containing the previous history entry, or empty if at the start
      */
-    public Optional<int[]> previousFetch() {
-        int[] result = getPreviousFetch();
-        if (result != null && result.length == 0) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(result);
-    }
+    public abstract Optional<int[]> previousFetch();
 
     /**
      * Searches for an entry in the history that contains the search pattern.

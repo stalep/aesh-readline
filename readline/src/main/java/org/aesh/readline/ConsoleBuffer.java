@@ -49,14 +49,6 @@ public interface ConsoleBuffer {
     CompletionHandler completionHandler();
 
     /**
-     * @deprecated Use {@link #completionHandler()} instead.
-     */
-    @Deprecated
-    default CompletionHandler completer() {
-        return completionHandler();
-    }
-
-    /**
      * Set the terminal size.
      *
      * @param size the new terminal size
@@ -269,14 +261,6 @@ public interface ConsoleBuffer {
      */
     default String ghostText() {
         return null;
-    }
-
-    /**
-     * @deprecated Use {@link #ghostText()} instead.
-     */
-    @Deprecated
-    default String getGhostText() {
-        return ghostText();
     }
 
 }

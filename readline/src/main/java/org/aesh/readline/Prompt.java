@@ -212,17 +212,6 @@ public class Prompt {
     }
 
     /**
-     * Returns the prompt as an int array of characters.
-     *
-     * @return the prompt characters as an int array
-     * @deprecated Use {@link #getPromptCharacters()} instead. The name is misleading since this returns int[], not String.
-     */
-    @Deprecated
-    public int[] getPromptAsString() {
-        return getPromptCharacters();
-    }
-
-    /**
      * Returns the length of the prompt in characters.
      *
      * @return the prompt length
