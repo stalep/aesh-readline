@@ -19,6 +19,9 @@
  */
 package org.aesh.terminal.utils;
 
+import java.util.EnumMap;
+import java.util.function.ToIntFunction;
+
 /**
  * A fluent builder for constructing ANSI escape sequences for terminal text formatting.
  * Supports colors, text styles (bold, italic, underline, etc.), and various text effects.
@@ -79,31 +82,9 @@ public class ANSIBuilder {
     private int[] textRgb = null; // True color RGB
     private int[] bgRgb = null; // True color RGB
 
-    // Semantic color overrides (null means use capability or default)
-    private Integer errorCodeOverride = null;
-    private Integer successCodeOverride = null;
-    private Integer warningCodeOverride = null;
-    private Integer infoCodeOverride = null;
-    private Integer debugCodeOverride = null;
-    private Integer traceCodeOverride = null;
-    private Integer timestampCodeOverride = null;
-    private Integer messageCodeOverride = null;
-    private Integer categoryCodeOverride = null;
-    private Integer threadNameCodeOverride = null;
-    private Integer fatalCodeOverride = null;
-
-    // RGB overrides for semantic colors (takes precedence over code overrides)
-    private int[] errorRgbOverride = null;
-    private int[] successRgbOverride = null;
-    private int[] warningRgbOverride = null;
-    private int[] infoRgbOverride = null;
-    private int[] debugRgbOverride = null;
-    private int[] traceRgbOverride = null;
-    private int[] timestampRgbOverride = null;
-    private int[] messageRgbOverride = null;
-    private int[] categoryRgbOverride = null;
-    private int[] threadNameRgbOverride = null;
-    private int[] fatalRgbOverride = null;
+    // Semantic color overrides stored in maps (null entry means use capability or default)
+    private final EnumMap<SemanticColor, Integer> semanticCodeOverrides = new EnumMap<>(SemanticColor.class);
+    private final EnumMap<SemanticColor, int[]> semanticRgbOverrides = new EnumMap<>(SemanticColor.class);
 
     private ANSIBuilder(boolean enableAnsi) {
         ansi = enableAnsi;
@@ -149,585 +130,280 @@ public class ANSIBuilder {
         return new ANSIBuilder(enableAnsi, capability);
     }
 
+    // ==================== Semantic Color Override Helpers ====================
+
+    private ANSIBuilder semanticCode(SemanticColor color, int code) {
+        semanticCodeOverrides.put(color, code);
+        return this;
+    }
+
+    private ANSIBuilder semanticRgb(SemanticColor color, int r, int g, int b) {
+        validateRgb(r, g, b);
+        semanticRgbOverrides.put(color, new int[] { r, g, b });
+        return this;
+    }
+
+    private ANSIBuilder semanticHex(SemanticColor color, String hex) {
+        int[] rgb = TerminalColorCapability.hexToRgb(hex);
+        if (rgb == null) {
+            throw new IllegalArgumentException("Invalid hex color: " + hex);
+        }
+        return semanticRgb(color, rgb[0], rgb[1], rgb[2]);
+    }
+
+    private ANSIBuilder semanticHsl(SemanticColor color, float h, float s, float l) {
+        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
+        return semanticRgb(color, rgb[0], rgb[1], rgb[2]);
+    }
+
+    private ANSIBuilder applySemantic(SemanticColor color) {
+        int[] rgbOverride = semanticRgbOverrides.get(color);
+        Integer codeOverride = semanticCodeOverrides.get(color);
+        if (rgbOverride != null) {
+            this.textRgb = rgbOverride;
+            this.textCode = null;
+        } else if (codeOverride != null) {
+            this.textCode = codeOverride;
+            this.textRgb = null;
+        } else if (capability != null) {
+            this.textCode = color.getFromCapability(capability);
+            this.textRgb = null;
+        } else {
+            this.textCode = color.defaultCode();
+            this.textRgb = null;
+        }
+        this.text = Color.DEFAULT;
+        this.text256 = null;
+        havePrintedColor = false;
+        return this;
+    }
+
+    private ANSIBuilder applySemantic(SemanticColor color, String text) {
+        return applySemantic(color).append(text).resetColors();
+    }
+
     // ==================== Semantic Color Overrides ====================
 
-    /**
-     * Overrides the error color code for this builder.
-     * <p>
-     * This takes precedence over the capability-provided color.
-     * Supports basic ANSI codes (30-37, 90-97) or 256-color palette indices (0-255).
-     *
-     * @param code the ANSI color code to use for error messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the error color code. @see #semanticCode(SemanticColor, int) */
     public ANSIBuilder errorCode(int code) {
-        this.errorCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.ERROR, code);
     }
 
-    /**
-     * Overrides the success color code for this builder.
-     *
-     * @param code the ANSI color code to use for success messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the success color code. */
     public ANSIBuilder successCode(int code) {
-        this.successCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.SUCCESS, code);
     }
 
-    /**
-     * Overrides the warning color code for this builder.
-     *
-     * @param code the ANSI color code to use for warning messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the warning color code. */
     public ANSIBuilder warningCode(int code) {
-        this.warningCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.WARNING, code);
     }
 
-    /**
-     * Overrides the info color code for this builder.
-     *
-     * @param code the ANSI color code to use for info messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the info color code. */
     public ANSIBuilder infoCode(int code) {
-        this.infoCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.INFO, code);
     }
 
-    /**
-     * Overrides the debug color code for this builder.
-     *
-     * @param code the ANSI color code to use for debug messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the debug color code. */
     public ANSIBuilder debugCode(int code) {
-        this.debugCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.DEBUG, code);
     }
 
-    /**
-     * Overrides the trace color code for this builder.
-     *
-     * @param code the ANSI color code to use for trace messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the trace color code. */
     public ANSIBuilder traceCode(int code) {
-        this.traceCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.TRACE, code);
     }
 
-    /**
-     * Overrides the timestamp color code for this builder.
-     *
-     * @param code the ANSI color code to use for timestamps
-     * @return this builder for method chaining
-     */
+    /** Overrides the timestamp color code. */
     public ANSIBuilder timestampCode(int code) {
-        this.timestampCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.TIMESTAMP, code);
     }
 
-    /**
-     * Overrides the message color code for this builder.
-     *
-     * @param code the ANSI color code to use for highlighted messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the message color code. */
     public ANSIBuilder messageCode(int code) {
-        this.messageCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.MESSAGE, code);
     }
 
-    /**
-     * Overrides the category (package/class name) color code for this builder.
-     *
-     * @param code the ANSI color code to use for category/logger names
-     * @return this builder for method chaining
-     */
+    /** Overrides the category color code. */
     public ANSIBuilder categoryCode(int code) {
-        this.categoryCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.CATEGORY, code);
     }
 
-    /**
-     * Overrides the thread name color code for this builder.
-     *
-     * @param code the ANSI color code to use for thread names
-     * @return this builder for method chaining
-     */
+    /** Overrides the thread name color code. */
     public ANSIBuilder threadNameCode(int code) {
-        this.threadNameCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.THREAD_NAME, code);
     }
 
-    /**
-     * Overrides the fatal color code for this builder.
-     *
-     * @param code the ANSI color code to use for fatal messages
-     * @return this builder for method chaining
-     */
+    /** Overrides the fatal color code. */
     public ANSIBuilder fatalCode(int code) {
-        this.fatalCodeOverride = code;
-        return this;
+        return semanticCode(SemanticColor.FATAL, code);
     }
 
     // ==================== RGB Semantic Color Overrides ====================
 
-    /**
-     * Overrides the error color using RGB values (true color).
-     * <p>
-     * RGB overrides take precedence over code overrides.
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the error color using RGB values (true color). RGB overrides take precedence over code overrides. */
     public ANSIBuilder errorRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.errorRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.ERROR, r, g, b);
     }
 
-    /**
-     * Overrides the error color using a hex color value.
-     *
-     * @param hex the color in hex format (e.g., "#FF5733" or "FF5733")
-     * @return this builder for method chaining
-     */
+    /** Overrides the error color using a hex color value (e.g., "#FF5733" or "FF5733"). */
     public ANSIBuilder errorHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return errorRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.ERROR, hex);
     }
 
-    /**
-     * Overrides the error color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the error color using HSL values. */
     public ANSIBuilder errorHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return errorRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.ERROR, h, s, l);
     }
 
-    /**
-     * Overrides the success color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the success color using RGB values (true color). */
     public ANSIBuilder successRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.successRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.SUCCESS, r, g, b);
     }
 
-    /**
-     * Overrides the success color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the success color using a hex color value. */
     public ANSIBuilder successHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return successRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.SUCCESS, hex);
     }
 
-    /**
-     * Overrides the success color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the success color using HSL values. */
     public ANSIBuilder successHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return successRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.SUCCESS, h, s, l);
     }
 
-    /**
-     * Overrides the warning color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the warning color using RGB values (true color). */
     public ANSIBuilder warningRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.warningRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.WARNING, r, g, b);
     }
 
-    /**
-     * Overrides the warning color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the warning color using a hex color value. */
     public ANSIBuilder warningHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return warningRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.WARNING, hex);
     }
 
-    /**
-     * Overrides the warning color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the warning color using HSL values. */
     public ANSIBuilder warningHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return warningRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.WARNING, h, s, l);
     }
 
-    /**
-     * Overrides the info color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the info color using RGB values (true color). */
     public ANSIBuilder infoRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.infoRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.INFO, r, g, b);
     }
 
-    /**
-     * Overrides the info color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the info color using a hex color value. */
     public ANSIBuilder infoHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return infoRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.INFO, hex);
     }
 
-    /**
-     * Overrides the info color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the info color using HSL values. */
     public ANSIBuilder infoHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return infoRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.INFO, h, s, l);
     }
 
-    /**
-     * Overrides the debug color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the debug color using RGB values (true color). */
     public ANSIBuilder debugRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.debugRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.DEBUG, r, g, b);
     }
 
-    /**
-     * Overrides the debug color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the debug color using a hex color value. */
     public ANSIBuilder debugHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return debugRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.DEBUG, hex);
     }
 
-    /**
-     * Overrides the debug color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the debug color using HSL values. */
     public ANSIBuilder debugHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return debugRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.DEBUG, h, s, l);
     }
 
-    /**
-     * Overrides the trace color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the trace color using RGB values (true color). */
     public ANSIBuilder traceRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.traceRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.TRACE, r, g, b);
     }
 
-    /**
-     * Overrides the trace color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the trace color using a hex color value. */
     public ANSIBuilder traceHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return traceRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.TRACE, hex);
     }
 
-    /**
-     * Overrides the trace color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the trace color using HSL values. */
     public ANSIBuilder traceHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return traceRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.TRACE, h, s, l);
     }
 
-    /**
-     * Overrides the timestamp color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the timestamp color using RGB values (true color). */
     public ANSIBuilder timestampRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.timestampRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.TIMESTAMP, r, g, b);
     }
 
-    /**
-     * Overrides the timestamp color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the timestamp color using a hex color value. */
     public ANSIBuilder timestampHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return timestampRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.TIMESTAMP, hex);
     }
 
-    /**
-     * Overrides the timestamp color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the timestamp color using HSL values. */
     public ANSIBuilder timestampHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return timestampRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.TIMESTAMP, h, s, l);
     }
 
-    /**
-     * Overrides the message color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the message color using RGB values (true color). */
     public ANSIBuilder messageRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.messageRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.MESSAGE, r, g, b);
     }
 
-    /**
-     * Overrides the message color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the message color using a hex color value. */
     public ANSIBuilder messageHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return messageRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.MESSAGE, hex);
     }
 
-    /**
-     * Overrides the message color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the message color using HSL values. */
     public ANSIBuilder messageHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return messageRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.MESSAGE, h, s, l);
     }
 
-    /**
-     * Overrides the category color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the category color using RGB values (true color). */
     public ANSIBuilder categoryRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.categoryRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.CATEGORY, r, g, b);
     }
 
-    /**
-     * Overrides the category color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the category color using a hex color value. */
     public ANSIBuilder categoryHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return categoryRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.CATEGORY, hex);
     }
 
-    /**
-     * Overrides the category color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the category color using HSL values. */
     public ANSIBuilder categoryHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return categoryRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.CATEGORY, h, s, l);
     }
 
-    /**
-     * Overrides the thread name color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the thread name color using RGB values (true color). */
     public ANSIBuilder threadNameRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.threadNameRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.THREAD_NAME, r, g, b);
     }
 
-    /**
-     * Overrides the thread name color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the thread name color using a hex color value. */
     public ANSIBuilder threadNameHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return threadNameRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.THREAD_NAME, hex);
     }
 
-    /**
-     * Overrides the thread name color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the thread name color using HSL values. */
     public ANSIBuilder threadNameHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return threadNameRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.THREAD_NAME, h, s, l);
     }
 
-    /**
-     * Overrides the fatal color using RGB values (true color).
-     *
-     * @param r red component (0-255)
-     * @param g green component (0-255)
-     * @param b blue component (0-255)
-     * @return this builder for method chaining
-     */
+    /** Overrides the fatal color using RGB values (true color). */
     public ANSIBuilder fatalRgb(int r, int g, int b) {
-        validateRgb(r, g, b);
-        this.fatalRgbOverride = new int[] { r, g, b };
-        return this;
+        return semanticRgb(SemanticColor.FATAL, r, g, b);
     }
 
-    /**
-     * Overrides the fatal color using a hex color value.
-     *
-     * @param hex the color in hex format
-     * @return this builder for method chaining
-     */
+    /** Overrides the fatal color using a hex color value. */
     public ANSIBuilder fatalHex(String hex) {
-        int[] rgb = TerminalColorCapability.hexToRgb(hex);
-        if (rgb == null) {
-            throw new IllegalArgumentException("Invalid hex color: " + hex);
-        }
-        return fatalRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHex(SemanticColor.FATAL, hex);
     }
 
-    /**
-     * Overrides the fatal color using HSL values.
-     *
-     * @param h hue in degrees (0-360)
-     * @param s saturation as percentage (0-100)
-     * @param l lightness as percentage (0-100)
-     * @return this builder for method chaining
-     */
+    /** Overrides the fatal color using HSL values. */
     public ANSIBuilder fatalHsl(float h, float s, float l) {
-        int[] rgb = org.aesh.terminal.formatting.TerminalColor.hslToRgb(h, s, l);
-        return fatalRgb(rgb[0], rgb[1], rgb[2]);
+        return semanticHsl(SemanticColor.FATAL, h, s, l);
     }
 
     private void checkColor() {
@@ -1958,444 +1634,118 @@ public class ANSIBuilder {
     }
 
     // ==================== Semantic Colors (Theme-Aware) ====================
+    //
+    // All semantic color methods delegate to applySemantic().
+    // Color priority: RGB override > code override > capability > default.
 
-    /**
-     * Sets the foreground color to the theme-appropriate error color (red).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate error color (red). */
     public ANSIBuilder error() {
-        if (errorRgbOverride != null) {
-            this.textRgb = errorRgbOverride;
-            this.textCode = null;
-        } else if (errorCodeOverride != null) {
-            this.textCode = errorCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedErrorCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 91; // bright red default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.ERROR);
     }
 
-    /**
-     * Appends text with error styling (red) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with error styling (red) and resets. */
     public ANSIBuilder error(String text) {
-        return error().append(text).resetColors();
+        return applySemantic(SemanticColor.ERROR, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate success color (green).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate success color (green). */
     public ANSIBuilder success() {
-        if (successRgbOverride != null) {
-            this.textRgb = successRgbOverride;
-            this.textCode = null;
-        } else if (successCodeOverride != null) {
-            this.textCode = successCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedSuccessCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 92; // bright green default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.SUCCESS);
     }
 
-    /**
-     * Appends text with success styling (green) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with success styling (green) and resets. */
     public ANSIBuilder success(String text) {
-        return success().append(text).resetColors();
+        return applySemantic(SemanticColor.SUCCESS, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate warning color (yellow).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate warning color (yellow). */
     public ANSIBuilder warning() {
-        if (warningRgbOverride != null) {
-            this.textRgb = warningRgbOverride;
-            this.textCode = null;
-        } else if (warningCodeOverride != null) {
-            this.textCode = warningCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedWarningCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 93; // bright yellow default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.WARNING);
     }
 
-    /**
-     * Appends text with warning styling (yellow) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with warning styling (yellow) and resets. */
     public ANSIBuilder warning(String text) {
-        return warning().append(text).resetColors();
+        return applySemantic(SemanticColor.WARNING, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate info color (green).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate info color (green). */
     public ANSIBuilder info() {
-        if (infoRgbOverride != null) {
-            this.textRgb = infoRgbOverride;
-            this.textCode = null;
-        } else if (infoCodeOverride != null) {
-            this.textCode = infoCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedInfoCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 92; // bright green default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.INFO);
     }
 
-    /**
-     * Appends text with info styling (green) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with info styling (green) and resets. */
     public ANSIBuilder info(String text) {
-        return info().append(text).resetColors();
+        return applySemantic(SemanticColor.INFO, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate debug color (cyan).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     * <p>
-     * Debug uses cyan, aligning with JBoss LogManager's color spectrum
-     * where DEBUG maps to teal/cyan:
-     * <ul>
-     * <li>For dark themes: bright cyan (96)</li>
-     * <li>For light themes: dark cyan (36)</li>
-     * </ul>
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate debug color (cyan). */
     public ANSIBuilder debug() {
-        if (debugRgbOverride != null) {
-            this.textRgb = debugRgbOverride;
-            this.textCode = null;
-        } else if (debugCodeOverride != null) {
-            this.textCode = debugCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedDebugCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 96; // bright cyan default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.DEBUG);
     }
 
-    /**
-     * Appends text with debug styling and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with debug styling and resets. */
     public ANSIBuilder debug(String text) {
-        return debug().append(text).resetColors();
+        return applySemantic(SemanticColor.DEBUG, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate trace color.
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     * <p>
-     * Trace is the least prominent log level, using a dim gray color
-     * that doesn't distract from more important messages:
-     * <ul>
-     * <li>For dark themes: 256-color gray (242) - visible but dimmer than debug</li>
-     * <li>For light themes: gray (90) - very subdued</li>
-     * </ul>
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate trace color (gray). */
     public ANSIBuilder trace() {
-        if (traceRgbOverride != null) {
-            this.textRgb = traceRgbOverride;
-            this.textCode = null;
-        } else if (traceCodeOverride != null) {
-            this.textCode = traceCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedTraceCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 90; // gray default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.TRACE);
     }
 
-    /**
-     * Appends text with trace styling and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with trace styling and resets. */
     public ANSIBuilder trace(String text) {
-        return trace().append(text).resetColors();
+        return applySemantic(SemanticColor.TRACE, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate timestamp color (gray).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     * <p>
-     * Timestamps use a neutral gray color that is visible but doesn't
-     * distract from the main message content.
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate timestamp color (gray). */
     public ANSIBuilder timestamp() {
-        if (timestampRgbOverride != null) {
-            this.textRgb = timestampRgbOverride;
-            this.textCode = null;
-        } else if (timestampCodeOverride != null) {
-            this.textCode = timestampCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedTimestampCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 252; // 256-color light gray default (~rgb 208,208,208)
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.TIMESTAMP);
     }
 
-    /**
-     * Appends text with timestamp styling (gray) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with timestamp styling (gray) and resets. */
     public ANSIBuilder timestamp(String text) {
-        return timestamp().append(text).resetColors();
+        return applySemantic(SemanticColor.TIMESTAMP, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate message color (magenta).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     * <p>
-     * Message color is used for highlighted or emphasized message content
-     * that should stand out from regular text.
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate message color. */
     public ANSIBuilder message() {
-        if (messageRgbOverride != null) {
-            this.textRgb = messageRgbOverride;
-            this.textCode = null;
-        } else if (messageCodeOverride != null) {
-            this.textCode = messageCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedMessageCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 37; // white default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.MESSAGE);
     }
 
-    /**
-     * Appends text with message styling (magenta) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with message styling and resets. */
     public ANSIBuilder message(String text) {
-        return message().append(text).resetColors();
+        return applySemantic(SemanticColor.MESSAGE, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate category color (blue).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     * <p>
-     * Category color is used for package/class names (logger categories) in log output.
-     * Aligns with JBoss LogManager's ColorPatternFormatter CATEGORY item
-     * (HSL 220°, 0.9, 0.8 — a blue hue).
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate category color (blue). */
     public ANSIBuilder category() {
-        if (categoryRgbOverride != null) {
-            this.textRgb = categoryRgbOverride;
-            this.textCode = null;
-        } else if (categoryCodeOverride != null) {
-            this.textCode = categoryCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedCategoryCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 94; // bright blue default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.CATEGORY);
     }
 
-    /**
-     * Appends text with category styling (blue) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with category styling (blue) and resets. */
     public ANSIBuilder category(String text) {
-        return category().append(text).resetColors();
+        return applySemantic(SemanticColor.CATEGORY, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate thread name color (green).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     * <p>
-     * Thread name color is used for thread identifiers in log output.
-     * Aligns with JBoss LogManager's ColorPatternFormatter THREAD_NAME item
-     * (HSL 120°, 0.429, 0.8 — a muted green).
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate thread name color (green). */
     public ANSIBuilder threadName() {
-        if (threadNameRgbOverride != null) {
-            this.textRgb = threadNameRgbOverride;
-            this.textCode = null;
-        } else if (threadNameCodeOverride != null) {
-            this.textCode = threadNameCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedThreadNameCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 92; // bright green default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.THREAD_NAME);
     }
 
-    /**
-     * Appends text with thread name styling (green) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with thread name styling (green) and resets. */
     public ANSIBuilder threadName(String text) {
-        return threadName().append(text).resetColors();
+        return applySemantic(SemanticColor.THREAD_NAME, text);
     }
 
-    /**
-     * Sets the foreground color to the theme-appropriate fatal color (red).
-     * <p>
-     * Color priority: RGB override > code override > capability > default.
-     * <p>
-     * Fatal color is used for FATAL-level log messages — the most severe
-     * log level. Uses the same red base as error, but is typically
-     * distinguished by bold styling in usage.
-     *
-     * @return this builder for method chaining
-     */
+    /** Sets the foreground color to the theme-appropriate fatal color (red). */
     public ANSIBuilder fatal() {
-        if (fatalRgbOverride != null) {
-            this.textRgb = fatalRgbOverride;
-            this.textCode = null;
-        } else if (fatalCodeOverride != null) {
-            this.textCode = fatalCodeOverride;
-            this.textRgb = null;
-        } else if (capability != null) {
-            this.textCode = capability.getSuggestedFatalCode();
-            this.textRgb = null;
-        } else {
-            this.textCode = 91; // bright red default
-            this.textRgb = null;
-        }
-        this.text = Color.DEFAULT;
-        this.text256 = null;
-        havePrintedColor = false;
-        return this;
+        return applySemantic(SemanticColor.FATAL);
     }
 
-    /**
-     * Appends text with fatal styling (red) and resets.
-     *
-     * @param text the text to append
-     * @return this builder for method chaining
-     */
+    /** Appends text with fatal styling (red) and resets. */
     public ANSIBuilder fatal(String text) {
-        return fatal().append(text).resetColors();
+        return applySemantic(SemanticColor.FATAL, text);
     }
 
     /**
@@ -2626,5 +1976,42 @@ public class ANSIBuilder {
             return value;
         }
 
+    }
+
+    /**
+     * Semantic color categories used for theme-aware styling.
+     * Each entry stores a default ANSI code and a capability getter
+     * for resolving the theme-appropriate code at runtime.
+     */
+    public enum SemanticColor {
+        ERROR(91, TerminalColorCapability::getSuggestedErrorCode),
+        SUCCESS(92, TerminalColorCapability::getSuggestedSuccessCode),
+        WARNING(93, TerminalColorCapability::getSuggestedWarningCode),
+        INFO(92, TerminalColorCapability::getSuggestedInfoCode),
+        DEBUG(96, TerminalColorCapability::getSuggestedDebugCode),
+        TRACE(90, TerminalColorCapability::getSuggestedTraceCode),
+        TIMESTAMP(252, TerminalColorCapability::getSuggestedTimestampCode),
+        MESSAGE(37, TerminalColorCapability::getSuggestedMessageCode),
+        CATEGORY(94, TerminalColorCapability::getSuggestedCategoryCode),
+        THREAD_NAME(92, TerminalColorCapability::getSuggestedThreadNameCode),
+        FATAL(91, TerminalColorCapability::getSuggestedFatalCode);
+
+        private final int defaultCode;
+        private final ToIntFunction<TerminalColorCapability> capabilityGetter;
+
+        SemanticColor(int defaultCode, ToIntFunction<TerminalColorCapability> capabilityGetter) {
+            this.defaultCode = defaultCode;
+            this.capabilityGetter = capabilityGetter;
+        }
+
+        /** Returns the default ANSI color code for this semantic color. */
+        public int defaultCode() {
+            return defaultCode;
+        }
+
+        /** Returns the suggested ANSI code from the given capability. */
+        public int getFromCapability(TerminalColorCapability cap) {
+            return capabilityGetter.applyAsInt(cap);
+        }
     }
 }
