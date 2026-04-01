@@ -555,12 +555,12 @@ public class ANSIBuilder {
     }
 
     /**
-     * Sets the foreground text color.
+     * Sets the foreground text color using the internal Color enum.
      *
      * @param color the color to use for text
      * @return this builder for method chaining
      */
-    public ANSIBuilder text(Color color) {
+    ANSIBuilder text(Color color) {
         if (color != null && this.text != color) {
             this.text = color;
             havePrintedColor = false;
@@ -583,12 +583,12 @@ public class ANSIBuilder {
     }
 
     /**
-     * Sets the background color.
+     * Sets the background color using the internal Color enum.
      *
      * @param color the color to use for background
      * @return this builder for method chaining
      */
-    public ANSIBuilder bg(Color color) {
+    ANSIBuilder bg(Color color) {
         if (color != null && this.bg != color) {
             this.bg = color;
             havePrintedColor = false;
@@ -1860,11 +1860,11 @@ public class ANSIBuilder {
 
     /**
      * Enumeration of ANSI color codes for text and background colors.
-     *
-     * @deprecated Use {@link org.aesh.terminal.formatting.Color} instead.
+     * Internal use only — external callers should use
+     * {@link org.aesh.terminal.formatting.Color} or the convenience methods
+     * (e.g. {@link #redText()}, {@link #blueBg()}).
      */
-    @Deprecated
-    public enum Color {
+    enum Color {
         /** Black color. */
         BLACK(0),
         /** Red color. */

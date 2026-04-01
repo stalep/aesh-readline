@@ -28,6 +28,7 @@ import java.util.function.Consumer;
 
 import org.aesh.readline.Prompt;
 import org.aesh.readline.ReadlineFlag;
+import org.aesh.readline.ReadlineRequest;
 import org.aesh.readline.TestReadline;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditMode;
@@ -157,17 +158,20 @@ public class TestReadlineConnection extends TestConnection {
 
     public void readline(List<Completion> completions) {
         clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out), completions);
+        readline.readline(ReadlineRequest.builder().connection(this).prompt(prompt)
+                .requestHandler(out -> this.out.add(out)).completions(completions).build());
     }
 
     public void readline(List<Completion> completions, Consumer<String> out) {
         clearOutputBuffer();
-        readline.readline(this, prompt, out, completions);
+        readline.readline(ReadlineRequest.builder().connection(this).prompt(prompt)
+                .requestHandler(out).completions(completions).build());
     }
 
     public void readline(EnumMap<ReadlineFlag, Integer> flags) {
         clearOutputBuffer();
-        readline.readline(this, prompt, out -> this.out.add(out), null, null, null, null, flags);
+        readline.readline(ReadlineRequest.builder().connection(this).prompt(prompt)
+                .requestHandler(out -> this.out.add(out)).flags(flags).build());
     }
 
     public void clearOutputBuffer() {

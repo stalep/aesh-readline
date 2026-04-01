@@ -315,7 +315,8 @@ public class ReadlineBenchmark {
 
     @Benchmark
     public void readlineWithCompletion(Blackhole bh) {
-        readlineWithCompletions.readline(connection, new Prompt(": "), line -> bh.consume(line), completions);
+        readlineWithCompletions.readline(connection, ": ",
+                line -> bh.consume(line), completions);
 
         // Type partial command and trigger completion
         connection.sendInput("l".codePoints().toArray());
@@ -325,7 +326,8 @@ public class ReadlineBenchmark {
 
     @Benchmark
     public void readlineWithMultipleCompletions(Blackhole bh) {
-        readlineWithCompletions.readline(connection, new Prompt(": "), line -> bh.consume(line), completions);
+        readlineWithCompletions.readline(connection, ": ",
+                line -> bh.consume(line), completions);
 
         // Type, complete, continue typing, complete again
         connection.sendInput("l".codePoints().toArray());

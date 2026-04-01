@@ -140,7 +140,8 @@ public class Readline {
      * @param requestHandler the callback to receive the completed input line
      */
     public void readline(Connection conn, String prompt, Consumer<String> requestHandler) {
-        readline(conn, new Prompt(prompt), requestHandler, null);
+        readline(ReadlineRequest.builder().connection(conn).prompt(prompt)
+                .requestHandler(requestHandler).build());
     }
 
     /**
@@ -153,7 +154,8 @@ public class Readline {
      */
     public void readline(Connection conn, String prompt, Consumer<String> requestHandler,
             List<Completion> completions) {
-        readline(conn, new Prompt(prompt), requestHandler, completions);
+        readline(ReadlineRequest.builder().connection(conn).prompt(prompt)
+                .requestHandler(requestHandler).completions(completions).build());
     }
 
     /**
@@ -164,7 +166,22 @@ public class Readline {
      * @param requestHandler the callback to receive the completed input line
      */
     public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler) {
-        readline(conn, prompt, requestHandler, null);
+        readline(ReadlineRequest.builder().connection(conn).prompt(prompt)
+                .requestHandler(requestHandler).build());
+    }
+
+    /**
+     * Reads a line of input from the connection with a Prompt object and completions.
+     *
+     * @param conn the terminal connection to read from
+     * @param prompt the prompt to display
+     * @param requestHandler the callback to receive the completed input line
+     * @param completions the list of completions for tab completion
+     */
+    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
+            List<Completion> completions) {
+        readline(ReadlineRequest.builder().connection(conn).prompt(prompt)
+                .requestHandler(requestHandler).completions(completions).build());
     }
 
     /**
@@ -188,109 +205,14 @@ public class Readline {
      * @param request the readline request containing all parameters
      * @throws IllegalStateException if already reading a line
      */
-    @SuppressWarnings("deprecation")
     public void readline(ReadlineRequest request) {
-        readline(request.connection(), request.prompt(), request.requestHandler(),
-                request.completions(), request.preProcessors(), request.history(),
-                request.cursorListener(), request.flags());
-    }
-
-    /**
-     * Reads a line of input from the connection with a Prompt object and completions.
-     *
-     * @param conn the terminal connection to read from
-     * @param prompt the prompt to display
-     * @param requestHandler the callback to receive the completed input line
-     * @param completions the list of completions for tab completion
-     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
-     */
-    @Deprecated
-    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-            List<Completion> completions) {
-        readline(conn, prompt, requestHandler, completions, null);
-    }
-
-    /**
-     * Reads a line of input from the connection with completions and pre-processors.
-     *
-     * @param conn the terminal connection to read from
-     * @param prompt the prompt to display
-     * @param requestHandler the callback to receive the completed input line
-     * @param completions the list of completions for tab completion
-     * @param preProcessors the list of input pre-processors
-     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
-     */
-    @Deprecated
-    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-            List<Completion> completions,
-            List<Function<String, Optional<String>>> preProcessors) {
-        readline(conn, prompt, requestHandler, completions, preProcessors, null);
-    }
-
-    /**
-     * Reads a line of input from the connection with completions, pre-processors, and custom history.
-     *
-     * @param conn the terminal connection to read from
-     * @param prompt the prompt to display
-     * @param requestHandler the callback to receive the completed input line
-     * @param completions the list of completions for tab completion
-     * @param preProcessors the list of input pre-processors
-     * @param history the history instance to use for this readline operation
-     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
-     */
-    @Deprecated
-    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-            List<Completion> completions,
-            List<Function<String, Optional<String>>> preProcessors, History history) {
-        readline(conn, prompt, requestHandler, completions, preProcessors, history, null);
-    }
-
-    /**
-     * Reads a line of input from the connection with completions, pre-processors, custom history, and cursor listener.
-     *
-     * @param conn the terminal connection to read from
-     * @param prompt the prompt to display
-     * @param requestHandler the callback to receive the completed input line
-     * @param completions the list of completions for tab completion
-     * @param preProcessors the list of input pre-processors
-     * @param history the history instance to use for this readline operation
-     * @param listener the cursor listener to receive cursor movement events
-     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
-     */
-    @Deprecated
-    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-            List<Completion> completions,
-            List<Function<String, Optional<String>>> preProcessors,
-            History history, CursorListener listener) {
-        readline(conn, prompt, requestHandler, completions, preProcessors, history, listener,
-                new EnumMap<>(ReadlineFlag.class));
-    }
-
-    /**
-     * Reads a line of input from the connection with all configuration options.
-     *
-     * @param conn the terminal connection to read from
-     * @param prompt the prompt to display
-     * @param requestHandler the callback to receive the completed input line
-     * @param completions the list of completions for tab completion
-     * @param preProcessors the list of input pre-processors
-     * @param history the history instance to use for this readline operation
-     * @param listener the cursor listener to receive cursor movement events
-     * @param flags the readline flags controlling behavior
-     * @throws IllegalStateException if already reading a line
-     * @deprecated Use {@link #readline(ReadlineRequest)} with {@link ReadlineRequest.Builder} instead.
-     */
-    @Deprecated
-    public void readline(Connection conn, Prompt prompt, Consumer<String> requestHandler,
-            List<Completion> completions,
-            List<Function<String, Optional<String>>> preProcessors,
-            History history, CursorListener listener, EnumMap<ReadlineFlag, Integer> flags) {
         synchronized (this) {
             if (inputProcessor != null) {
                 throw new IllegalStateException("Already reading a line");
             }
-            inputProcessor = new AeshInputProcessor(conn, prompt, requestHandler,
-                    completions, preProcessors, history, listener, flags);
+            inputProcessor = new AeshInputProcessor(request.connection(), request.prompt(),
+                    request.requestHandler(), request.completions(), request.preProcessors(),
+                    request.history(), request.cursorListener(), request.flags());
             inputProcessor.start();
             //inputProcessor can be set to null from the start() method
             if (inputProcessor != null)

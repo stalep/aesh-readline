@@ -54,9 +54,9 @@ public class SynchronizedOutputReadlineTest {
         MockSyncConnection conn = new MockSyncConnection(output, true);
         Readline readline = new Readline();
 
-        readline.readline(conn, new Prompt(": "), s -> {
-        }, null, null, null, null,
-                new EnumMap<>(ReadlineFlag.class));
+        readline.readline(ReadlineRequest.builder().connection(conn).prompt(new Prompt(": "))
+                .requestHandler(s -> {
+                }).build());
 
         assertTrue("BSU (Mode 2026 enable) should be sent during start()",
                 output.stream().anyMatch(s -> s.contains(ANSI.MODE_2026_ENABLE)));
@@ -73,8 +73,9 @@ public class SynchronizedOutputReadlineTest {
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.NO_SYNCHRONIZED_OUTPUT, 0);
 
-        readline.readline(conn, new Prompt(": "), s -> {
-        }, null, null, null, null, flags);
+        readline.readline(ReadlineRequest.builder().connection(conn).prompt(new Prompt(": "))
+                .requestHandler(s -> {
+                }).flags(flags).build());
 
         // Simulate pressing Enter to complete the readline interaction
         conn.simulateInput(new int[] { '\r' });
@@ -91,9 +92,9 @@ public class SynchronizedOutputReadlineTest {
         MockSyncConnection conn = new MockSyncConnection(output, false);
         Readline readline = new Readline();
 
-        readline.readline(conn, new Prompt(": "), s -> {
-        }, null, null, null, null,
-                new EnumMap<>(ReadlineFlag.class));
+        readline.readline(ReadlineRequest.builder().connection(conn).prompt(new Prompt(": "))
+                .requestHandler(s -> {
+                }).build());
 
         // Simulate pressing Enter to finish the readline interaction
         conn.simulateInput(new int[] { '\r' });

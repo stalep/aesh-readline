@@ -19,7 +19,6 @@
  */
 package org.aesh.terminal.utils;
 
-import static org.aesh.terminal.utils.ANSIBuilder.Color.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -40,19 +39,19 @@ public class ANSIBuilderTest {
         ANSIBuilder builder = ANSIBuilder.builder();
 
         // New simpler format: only outputs non-default values
-        assertEquals(COLOR_START + YELLOW.text() + "m" + "FOO" + RESET,
+        assertEquals(COLOR_START + 33 + "m" + "FOO" + RESET,
                 builder.yellowText().append("FOO").toString());
 
         builder.clear();
-        assertEquals(COLOR_START + YELLOW.text() + "m" + "FOO" + RESET,
+        assertEquals(COLOR_START + 33 + "m" + "FOO" + RESET,
                 builder.yellowText("FOO").toString());
 
         builder.clear();
-        assertEquals("FOO" + COLOR_START + BLUE.bg() + "m" + " BAR" + RESET,
+        assertEquals("FOO" + COLOR_START + 44 + "m" + " BAR" + RESET,
                 builder.append("FOO").resetColors().blueBg().append(" BAR").toString());
 
         builder.clear();
-        assertEquals("FOO" + COLOR_START + BLUE.bg() + "m" + " BAR" + RESET,
+        assertEquals("FOO" + COLOR_START + 44 + "m" + " BAR" + RESET,
                 builder.append("FOO").resetColors().blueBg(" BAR").toString());
 
         builder.clear();

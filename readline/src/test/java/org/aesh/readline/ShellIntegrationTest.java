@@ -52,9 +52,9 @@ public class ShellIntegrationTest {
         MockShellIntegrationConnection conn = new MockShellIntegrationConnection(output);
         Readline readline = new Readline();
 
-        readline.readline(conn, new Prompt(": "), s -> {
-        }, null, null, null, null,
-                new EnumMap<>(ReadlineFlag.class));
+        readline.readline(ReadlineRequest.builder().connection(conn).prompt(new Prompt(": "))
+                .requestHandler(s -> {
+                }).build());
 
         assertTrue("OSC 133;A (Prompt Start) should be sent before prompt",
                 output.stream().anyMatch(s -> s.contains(ANSI.OSC_133_PROMPT_START)));
@@ -80,9 +80,9 @@ public class ShellIntegrationTest {
         MockShellIntegrationConnection conn = new MockShellIntegrationConnection(output);
         Readline readline = new Readline();
 
-        readline.readline(conn, new Prompt(": "), s -> {
-        }, null, null, null, null,
-                new EnumMap<>(ReadlineFlag.class));
+        readline.readline(ReadlineRequest.builder().connection(conn).prompt(new Prompt(": "))
+                .requestHandler(s -> {
+                }).build());
 
         // Simulate pressing Enter to complete readline
         conn.simulateInput(new int[] { '\r' });
@@ -100,8 +100,9 @@ public class ShellIntegrationTest {
         EnumMap<ReadlineFlag, Integer> flags = new EnumMap<>(ReadlineFlag.class);
         flags.put(ReadlineFlag.NO_SHELL_INTEGRATION, 0);
 
-        readline.readline(conn, new Prompt(": "), s -> {
-        }, null, null, null, null, flags);
+        readline.readline(ReadlineRequest.builder().connection(conn).prompt(new Prompt(": "))
+                .requestHandler(s -> {
+                }).flags(flags).build());
 
         // Simulate pressing Enter
         conn.simulateInput(new int[] { '\r' });

@@ -33,6 +33,7 @@ import java.util.function.Function;
 
 import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
+import org.aesh.readline.ReadlineRequest;
 import org.aesh.terminal.tty.TerminalConnection;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
@@ -57,15 +58,15 @@ public class ReadlineAliasTest {
         List<Function<String, Optional<String>>> preProcessors = new ArrayList<>();
         preProcessors.add(aliasPreProcessor);
 
-        readline.readline(connection, new Prompt(""),
-                s -> {
+        readline.readline(ReadlineRequest.builder().connection(connection).prompt(new Prompt(""))
+                .requestHandler(s -> {
                     //first check this
                     assertEquals("ls -alF", s);
                     //then call readline again, to check the next line
-                    readline.readline(connection, new Prompt(""),
-                            t -> assertEquals("grep --color=auto -l", t),
-                            null, preProcessors);
-                }, null, preProcessors);
+                    readline.readline(ReadlineRequest.builder().connection(connection).prompt(new Prompt(""))
+                            .requestHandler(t -> assertEquals("grep --color=auto -l", t))
+                            .preProcessors(preProcessors).build());
+                }).preProcessors(preProcessors).build());
 
         outputStream.write(("ll" + Config.getLineSeparator()).getBytes());
         outputStream.write(("grep -l" + Config.getLineSeparator()).getBytes());
