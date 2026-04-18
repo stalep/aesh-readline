@@ -102,6 +102,7 @@
                         </manifest>
                         <manifestEntries>
                             <Automatic-Module-Name>${javaModuleName}</Automatic-Module-Name>
+                            <Multi-Release>true</Multi-Release>
                         </manifestEntries>
                         <index>true</index>
                     </archive>
@@ -210,6 +211,40 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Multi-release JAR: compile FFM variant when building with Java 22+ -->
+        <profile>
+            <id>java22-ffm</id>
+            <activation>
+                <jdk>[22,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>compile-java-22</id>
+                                <phase>compile</phase>
+                                <goals><goal>compile</goal></goals>
+                                <configuration>
+                                    <release>22</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/src/main/java22</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <outputDirectory>${project.build.outputDirectory}/META-INF/versions/22</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
