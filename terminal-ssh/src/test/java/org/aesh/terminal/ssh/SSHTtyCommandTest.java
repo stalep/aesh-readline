@@ -1,10 +1,11 @@
 package org.aesh.terminal.ssh;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
@@ -15,84 +16,70 @@ import org.apache.sshd.client.channel.ClientChannelEvent;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.util.io.output.NoCloseOutputStream;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-@RunWith(Parameterized.class)
 public class SSHTtyCommandTest {
 
-    public static final int TIMEOUT_SECS = 5;
-    public static final int REPETITIONS = 2;
+    private static final int TIMEOUT_SECS = 5;
+    private static final int COMMAND_ITERATIONS = 2;
 
-    @Parameterized.Parameters
-    public static Object[][] data() {
-        return new Object[REPETITIONS][0];
+    private static int findAvailablePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
+
+    private static String stripAnsiAndWhitespace(String s) {
+        return s.replaceAll("\u001B(\\[[0-9;?]*[A-Za-z]|\\][^\u0007]*\u0007|\\].*?\u001B\\\\)", "")
+                .replaceAll("[\r\n]", "");
     }
 
     @Test
-    public void runCommandViaSSHTest() {
-        // Configura il server SSH (basato su SshShellExample)
+    public void runCommandViaSSHTest() throws Exception {
+        int port = findAvailablePort();
         NettySshTtyBootstrap bootstrap = new NettySshTtyBootstrap()
-                .port(5000)
+                .port(port)
                 .host("localhost");
-        try {
 
-            bootstrap.start(new ShellExample()).get(10, TimeUnit.SECONDS);
-
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
-
-        String result = "";
+        bootstrap.start(new ShellExample()).get(10, TimeUnit.SECONDS);
 
         try (SshClient client = SshClient.setUpDefaultClient()) {
             client.start();
 
-            try (ClientSession session = client.connect("user", "localhost", 5000)
+            try (ClientSession session = client.connect("user", "localhost", port)
                     .verify(TIMEOUT_SECS, TimeUnit.SECONDS)
                     .getClientSession()) {
                 session.addPasswordIdentity("password");
                 session.auth().verify(TIMEOUT_SECS, TimeUnit.SECONDS);
-                try (
-                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                    try (ChannelShell channel = session.createShellChannel()) {
-                        channel.setOut(outputStream);
 
-                        channel.setErr(new NoCloseOutputStream(System.err));
-                        channel.open().verify(TIMEOUT_SECS, TimeUnit.SECONDS);
+                try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                        ChannelShell channel = session.createShellChannel()) {
+                    channel.setOut(outputStream);
+                    channel.setErr(new NoCloseOutputStream(System.err));
+                    channel.open().verify(TIMEOUT_SECS, TimeUnit.SECONDS);
 
-                        OutputStream pipedIn = channel.getInvertedIn();
+                    OutputStream pipedIn = channel.getInvertedIn();
+                    StringBuilder expected = new StringBuilder();
 
-                        StringBuilder expected = new StringBuilder();
+                    for (int i = 0; i < COMMAND_ITERATIONS; i++) {
+                        String expectedRes = "hello world " + (i + 1);
+                        pipedIn.write(("echo " + expectedRes + "\n").getBytes());
+                        pipedIn.flush();
+                        channel.waitFor(Arrays.asList(
+                                ClientChannelEvent.STDOUT_DATA,
+                                ClientChannelEvent.EOF), TimeUnit.SECONDS.toMillis(2L));
 
-                        String expectedString = "";
+                        expected.append("echo ").append(expectedRes)
+                                .append(expectedRes);
 
-                        // resets all data in the output stream
-                        for (int i = 0; i < REPETITIONS; i++) {
+                        String expectedString = expected.toString();
+                        String actual = stripAnsiAndWhitespace(outputStream.toString());
 
-                            String expectedRes = "hello world " + (i + 1);
-                            pipedIn.write(("echo " + expectedRes + "\n").getBytes());
-                            pipedIn.flush();
-                            channel.waitFor(Arrays.asList(
-                                    ClientChannelEvent.STDOUT_DATA,
-                                    ClientChannelEvent.EOF), TimeUnit.SECONDS.toMillis(2L));
-
-                            result = outputStream.toString();
-                            expected.append("echo ").append(expectedRes).append("\n").append(expectedRes).append("\n");
-
-                            expectedString = expected.toString().replaceAll("(\r|\n)", "");
-                            String actual = result.replaceAll("(\r|\n)", "");
-
-                            assertEquals(expectedString, actual);
-                        }
+                        assertEquals(expectedString, actual);
                     }
                 }
             }
-
+        } finally {
             bootstrap.stop();
-        } catch (Exception e) {
-            fail(e.getMessage());
         }
-
     }
 }

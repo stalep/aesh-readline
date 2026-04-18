@@ -20,6 +20,8 @@
 package org.aesh.terminal.ssh;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
@@ -46,8 +48,15 @@ import com.jcraft.jsch.JSchException;
 public class AsyncAuthTest extends TestBase {
 
     SshServer server;
+    int port;
 
     private PasswordAuthenticator authenticator;
+
+    private static int findAvailablePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
 
     public void startServer() throws Exception {
         startServer(null);
@@ -57,11 +66,12 @@ public class AsyncAuthTest extends TestBase {
         if (server != null) {
             throw failure("Server already started");
         }
+        port = findAvailablePort();
         server = SshServer.setUpDefaultServer();
         if (timeout != null) {
             server.getProperties().put(CoreModuleProperties.AUTH_TIMEOUT.getName(), timeout.toString());
         }
-        server.setPort(5000);
+        server.setPort(port);
         server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(new File("hostkey.ser").toPath()));
         server.setPasswordAuthenticator((username, password, sess) -> authenticator.authenticate(username, password, sess));
         server.setShellFactory(new EchoShellFactory());
@@ -175,7 +185,7 @@ public class AsyncAuthTest extends TestBase {
         try (SshClient client = SshClient.setUpDefaultClient()) {
             client.start();
             ClientSession sess = client
-                    .connect("whatever", "localhost", 5000)
+                    .connect("whatever", "localhost", port)
                     .verify(TimeUnit.SECONDS.toMillis(5))
                     .getSession();
             // Only use password authentication, don't try to load SSH keys
