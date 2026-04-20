@@ -55,10 +55,8 @@ public final class ImageProtocolDetector {
      * @return the detected protocol, or NONE if unknown
      */
     public static ImageProtocol detect(DeviceAttributes attrs, String termType) {
-        // First check environment for Kitty/iTerm2 (these don't report via DA1)
         ImageProtocol envProtocol = checkEnvironment();
 
-        // Kitty and iTerm2 protocols take priority over Sixel
         if (envProtocol == ImageProtocol.KITTY || envProtocol == ImageProtocol.ITERM2) {
             return envProtocol;
         }
@@ -84,6 +82,11 @@ public final class ImageProtocolDetector {
                     typeLower.contains("ctx") || typeLower.contains("darktile")) {
                 return ImageProtocol.SIXEL;
             }
+        }
+
+        // Fall back to environment detection (e.g., Windows Terminal via WT_SESSION)
+        if (envProtocol != ImageProtocol.NONE) {
+            return envProtocol;
         }
 
         return ImageProtocol.NONE;
