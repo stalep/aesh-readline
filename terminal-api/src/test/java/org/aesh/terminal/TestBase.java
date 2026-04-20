@@ -16,6 +16,8 @@
  */
 package org.aesh.terminal;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +31,12 @@ import org.junit.Before;
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
 public class TestBase {
+
+    public static int findAvailablePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
 
     private static int ctrl(char c) {
         return c - 64;

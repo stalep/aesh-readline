@@ -49,8 +49,6 @@ public final class WinConsoleNative {
 
     public static native int[] getConsoleSize(long handle);
 
-    public static native int[] readConsoleKeyEvent(long handle);
-
     /** Event type constants matching Windows INPUT_RECORD.EventType */
     public static final int KEY_EVENT = 1;
     public static final int WINDOW_BUFFER_SIZE_EVENT = 4;

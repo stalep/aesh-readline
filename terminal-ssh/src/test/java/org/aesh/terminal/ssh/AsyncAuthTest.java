@@ -20,8 +20,6 @@
 package org.aesh.terminal.ssh;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
@@ -51,12 +49,6 @@ public class AsyncAuthTest extends TestBase {
     int port;
 
     private PasswordAuthenticator authenticator;
-
-    private static int findAvailablePort() throws IOException {
-        try (ServerSocket socket = new ServerSocket(0)) {
-            return socket.getLocalPort();
-        }
-    }
 
     public void startServer() throws Exception {
         startServer(null);

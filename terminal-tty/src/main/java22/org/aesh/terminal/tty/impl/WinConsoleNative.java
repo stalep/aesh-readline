@@ -190,32 +190,6 @@ public final class WinConsoleNative {
         }
     }
 
-    public static int[] readConsoleKeyEvent(long handle) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment record = arena.allocate(IR_SIZE, 4);
-            MemorySegment eventsRead = arena.allocate(ValueLayout.JAVA_INT);
-            int ok = (int) READ_CONSOLE_INPUT_W.invokeExact(
-                    MemorySegment.ofAddress(handle), record, 1, eventsRead);
-            if (ok == 0 || eventsRead.get(ValueLayout.JAVA_INT, 0) == 0) {
-                return null;
-            }
-            short eventType = record.get(ValueLayout.JAVA_SHORT, IR_EVENT_TYPE);
-            if (eventType != KEY_EVENT) {
-                return null;
-            }
-            return readKeyFields(record);
-        } catch (Throwable t) {
-            throw new RuntimeException("ReadConsoleInputW failed", t);
-        }
-    }
-
-    /**
-     * Read a console input event (key or window resize).
-     * Returns int[] where first element is the event type:
-     * KEY_EVENT (1): {1, keyDown, repeatCount, vKeyCode, unicodeChar, controlKeyState}
-     * WINDOW_BUFFER_SIZE_EVENT (4): {4, width, height}
-     * Returns null for other event types or on error.
-     */
     public static int[] readConsoleInputEvent(long handle) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment record = arena.allocate(IR_SIZE, 4);
@@ -227,11 +201,13 @@ public final class WinConsoleNative {
             }
             short eventType = record.get(ValueLayout.JAVA_SHORT, IR_EVENT_TYPE);
             if (eventType == KEY_EVENT) {
-                int[] keyFields = readKeyFields(record);
                 return new int[] {
                         KEY_EVENT,
-                        keyFields[0], keyFields[1], keyFields[2],
-                        keyFields[3], keyFields[4]
+                        record.get(ValueLayout.JAVA_INT, IR_KEY_DOWN) != 0 ? 1 : 0,
+                        record.get(ValueLayout.JAVA_SHORT, IR_REPEAT_COUNT) & 0xFFFF,
+                        record.get(ValueLayout.JAVA_SHORT, IR_VIRTUAL_KEY_CODE) & 0xFFFF,
+                        record.get(ValueLayout.JAVA_SHORT, IR_UNICODE_CHAR) & 0xFFFF,
+                        record.get(ValueLayout.JAVA_INT, IR_CONTROL_KEY_STATE)
                 };
             }
             if (eventType == WINDOW_BUFFER_SIZE_EVENT) {
@@ -259,16 +235,6 @@ public final class WinConsoleNative {
         } catch (Throwable t) {
             throw new RuntimeException("WriteConsoleW failed", t);
         }
-    }
-
-    private static int[] readKeyFields(MemorySegment record) {
-        return new int[] {
-                record.get(ValueLayout.JAVA_INT, IR_KEY_DOWN) != 0 ? 1 : 0,
-                record.get(ValueLayout.JAVA_SHORT, IR_REPEAT_COUNT) & 0xFFFF,
-                record.get(ValueLayout.JAVA_SHORT, IR_VIRTUAL_KEY_CODE) & 0xFFFF,
-                record.get(ValueLayout.JAVA_SHORT, IR_UNICODE_CHAR) & 0xFFFF,
-                record.get(ValueLayout.JAVA_INT, IR_CONTROL_KEY_STATE)
-        };
     }
 
     private WinConsoleNative() {

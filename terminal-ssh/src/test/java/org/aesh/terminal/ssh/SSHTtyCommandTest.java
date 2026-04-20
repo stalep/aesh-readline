@@ -3,13 +3,13 @@ package org.aesh.terminal.ssh;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
-import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+import org.aesh.terminal.TestBase;
 import org.aesh.terminal.ssh.netty.NettySshTtyBootstrap;
+import org.aesh.terminal.utils.Parser;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ChannelShell;
 import org.apache.sshd.client.channel.ClientChannelEvent;
@@ -22,20 +22,9 @@ public class SSHTtyCommandTest {
     private static final int TIMEOUT_SECS = 5;
     private static final int COMMAND_ITERATIONS = 2;
 
-    private static int findAvailablePort() throws IOException {
-        try (ServerSocket socket = new ServerSocket(0)) {
-            return socket.getLocalPort();
-        }
-    }
-
-    private static String stripAnsiAndWhitespace(String s) {
-        return s.replaceAll("\u001B(\\[[0-9;?]*[A-Za-z]|\\][^\u0007]*\u0007|\\].*?\u001B\\\\)", "")
-                .replaceAll("[\r\n]", "");
-    }
-
     @Test
     public void runCommandViaSSHTest() throws Exception {
-        int port = findAvailablePort();
+        int port = TestBase.findAvailablePort();
         NettySshTtyBootstrap bootstrap = new NettySshTtyBootstrap()
                 .port(port)
                 .host("localhost");
@@ -72,7 +61,8 @@ public class SSHTtyCommandTest {
                                 .append(expectedRes);
 
                         String expectedString = expected.toString();
-                        String actual = stripAnsiAndWhitespace(outputStream.toString());
+                        String actual = Parser.stripAwayAnsiCodes(outputStream.toString())
+                                .replaceAll("[\r\n]", "");
 
                         assertEquals(expectedString, actual);
                     }

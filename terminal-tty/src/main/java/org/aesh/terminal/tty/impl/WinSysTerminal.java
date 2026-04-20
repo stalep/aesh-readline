@@ -31,7 +31,8 @@ import org.aesh.terminal.tty.Size;
  */
 public class WinSysTerminal extends AbstractWindowsTerminal {
 
-    private static final int VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+    private static final long INPUT_HANDLE = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
+    private static final long OUTPUT_HANDLE = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
 
     // Windows key modifier constants
     private static final int RIGHT_ALT_PRESSED = 0x0001;
@@ -70,24 +71,21 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
 
     @Override
     protected int getConsoleMode() {
-        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-        if (hConsole == WinConsoleNative.INVALID_HANDLE) {
+        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
             return -1;
         }
-        return WinConsoleNative.getConsoleMode(hConsole);
+        return WinConsoleNative.getConsoleMode(INPUT_HANDLE);
     }
 
     @Override
     protected void setConsoleMode(int mode) {
-        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-        if (hConsole != WinConsoleNative.INVALID_HANDLE) {
-            WinConsoleNative.setConsoleMode(hConsole, mode);
+        if (INPUT_HANDLE != WinConsoleNative.INVALID_HANDLE) {
+            WinConsoleNative.setConsoleMode(INPUT_HANDLE, mode);
         }
     }
 
     public Size getSize() {
-        long outputHandle = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
-        int[] size = WinConsoleNative.getConsoleSize(outputHandle);
+        int[] size = WinConsoleNative.getConsoleSize(OUTPUT_HANDLE);
         if (size == null) {
             return new Size(80, 24);
         }
@@ -95,13 +93,12 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
     }
 
     protected byte[] readConsoleInput() {
-        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-        if (hConsole == WinConsoleNative.INVALID_HANDLE) {
+        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
             return new byte[0];
         }
         int[] event;
         try {
-            event = WinConsoleNative.readConsoleInputEvent(hConsole);
+            event = WinConsoleNative.readConsoleInputEvent(INPUT_HANDLE);
         } catch (Exception e) {
             LOGGER.log(Level.INFO, "read Windows terminal input error: ", e);
             return new byte[0];
@@ -178,38 +175,29 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
      * virtual key codes or MOUSE_EVENT records.
      */
     private void enableVTInput() {
-        long hConsole = WinConsoleNative.getStdHandle(WinConsoleNative.STD_INPUT_HANDLE);
-        if (hConsole == WinConsoleNative.INVALID_HANDLE) {
+        if (INPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
             return;
         }
-        int mode = WinConsoleNative.getConsoleMode(hConsole);
+        int mode = WinConsoleNative.getConsoleMode(INPUT_HANDLE);
         if (mode == -1) {
             return;
         }
-        // Save original mode so it can be restored on close
         originalInputMode = mode;
-        if (WinConsoleNative.setConsoleMode(hConsole, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
+        if (WinConsoleNative.setConsoleMode(INPUT_HANDLE, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
             vtInputEnabled = true;
         }
     }
 
-    // This allows to take benefit from Windows 10+ new features.
     private static boolean setVTMode() {
-        long console = WinConsoleNative.getStdHandle(WinConsoleNative.STD_OUTPUT_HANDLE);
-        if (console == WinConsoleNative.INVALID_HANDLE) {
+        if (OUTPUT_HANDLE == WinConsoleNative.INVALID_HANDLE) {
             return false;
         }
-        int mode = WinConsoleNative.getConsoleMode(console);
+        int mode = WinConsoleNative.getConsoleMode(OUTPUT_HANDLE);
         if (mode == -1) {
-            // No need to go further, not supported.
             return false;
         }
-        if (!WinConsoleNative.setConsoleMode(console, mode | VIRTUAL_TERMINAL_PROCESSING)) {
-            // No need to go further, not supported.
-            return false;
-        }
-
-        return true;
+        return WinConsoleNative.setConsoleMode(OUTPUT_HANDLE,
+                mode | WinConsoleNative.ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     }
 
     /**
