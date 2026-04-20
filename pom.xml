@@ -61,7 +61,7 @@
   
     <properties>
       <version.org.slf4j>1.7.12</version.org.slf4j>
-      <netty.version>4.1.81.Final</netty.version>
+      <netty.version>4.1.121.Final</netty.version>
       <jackson.version>2.7.4</jackson.version>
       <junit.version>4.12</junit.version>
 

@@ -24,8 +24,6 @@ import static org.junit.Assert.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.tty.Capability;
@@ -75,16 +73,12 @@ public class ConnectionOscQueryTest {
      */
     @Test
     public void testQueryForegroundColorReturnsValue() throws Exception {
-        // Create a connection that simulates a terminal responding to OSC 10
         MockConnection connection = new MockConnection();
+        Consumer<int[]> originalHandler = connection.stdinHandler();
 
-        // Simulate the terminal response in a separate thread
-        CountDownLatch queryStarted = new CountDownLatch(1);
         Thread responseThread = new Thread(() -> {
             try {
-                queryStarted.await(1, TimeUnit.SECONDS);
-                Thread.sleep(20); // Give time for query to be sent
-                // Simulate terminal response
+                connection.awaitHandlerChange(originalHandler, 1000);
                 String response = "\u001B]10;rgb:FFFF/8080/0000\u0007";
                 connection.simulateInput(response);
             } catch (InterruptedException e) {
@@ -93,10 +87,6 @@ public class ConnectionOscQueryTest {
         });
         responseThread.start();
 
-        // Signal that query is starting
-        queryStarted.countDown();
-
-        // Query foreground color
         int[] rgb = connection.terminal().queryForegroundColor(500);
 
         responseThread.join(1000);
@@ -115,12 +105,11 @@ public class ConnectionOscQueryTest {
     @Test
     public void testQueryBackgroundColorReturnsValue() throws Exception {
         MockConnection connection = new MockConnection();
+        Consumer<int[]> originalHandler = connection.stdinHandler();
 
-        CountDownLatch queryStarted = new CountDownLatch(1);
         Thread responseThread = new Thread(() -> {
             try {
-                queryStarted.await(1, TimeUnit.SECONDS);
-                Thread.sleep(20);
+                connection.awaitHandlerChange(originalHandler, 1000);
                 String response = "\u001B]11;rgb:2828/2828/2828\u0007";
                 connection.simulateInput(response);
             } catch (InterruptedException e) {
@@ -129,7 +118,6 @@ public class ConnectionOscQueryTest {
         });
         responseThread.start();
 
-        queryStarted.countDown();
         int[] rgb = connection.terminal().queryBackgroundColor(500);
         responseThread.join(1000);
 
@@ -145,12 +133,11 @@ public class ConnectionOscQueryTest {
     @Test
     public void testQueryCursorColorReturnsValue() throws Exception {
         MockConnection connection = new MockConnection();
+        Consumer<int[]> originalHandler = connection.stdinHandler();
 
-        CountDownLatch queryStarted = new CountDownLatch(1);
         Thread responseThread = new Thread(() -> {
             try {
-                queryStarted.await(1, TimeUnit.SECONDS);
-                Thread.sleep(50); // Increased from 20ms to avoid race condition
+                connection.awaitHandlerChange(originalHandler, 1000);
                 String response = "\u001B]12;rgb:0000/FFFF/0000\u0007";
                 connection.simulateInput(response);
             } catch (InterruptedException e) {
@@ -159,7 +146,6 @@ public class ConnectionOscQueryTest {
         });
         responseThread.start();
 
-        queryStarted.countDown();
         int[] rgb = connection.terminal().queryCursorColor(500);
         responseThread.join(1000);
 
@@ -193,20 +179,18 @@ public class ConnectionOscQueryTest {
         MockConnection connection = new MockConnection();
         List<String> originalHandlerReceived = new ArrayList<>();
 
-        // Set up an original handler that should NOT receive the OSC response
-        connection.setStdinHandler(input -> {
+        Consumer<int[]> originalHandler = input -> {
             StringBuilder sb = new StringBuilder();
             for (int cp : input) {
                 sb.appendCodePoint(cp);
             }
             originalHandlerReceived.add(sb.toString());
-        });
+        };
+        connection.setStdinHandler(originalHandler);
 
-        CountDownLatch queryStarted = new CountDownLatch(1);
         Thread responseThread = new Thread(() -> {
             try {
-                queryStarted.await(1, TimeUnit.SECONDS);
-                Thread.sleep(20);
+                connection.awaitHandlerChange(originalHandler, 1000);
                 String response = "\u001B]10;rgb:FFFF/FFFF/FFFF\u0007";
                 connection.simulateInput(response);
             } catch (InterruptedException e) {
@@ -215,7 +199,6 @@ public class ConnectionOscQueryTest {
         });
         responseThread.start();
 
-        queryStarted.countDown();
         int[] rgb = connection.terminal().queryForegroundColor(500);
         responseThread.join(1000);
 
@@ -232,13 +215,11 @@ public class ConnectionOscQueryTest {
     @Test
     public void testGenericQueryOscWithCustomParser() throws Exception {
         MockConnection connection = new MockConnection();
+        Consumer<int[]> originalHandler = connection.stdinHandler();
 
-        CountDownLatch queryStarted = new CountDownLatch(1);
         Thread responseThread = new Thread(() -> {
             try {
-                queryStarted.await(1, TimeUnit.SECONDS);
-                Thread.sleep(20);
-                // Simulate a custom OSC response
+                connection.awaitHandlerChange(originalHandler, 1000);
                 String response = "\u001B]52;c;SGVsbG8gV29ybGQ=\u0007";
                 connection.simulateInput(response);
             } catch (InterruptedException e) {
@@ -247,9 +228,6 @@ public class ConnectionOscQueryTest {
         });
         responseThread.start();
 
-        queryStarted.countDown();
-
-        // Query OSC 52 (clipboard) with custom parser
         String result = connection.terminal().queryOsc(52, "c;?", 500, input -> {
             StringBuilder sb = new StringBuilder();
             for (int cp : input) {
@@ -278,7 +256,7 @@ public class ConnectionOscQueryTest {
      * A mock connection for testing OSC queries.
      */
     private static class MockConnection implements Connection {
-        private Consumer<int[]> stdinHandler;
+        private volatile Consumer<int[]> stdinHandler;
         private Consumer<Size> sizeHandler;
         private Consumer<Signal> signalHandler;
         private Consumer<Void> closeHandler;
@@ -287,7 +265,12 @@ public class ConnectionOscQueryTest {
 
         @Override
         public Device device() {
-            return new BaseDevice("xterm-256color");
+            return new BaseDevice("xterm-256color") {
+                @Override
+                public boolean supportsOscQueries() {
+                    return true;
+                }
+            };
         }
 
         @Override
@@ -396,9 +379,13 @@ public class ConnectionOscQueryTest {
             return true;
         }
 
-        /**
-         * Simulate terminal input (as if the terminal responded to a query).
-         */
+        public void awaitHandlerChange(Consumer<int[]> originalHandler, long timeoutMs) throws InterruptedException {
+            long deadline = System.currentTimeMillis() + timeoutMs;
+            while (stdinHandler == originalHandler && System.currentTimeMillis() < deadline) {
+                Thread.sleep(1);
+            }
+        }
+
         public void simulateInput(String input) {
             if (stdinHandler != null) {
                 stdinHandler.accept(input.codePoints().toArray());
