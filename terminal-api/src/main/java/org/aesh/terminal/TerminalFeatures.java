@@ -423,6 +423,26 @@ public class TerminalFeatures {
     }
 
     /**
+     * Detect the image protocol using heuristics first, falling back to a DA1
+     * query when heuristic detection returns NONE and the connection is reading.
+     * <p>
+     * This is the recommended entry point for image protocol detection when a
+     * {@link Connection} is available. It avoids the DA1 query cost when
+     * environment variables or terminal type already identify the protocol.
+     *
+     * @return the detected image protocol, or NONE
+     */
+    public ImageProtocol getImageProtocol() {
+        ImageProtocol protocol = connection.device() != null
+                ? connection.device().getImageProtocol()
+                : ImageProtocolDetector.detectFromEnvironment();
+        if (protocol != ImageProtocol.NONE) {
+            return protocol;
+        }
+        return queryImageProtocol(DEFAULT_QUERY_TIMEOUT_MS);
+    }
+
+    /**
      * Query the terminal for its image protocol support.
      *
      * @param timeoutMs timeout in milliseconds to wait for DA1 response

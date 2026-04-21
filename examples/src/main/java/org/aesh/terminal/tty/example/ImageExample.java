@@ -75,7 +75,7 @@ public class ImageExample {
             conn.write("\u001B[H"); // Move cursor to home (1,1)
 
             // Check for image support
-            ImageProtocol protocol = conn.device().getImageProtocol();
+            ImageProtocol protocol = conn.terminal().getImageProtocol();
 
             conn.write("\033[1;36m=== Terminal Image Example ===\033[0m\n\n");
             conn.write("Terminal type: " + conn.device().type() + "\n");

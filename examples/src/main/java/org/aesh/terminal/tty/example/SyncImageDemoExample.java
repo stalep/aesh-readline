@@ -86,7 +86,7 @@ public class SyncImageDemoExample {
             savedAttributes = connection.enterRawMode();
 
             boolean terminalSupportsSync = connection.terminal().supportsSynchronizedOutput();
-            ImageProtocol imageProtocol = connection.device().getImageProtocol();
+            ImageProtocol imageProtocol = connection.terminal().getImageProtocol();
 
             byte[] imageData = Files.readAllBytes(imagePath);
             String filename = imagePath.getFileName().toString();
