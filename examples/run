@@ -46,7 +46,21 @@ if ! [[ "${choice}" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#classes[@]} )
 fi
 
 name_of_class="${classes[$((choice - 1))]}"
-classpath="examples/target/classes${CP_SEP}terminal-tty/target/terminal-tty-3.4-dev.jar${CP_SEP}terminal-api/target/terminal-api-3.4-dev.jar${CP_SEP}readline/target/readline-3.4-dev.jar"
+resolve_jar() {
+  local pattern="$1"
+  local jar
+  jar="$(ls ${pattern} 2>/dev/null | grep -v sources | grep -v javadoc | grep -v tests | head -1)"
+  if [[ -z "${jar}" ]]; then
+    echo "Missing jar: ${pattern}" >&2
+    exit 1
+  fi
+  echo "${jar}"
+}
+
+tty_jar="$(resolve_jar "${ROOT_DIR}/terminal-tty/target/terminal-tty-*.jar")"
+api_jar="$(resolve_jar "${ROOT_DIR}/terminal-api/target/terminal-api-*.jar")"
+readline_jar="$(resolve_jar "${ROOT_DIR}/readline/target/readline-*.jar")"
+classpath="examples/target/classes${CP_SEP}${tty_jar}${CP_SEP}${api_jar}${CP_SEP}${readline_jar}"
 
 cd "${ROOT_DIR}"
 java -cp "${classpath}" "${name_of_class}"
