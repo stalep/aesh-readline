@@ -61,7 +61,6 @@ public final class ImageProtocolDetector {
             return envProtocol;
         }
 
-        // Check terminal type for Kitty/iTerm2 support
         if (termType != null) {
             ImageProtocol typeProtocol = getProtocolForTermType(termType);
             if (typeProtocol != ImageProtocol.NONE) {
@@ -69,22 +68,10 @@ public final class ImageProtocolDetector {
             }
         }
 
-        // Check DA1 for authoritative Sixel support (parameter 4)
         if (attrs != null && attrs.supportsSixel()) {
             return ImageProtocol.SIXEL;
         }
 
-        // Fall back to heuristic Sixel detection from terminal type
-        if (termType != null) {
-            String typeLower = termType.toLowerCase();
-            if (typeLower.contains("mlterm") || typeLower.contains("foot") ||
-                    typeLower.contains("contour") || typeLower.contains("yaft") ||
-                    typeLower.contains("ctx") || typeLower.contains("darktile")) {
-                return ImageProtocol.SIXEL;
-            }
-        }
-
-        // Fall back to environment detection (e.g., Windows Terminal via WT_SESSION)
         if (envProtocol != ImageProtocol.NONE) {
             return envProtocol;
         }
@@ -106,27 +93,14 @@ public final class ImageProtocolDetector {
             return checkEnvironment();
         }
 
-        // Check for protocol based on term type string
         ImageProtocol typeProtocol = getProtocolForTermType(termType);
         if (typeProtocol != ImageProtocol.NONE) {
             return typeProtocol;
         }
 
-        // Check environment for Kitty/iTerm2 first
         ImageProtocol envProtocol = checkEnvironment();
         if (envProtocol != ImageProtocol.NONE) {
             return envProtocol;
-        }
-
-        // Sixel as fallback - only for terminals that explicitly identify themselves
-        String typeLower = termType.toLowerCase();
-        if (typeLower.contains("mlterm") ||
-                typeLower.contains("foot") ||
-                typeLower.contains("contour") ||
-                typeLower.contains("yaft") ||
-                typeLower.contains("ctx") ||
-                typeLower.contains("darktile")) {
-            return ImageProtocol.SIXEL;
         }
 
         return ImageProtocol.NONE;
@@ -141,8 +115,13 @@ public final class ImageProtocolDetector {
      * @return the detected protocol, or NONE if unknown
      */
     public static ImageProtocol detectFromEnvironment() {
-        Device.TerminalType terminalType = TerminalEnvironment.getInstance().getTerminalType();
-        return getProtocolForTerminalType(terminalType);
+        TerminalEnvironment env = TerminalEnvironment.getInstance();
+        Device.TerminalType terminalType = env.getTerminalType();
+        ImageProtocol protocol = getProtocolForTerminalType(terminalType);
+        if (env.isInMultiplexer() && protocol == ImageProtocol.KITTY) {
+            return multiplexerFallback(terminalType);
+        }
+        return protocol;
     }
 
     /**
@@ -194,29 +173,56 @@ public final class ImageProtocolDetector {
      * Check environment variables to detect image protocol support.
      * <p>
      * This method uses {@link TerminalEnvironment} for centralized detection.
+     * When running inside a terminal multiplexer (tmux/screen), the Kitty
+     * graphics protocol (APC-based) cannot pass through. In that case,
+     * terminals that also support Sixel (DCS-based, which multiplexers
+     * can forward) are detected as SIXEL instead.
      *
      * @return the detected protocol based on environment, or NONE
      */
     public static ImageProtocol checkEnvironment() {
         TerminalEnvironment env = TerminalEnvironment.getInstance();
+        boolean inMultiplexer = env.isInMultiplexer();
 
-        // Kitty terminal
-        if (env.isKitty() || env.isGhostty()) {
-            return ImageProtocol.KITTY;
+        if (env.isGhostty()) {
+            // Ghostty supports both Kitty and Sixel
+            return inMultiplexer ? ImageProtocol.SIXEL : ImageProtocol.KITTY;
         }
 
-        // iTerm2 protocol terminals
+        if (env.isKitty()) {
+            // Kitty terminal does not support Sixel
+            return inMultiplexer ? ImageProtocol.NONE : ImageProtocol.KITTY;
+        }
+
         if (env.isITerm2() || env.isWezTerm()) {
             return ImageProtocol.ITERM2;
         }
 
-        // Check terminal type from environment
         Device.TerminalType terminalType = env.getTerminalType();
         if (terminalType != Device.TerminalType.UNKNOWN) {
-            return getProtocolForTerminalType(terminalType);
+            ImageProtocol protocol = getProtocolForTerminalType(terminalType);
+            if (inMultiplexer && protocol == ImageProtocol.KITTY) {
+                return multiplexerFallback(terminalType);
+            }
+            return protocol;
         }
 
         return ImageProtocol.NONE;
+    }
+
+    /**
+     * Determine the best image protocol for a terminal behind a multiplexer.
+     * Kitty graphics (APC) cannot pass through tmux/screen, so terminals
+     * that support both Kitty and Sixel fall back to Sixel (DCS-based).
+     */
+    private static ImageProtocol multiplexerFallback(Device.TerminalType terminalType) {
+        switch (terminalType) {
+            case GHOSTTY:
+            case KONSOLE:
+                return ImageProtocol.SIXEL;
+            default:
+                return ImageProtocol.NONE;
+        }
     }
 
     /**
@@ -228,12 +234,11 @@ public final class ImageProtocolDetector {
     private static ImageProtocol getProtocolForTermType(String termType) {
         String typeLower = termType.toLowerCase();
 
-        // These terminals use the Kitty graphics protocol
-        if (typeLower.contains("kitty") || typeLower.contains("ghostty")) {
+        if (typeLower.contains("kitty") || typeLower.contains("ghostty") ||
+                typeLower.contains("konsole")) {
             return ImageProtocol.KITTY;
         }
 
-        // These terminals support iTerm2 protocol
         if (typeLower.contains("iterm") ||
                 typeLower.contains("wezterm") ||
                 typeLower.contains("mintty") ||
@@ -243,9 +248,10 @@ public final class ImageProtocolDetector {
             return ImageProtocol.ITERM2;
         }
 
-        // Konsole has partial Kitty support
-        if (typeLower.contains("konsole")) {
-            return ImageProtocol.KITTY;
+        if (typeLower.contains("mlterm") || typeLower.contains("foot") ||
+                typeLower.contains("contour") || typeLower.contains("yaft") ||
+                typeLower.contains("ctx") || typeLower.contains("darktile")) {
+            return ImageProtocol.SIXEL;
         }
 
         return ImageProtocol.NONE;

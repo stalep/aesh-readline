@@ -34,6 +34,8 @@ import java.util.Map;
 
 import javax.imageio.ImageIO;
 
+import org.aesh.terminal.utils.TerminalEnvironment;
+
 /**
  * Sixel graphics protocol implementation.
  * <p>
@@ -75,6 +77,8 @@ public class SixelImage implements TerminalImage {
 
     private static final String DCS = "\u001BP";
     private static final String ST = "\u001B\\";
+    private static final String TMUX_DCS_START = "\u001BPtmux;\u001B\u001BP";
+    private static final String TMUX_DCS_END = "\u001B\u001B\\\u001B\\";
     private static final int MAX_COLORS = 256;
 
     private final byte[] imageData;
@@ -187,10 +191,16 @@ public class SixelImage implements TerminalImage {
 
         // Build sixel output
         StringBuilder sb = new StringBuilder();
+        boolean inMultiplexer = TerminalEnvironment.getInstance().isInMultiplexer();
 
-        // DCS introducer with parameters
-        // P1=0 (2:1 aspect), P2=1 (no background change), P3=0 (default grid)
-        sb.append(DCS).append("0;1;0q");
+        // DCS introducer — wrapped for tmux passthrough when in a multiplexer
+        // so the outer terminal renders the image instead of tmux
+        if (inMultiplexer) {
+            sb.append(TMUX_DCS_START);
+        } else {
+            sb.append(DCS);
+        }
+        sb.append("0;1;0q");
 
         // Define raster attributes: "Pan;Pad;Ph;Pv
         // Pan/Pad = pixel aspect ratio numerator/denominator
@@ -253,8 +263,11 @@ public class SixelImage implements TerminalImage {
             sb.append("-"); // New sixel line
         }
 
-        // String terminator
-        sb.append(ST);
+        if (inMultiplexer) {
+            sb.append(TMUX_DCS_END);
+        } else {
+            sb.append(ST);
+        }
 
         return sb.toString();
     }

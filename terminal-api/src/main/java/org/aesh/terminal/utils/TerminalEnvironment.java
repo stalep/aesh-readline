@@ -54,6 +54,7 @@ public final class TerminalEnvironment {
     private final String weztermPane;
     private final String itermSessionId;
     private final String wtSession;
+    private final String wtProfileId;
     private final String conEmuPid;
     private final String conEmuAnsi;
     private final String alacrittySocket;
@@ -86,6 +87,7 @@ public final class TerminalEnvironment {
         this.weztermPane = System.getenv("WEZTERM_PANE");
         this.itermSessionId = System.getenv("ITERM_SESSION_ID");
         this.wtSession = System.getenv("WT_SESSION");
+        this.wtProfileId = System.getenv("WT_PROFILE_ID");
         this.conEmuPid = System.getenv("ConEmuPID");
         this.conEmuAnsi = System.getenv("ConEmuANSI");
         this.alacrittySocket = System.getenv("ALACRITTY_SOCKET");
@@ -229,10 +231,10 @@ public final class TerminalEnvironment {
     /**
      * Check if running in Windows Terminal.
      *
-     * @return true if WT_SESSION is set
+     * @return true if WT_SESSION or WT_PROFILE_ID is set
      */
     public boolean isWindowsTerminal() {
-        return wtSession != null;
+        return wtSession != null || wtProfileId != null;
     }
 
     /**

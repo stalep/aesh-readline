@@ -84,11 +84,9 @@ public class ImageExample {
             if (protocol == ImageProtocol.NONE) {
                 conn.write("\033[1;33mNo image protocol support detected.\033[0m\n");
                 conn.write("\nSupported terminals:\n");
-                conn.write("  - Kitty, Ghostty (use Kitty graphics protocol)\n");
-                conn.write("  - iTerm2, WezTerm, VSCode, Tabby, Hyper (use iTerm2 protocol)\n");
-                conn.write("  - Konsole (partial Kitty support)\n");
-                conn.write("  - mlterm, foot, contour (use Sixel protocol)\n");
-                conn.write("\nNote: Alacritty does not support terminal graphics.\n");
+                conn.write("  - Kitty, Ghostty, Konsole (Kitty graphics protocol)\n");
+                conn.write("  - iTerm2, WezTerm, VSCode, Tabby, Hyper, Mintty (iTerm2 protocol)\n");
+                conn.write("  - Windows Terminal, foot, contour, mlterm (Sixel protocol)\n");
                 conn.write("\nPress any key to exit...\n");
             } else {
                 // Get or generate image data

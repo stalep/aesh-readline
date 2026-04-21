@@ -655,17 +655,16 @@ public interface Device {
     /**
      * Get the image protocol supported by this device.
      * <p>
-     * Detection is based on terminal type and environment variables.
-     * Supported protocols (in priority order):
-     * <ul>
-     * <li>KITTY - Kitty, Ghostty, Konsole</li>
-     * <li>ITERM2 - iTerm2, WezTerm, Mintty, VSCode, Tabby, Hyper</li>
-     * <li>SIXEL - mlterm, foot, contour (fallback)</li>
-     * </ul>
+     * Detection checks environment variables first (most reliable on all
+     * platforms), then falls back to terminal type string matching.
      *
      * @return the detected image protocol, or NONE if not supported
      */
     default ImageProtocol getImageProtocol() {
+        ImageProtocol protocol = ImageProtocolDetector.detectFromEnvironment();
+        if (protocol != ImageProtocol.NONE) {
+            return protocol;
+        }
         return ImageProtocolDetector.detectFromTermType(type());
     }
 }
