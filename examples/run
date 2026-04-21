@@ -10,12 +10,6 @@ SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_SOURCE}")" && pwd -P)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 CLASSES_DIR="${ROOT_DIR}/examples/target/classes"
 
-# Java on Cygwin/MSYS/MINGW expects ';' as classpath separator.
-case "$(uname -s)" in
-  CYGWIN*|MINGW*|MSYS*) CP_SEP=';' ;;
-  *) CP_SEP=':' ;;
-esac
-
 if [[ ! -d "${CLASSES_DIR}" ]]; then
   echo "Missing directory: ${CLASSES_DIR}"
   echo "Build examples first (eg: run 'mvn package' from the root of the project)."
@@ -60,7 +54,6 @@ resolve_jar() {
 tty_jar="$(resolve_jar "${ROOT_DIR}/terminal-tty/target/terminal-tty-*.jar")"
 api_jar="$(resolve_jar "${ROOT_DIR}/terminal-api/target/terminal-api-*.jar")"
 readline_jar="$(resolve_jar "${ROOT_DIR}/readline/target/readline-*.jar")"
-classpath="examples/target/classes${CP_SEP}${tty_jar}${CP_SEP}${api_jar}${CP_SEP}${readline_jar}"
+classpath="${CLASSES_DIR}:${tty_jar}:${api_jar}:${readline_jar}"
 
-cd "${ROOT_DIR}"
 java -cp "${classpath}" "${name_of_class}"

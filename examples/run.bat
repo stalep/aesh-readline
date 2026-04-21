@@ -54,19 +54,17 @@ set "rel=!full:%CLASSES_DIR%\=!"
 set "name_of_class=!rel:\=.!"
 set "name_of_class=!name_of_class:.class=!"
 
-pushd "%ROOT_DIR%" >nul
-
 set "tty_jar="
-for %%J in (terminal-tty\target\terminal-tty-*.jar) do (
-  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "tty_jar=%%J"
+for %%J in ("%ROOT_DIR%\terminal-tty\target\terminal-tty-*.jar") do (
+  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "tty_jar=%%~fJ"
 )
 set "api_jar="
-for %%J in (terminal-api\target\terminal-api-*.jar) do (
-  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "api_jar=%%J"
+for %%J in ("%ROOT_DIR%\terminal-api\target\terminal-api-*.jar") do (
+  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "api_jar=%%~fJ"
 )
 set "readline_jar="
-for %%J in (readline\target\readline-*.jar) do (
-  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "readline_jar=%%J"
+for %%J in ("%ROOT_DIR%\readline\target\readline-*.jar") do (
+  echo %%J | findstr /i /v "sources javadoc tests" >nul && set "readline_jar=%%~fJ"
 )
 
 if not defined tty_jar (
@@ -82,10 +80,7 @@ if not defined readline_jar (
   exit /b 1
 )
 
-set "classpath=examples\target\classes;!tty_jar!;!api_jar!;!readline_jar!"
+set "classpath=%CLASSES_DIR%;!tty_jar!;!api_jar!;!readline_jar!"
 java -cp "%classpath%" "%name_of_class%"
-set "rc=%ERRORLEVEL%"
-popd >nul
-
-exit /b %rc%
+exit /b %ERRORLEVEL%
 
