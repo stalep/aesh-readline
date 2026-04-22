@@ -71,6 +71,7 @@ public final class TerminalEnvironment {
     private final boolean inTmux;
     private final boolean inScreen;
     private final boolean tmuxPassthroughEnabled;
+    private final boolean windowsTerminalByProcess;
 
     /**
      * Private constructor - use {@link #getInstance()} or static methods.
@@ -101,6 +102,7 @@ public final class TerminalEnvironment {
         this.inTmux = tmux != null && !tmux.isEmpty();
         this.inScreen = term != null && term.toLowerCase().startsWith("screen");
         this.tmuxPassthroughEnabled = computeTmuxPassthrough();
+        this.windowsTerminalByProcess = detectWindowsTerminalByProcess();
         this.terminalType = computeTerminalType();
         this.defaultColorDepth = computeColorDepth();
     }
@@ -230,11 +232,17 @@ public final class TerminalEnvironment {
 
     /**
      * Check if running in Windows Terminal.
+     * <p>
+     * Detects via environment variables (WT_SESSION, WT_PROFILE_ID) first.
+     * When Windows Terminal is the default terminal app but CMD/PowerShell
+     * is launched from its own shortcut, those env vars are absent. In that
+     * case, falls back to checking the process tree for WindowsTerminal.exe
+     * or OpenConsole.exe (requires Java 9+).
      *
-     * @return true if WT_SESSION or WT_PROFILE_ID is set
+     * @return true if running inside Windows Terminal
      */
     public boolean isWindowsTerminal() {
-        return wtSession != null || wtProfileId != null;
+        return wtSession != null || wtProfileId != null || windowsTerminalByProcess;
     }
 
     /**
@@ -585,6 +593,42 @@ public final class TerminalEnvironment {
         }
 
         return Device.TerminalType.UNKNOWN;
+    }
+
+    /**
+     * Walk the process tree via ProcessHandle (Java 9+) looking for
+     * WindowsTerminal.exe or OpenConsole.exe. Returns false on Java 8
+     * or non-Windows platforms.
+     */
+    private static boolean detectWindowsTerminalByProcess() {
+        String osName = System.getProperty("os.name", "");
+        if (!osName.toLowerCase().contains("windows")) {
+            return false;
+        }
+        try {
+            Class<?> phClass = Class.forName("java.lang.ProcessHandle");
+            Object current = phClass.getMethod("current").invoke(null);
+            // Walk up to 5 levels of parent processes
+            for (int i = 0; i < 5; i++) {
+                Object parentOpt = phClass.getMethod("parent").invoke(current);
+                if (!(boolean) parentOpt.getClass().getMethod("isPresent").invoke(parentOpt)) {
+                    break;
+                }
+                current = parentOpt.getClass().getMethod("get").invoke(parentOpt);
+                Object info = phClass.getMethod("info").invoke(current);
+                Object cmdOpt = info.getClass().getMethod("command").invoke(info);
+                if (!(boolean) cmdOpt.getClass().getMethod("isPresent").invoke(cmdOpt)) {
+                    continue;
+                }
+                String command = (String) cmdOpt.getClass().getMethod("get").invoke(cmdOpt);
+                String lower = command.toLowerCase();
+                if (lower.contains("windowsterminal") || lower.contains("openconsole")) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
     }
 
     private ColorDepth computeColorDepth() {
