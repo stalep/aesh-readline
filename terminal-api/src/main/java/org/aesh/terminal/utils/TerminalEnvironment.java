@@ -595,39 +595,40 @@ public final class TerminalEnvironment {
     }
 
     /**
-     * Walk the process tree via ProcessHandle (Java 9+) looking for
-     * WindowsTerminal.exe or OpenConsole.exe. Returns false on Java 8
-     * or non-Windows platforms.
+     * Check the Windows Registry for the default terminal application.
+     * When Windows Terminal is the default but CMD/PowerShell is launched
+     * from its own shortcut, WT_SESSION/WT_PROFILE_ID are not set because
+     * WT hosts the console via ConPTY as a sibling process. The registry
+     * key {@code HKCU\Console\%%Startup\DelegationTerminal} contains the
+     * GUID of the configured default terminal app.
      */
     private static boolean detectWindowsTerminalByProcess() {
-        String osName = System.getProperty("os.name", "");
-        if (!osName.toLowerCase().contains("windows")) {
+        if (!System.getProperty("os.name", "").toLowerCase().contains("windows")) {
             return false;
         }
         try {
-            Class<?> phClass = Class.forName("java.lang.ProcessHandle");
-            Object current = phClass.getMethod("current").invoke(null);
-            // Walk up to 5 levels of parent processes
-            for (int i = 0; i < 5; i++) {
-                Object parentOpt = phClass.getMethod("parent").invoke(current);
-                if (!(boolean) parentOpt.getClass().getMethod("isPresent").invoke(parentOpt)) {
-                    break;
-                }
-                current = parentOpt.getClass().getMethod("get").invoke(parentOpt);
-                Object info = phClass.getMethod("info").invoke(current);
-                Object cmdOpt = info.getClass().getMethod("command").invoke(info);
-                if (!(boolean) cmdOpt.getClass().getMethod("isPresent").invoke(cmdOpt)) {
-                    continue;
-                }
-                String command = (String) cmdOpt.getClass().getMethod("get").invoke(cmdOpt);
-                String lower = command.toLowerCase();
-                if (lower.contains("windowsterminal") || lower.contains("openconsole")) {
-                    return true;
-                }
+            Process process = new ProcessBuilder("reg", "query",
+                    "HKCU\\Console\\%%Startup", "/v", "DelegationTerminal")
+                    .redirectErrorStream(true)
+                    .start();
+            byte[] buf = new byte[1024];
+            StringBuilder sb = new StringBuilder();
+            int n;
+            while ((n = process.getInputStream().read(buf)) != -1) {
+                sb.append(new String(buf, 0, n));
             }
+            process.waitFor();
+            if (process.exitValue() != 0) {
+                return false;
+            }
+            String result = sb.toString().toLowerCase();
+            // Windows Terminal stable
+            return result.contains("{2eaca947-7f5f-4cfa-ba87-8f7fbeefbe69}")
+                    // Windows Terminal Preview
+                    || result.contains("{e12cff52-a866-4c77-9a90-f570a7aa2c6b}");
         } catch (Exception ignored) {
+            return false;
         }
-        return false;
     }
 
     private ColorDepth computeColorDepth() {
