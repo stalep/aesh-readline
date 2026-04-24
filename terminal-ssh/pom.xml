@@ -50,7 +50,7 @@
         <javaModuleName>org.aesh.terminal.ssh</javaModuleName>
         <version.org.slf4j>1.7.12</version.org.slf4j>
         <mina-core.version>2.2.4</mina-core.version>
-        <jsch.version>0.1.54</jsch.version>
+        <jsch.version>0.1.55</jsch.version>
         <sshd-core.version>2.14.0</sshd-core.version>
     </properties>
 
