@@ -38,8 +38,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.jcraft.jsch.JSchException;
-
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  */
@@ -141,11 +139,7 @@ public class AsyncAuthTest extends TestBase {
         authenticator = (username, password, sess) -> {
             throw new AsyncAuthException();
         };
-        try {
-            authenticate();
-        } catch (JSchException e) {
-            Assert.assertTrue("Unexpected failure " + e.getMessage(), e.getMessage().startsWith("SSH_MSG_DISCONNECT"));
-        }
+        Assert.assertFalse(authenticate());
     }
 
     @Test
@@ -166,11 +160,7 @@ public class AsyncAuthTest extends TestBase {
             }.start();
             throw auth;
         };
-        try {
-            authenticate();
-        } catch (JSchException e) {
-            Assert.assertTrue("Unexpected failure " + e.getMessage(), e.getMessage().startsWith("SSH_MSG_DISCONNECT"));
-        }
+        Assert.assertFalse(authenticate());
     }
 
     protected boolean authenticate() throws Exception {

@@ -50,7 +50,6 @@
         <javaModuleName>org.aesh.terminal.ssh</javaModuleName>
         <version.org.slf4j>1.7.12</version.org.slf4j>
         <mina-core.version>2.2.5</mina-core.version>
-        <jsch.version>0.1.55</jsch.version>
         <sshd-core.version>2.14.0</sshd-core.version>
     </properties>
 
@@ -139,12 +138,6 @@
         <scope>test</scope>
       </dependency>
 
-      <dependency>
-        <groupId>com.jcraft</groupId>
-        <artifactId>jsch</artifactId>
-        <version>${jsch.version}</version>
-        <scope>test</scope>
-      </dependency>
       <dependency>
         <groupId>org.apache.mina</groupId>
         <artifactId>mina-core</artifactId>
