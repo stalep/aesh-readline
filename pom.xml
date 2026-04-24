@@ -60,7 +60,6 @@
     </licenses>
 
     <properties>
-      <version.org.slf4j>1.7.12</version.org.slf4j>
       <netty.version>4.2.12.Final</netty.version>
       <jackson.version>2.21.2</jackson.version>
       <junit.version>4.13.2</junit.version>
