@@ -70,7 +70,7 @@
       <maven.compiler.source>1.8</maven.compiler.source>
 
       <!-- Code formatting -->
-      <version.formatter.plugin>2.27.0</version.formatter.plugin>
+      <version.formatter.plugin>2.29.0</version.formatter.plugin>
       <version.impsort.plugin>1.13.0</version.impsort.plugin>
       <format.skip>false</format.skip>
       <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
