@@ -7,7 +7,8 @@
 #   nmake -f Makefile.win JAVA_HOME=C:\path\to\jdk
 
 CC = x86_64-w64-mingw32-gcc
-CFLAGS = -shared -O2 -Wall
+NOEXECSTACK ?= -Wl,--noexecstack
+CFLAGS = -shared -O2 -Wall $(NOEXECSTACK)
 JNI_INCLUDE = -I$(JAVA_HOME)/include -I./win32
 
 # Use the JDK's own win32 jni_md.h if available, otherwise fall back to local

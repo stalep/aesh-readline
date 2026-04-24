@@ -79,6 +79,10 @@ To run tests:
 mvn test
 ```
 
+Note: the Windows JNI library `aesh-console.dll` is built with a non-executable stack to avoid JVM stack guard warnings during native-image builds. On Java 22+, the FFM-based implementation is used instead of the JNI DLL.
+
+Troubleshooting: if you still see a stack guard warning mentioning `aesh-console*.dll`, rebuild the DLL or run `execstack -c` on the extracted library in your build image.
+
 ## Getting Started
 
 Here's a simple example to get you started:
