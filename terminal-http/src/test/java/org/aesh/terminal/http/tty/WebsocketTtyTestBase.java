@@ -28,14 +28,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-import javax.websocket.ClientEndpointConfig;
-import javax.websocket.CloseReason;
-import javax.websocket.ContainerProvider;
-import javax.websocket.Endpoint;
-import javax.websocket.EndpointConfig;
-import javax.websocket.MessageHandler;
-import javax.websocket.Session;
-import javax.websocket.WebSocketContainer;
+import jakarta.websocket.ClientEndpointConfig;
+import jakarta.websocket.CloseReason;
+import jakarta.websocket.ContainerProvider;
+import jakarta.websocket.Endpoint;
+import jakarta.websocket.EndpointConfig;
+import jakarta.websocket.MessageHandler;
+import jakarta.websocket.Session;
+import jakarta.websocket.WebSocketContainer;
 
 import org.aesh.terminal.tty.TtyTestBase;
 import org.junit.After;
@@ -106,7 +106,7 @@ public abstract class WebsocketTtyTestBase extends TtyTestBase {
         };
         ClientEndpointConfig clientEndpointConfig = ClientEndpointConfig.Builder.create().build();
         WebSocketContainer webSocketContainer = ContainerProvider.getWebSocketContainer();
-        session = webSocketContainer.connectToServer(endpoint, clientEndpointConfig, new URI("http://localhost:8080/ws"));
+        session = webSocketContainer.connectToServer(endpoint, clientEndpointConfig, new URI("ws://localhost:8080/ws"));
         latch.await();
     }
 
