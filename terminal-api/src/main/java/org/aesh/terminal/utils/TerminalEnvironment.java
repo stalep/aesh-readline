@@ -635,6 +635,16 @@ public final class TerminalEnvironment {
         return path != null && !path.trim().isEmpty();
     }
 
+    /**
+     * Query a Windows Registry value. Parses the {@code REG_SZ} value
+     * from the {@code reg query} output format:
+     *
+     * <pre>
+     *     ValueName    REG_SZ    ActualValue
+     * </pre>
+     *
+     * @return the extracted value, or null if the key/value doesn't exist
+     */
     private static String regQuery(String key, String valueName) {
         try {
             Process process = new ProcessBuilder("reg", "query", key, "/v", valueName)
@@ -650,7 +660,14 @@ public final class TerminalEnvironment {
             if (process.exitValue() != 0) {
                 return null;
             }
-            return sb.toString();
+            // Parse value from "    Name    REG_SZ    Value" line
+            for (String line : sb.toString().split("\\r?\\n")) {
+                int idx = line.indexOf("REG_SZ");
+                if (idx >= 0) {
+                    return line.substring(idx + 6).trim();
+                }
+            }
+            return null;
         } catch (Exception ignored) {
             return null;
         }
