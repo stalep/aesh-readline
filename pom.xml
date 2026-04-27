@@ -63,7 +63,7 @@
       <netty.version>4.2.12.Final</netty.version>
       <jackson.version>2.21.2</jackson.version>
       <junit.version>4.13.2</junit.version>
-      <tyrus.version>2.1.5</tyrus.version>
+      <tyrus.version>2.2.2</tyrus.version>
 
       <!-- maven-compiler-plugin -->
       <maven.compiler.release>8</maven.compiler.release>
