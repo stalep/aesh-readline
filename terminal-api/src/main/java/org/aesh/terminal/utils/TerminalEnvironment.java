@@ -101,7 +101,7 @@ public final class TerminalEnvironment {
         this.inTmux = tmux != null && !tmux.isEmpty();
         this.inScreen = term != null && term.toLowerCase().startsWith("screen");
         this.tmuxPassthroughEnabled = computeTmuxPassthrough();
-        this.windowsTerminalByProcess = detectWindowsTerminalByProcess();
+        this.windowsTerminalByProcess = detectWindowsTerminalByRegistry();
         this.terminalType = computeTerminalType();
         this.defaultColorDepth = computeColorDepth();
     }
@@ -602,13 +602,46 @@ public final class TerminalEnvironment {
      * key {@code HKCU\Console\%%Startup\DelegationTerminal} contains the
      * GUID of the configured default terminal app.
      */
-    private static boolean detectWindowsTerminalByProcess() {
+    private static boolean detectWindowsTerminalByRegistry() {
         if (!System.getProperty("os.name", "").toLowerCase().contains("windows")) {
             return false;
         }
         try {
-            Process process = new ProcessBuilder("reg", "query",
-                    "HKCU\\Console\\%%Startup", "/v", "DelegationTerminal")
+            String delegation = regQuery(
+                    "HKCU\\Console\\%%Startup", "DelegationTerminal");
+            if (delegation == null) {
+                return false;
+            }
+            String lower = delegation.toLowerCase();
+            // Explicit Windows Terminal GUID (stable or preview)
+            if (lower.contains("{2eaca947-7f5f-4cfa-ba87-8f7fbeefbe69}")
+                    || lower.contains("{e12cff52-a866-4c77-9a90-f570a7aa2c6b}")) {
+                return true;
+            }
+            // "Let Windows decide" (null GUID) defaults to WT on Windows 11+
+            if (lower.contains("{00000000-0000-0000-0000-000000000000}")) {
+                return isWindows11OrLater();
+            }
+            return false;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isWindows11OrLater() {
+        try {
+            String build = regQuery(
+                    "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                    "CurrentBuildNumber");
+            return build != null && Integer.parseInt(build.trim()) >= 22000;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static String regQuery(String key, String valueName) {
+        try {
+            Process process = new ProcessBuilder("reg", "query", key, "/v", valueName)
                     .redirectErrorStream(true)
                     .start();
             byte[] buf = new byte[1024];
@@ -619,15 +652,11 @@ public final class TerminalEnvironment {
             }
             process.waitFor();
             if (process.exitValue() != 0) {
-                return false;
+                return null;
             }
-            String result = sb.toString().toLowerCase();
-            // Windows Terminal stable
-            return result.contains("{2eaca947-7f5f-4cfa-ba87-8f7fbeefbe69}")
-                    // Windows Terminal Preview
-                    || result.contains("{e12cff52-a866-4c77-9a90-f570a7aa2c6b}");
+            return sb.toString();
         } catch (Exception ignored) {
-            return false;
+            return null;
         }
     }
 
