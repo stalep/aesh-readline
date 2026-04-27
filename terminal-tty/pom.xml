@@ -124,9 +124,6 @@
     <profiles>
         <profile>
             <id>native-windows</id>
-            <activation>
-                <os><family>windows</family></os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
