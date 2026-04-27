@@ -618,9 +618,9 @@ public final class TerminalEnvironment {
                     || lower.contains("{e12cff52-a866-4c77-9a90-f570a7aa2c6b}")) {
                 return true;
             }
-            // "Let Windows decide" (null GUID) defaults to WT on Windows 11+
+            // "Let Windows decide" (null GUID) — uses WT if installed
             if (lower.contains("{00000000-0000-0000-0000-000000000000}")) {
-                return isWindows11OrLater();
+                return isWindowsTerminalInstalled();
             }
             return false;
         } catch (Exception ignored) {
@@ -628,15 +628,11 @@ public final class TerminalEnvironment {
         }
     }
 
-    private static boolean isWindows11OrLater() {
-        try {
-            String build = regQuery(
-                    "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
-                    "CurrentBuildNumber");
-            return build != null && Integer.parseInt(build.trim()) >= 22000;
-        } catch (Exception ignored) {
-            return false;
-        }
+    private static boolean isWindowsTerminalInstalled() {
+        String path = regQuery(
+                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\wt.exe",
+                "Path");
+        return path != null && !path.trim().isEmpty();
     }
 
     private static String regQuery(String key, String valueName) {
