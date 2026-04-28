@@ -117,6 +117,13 @@ public abstract class AbstractExecPty implements Pty {
     }
 
     static int parseControlChar(String str) {
+        if (str == null || str.isEmpty()) {
+            return -1;
+        }
+        // Any <...> token is undef (handles localized variants like <indéfini>)
+        if (str.charAt(0) == '<') {
+            return -1;
+        }
         // octal
         if (str.charAt(0) == '0') {
             return Integer.parseInt(str, 8);
@@ -182,6 +189,8 @@ public abstract class AbstractExecPty implements Pty {
             LOGGER.log(Level.FINE, "Running: " + Arrays.toString(cmd));
             ProcessBuilder processBuilder = new ProcessBuilder(cmd);
             processBuilder.redirectInput(Redirect.INHERIT);
+            // Force C locale so stty and other commands produce English output
+            processBuilder.environment().put("LC_ALL", "C");
             Process p = processBuilder.start();
             String result = ExecHelper.waitAndCapture(p);
             LOGGER.log(Level.FINE, "Result: " + result);
