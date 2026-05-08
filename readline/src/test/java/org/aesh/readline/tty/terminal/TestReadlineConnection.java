@@ -26,7 +26,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.aesh.readline.Prompt;
 import org.aesh.readline.ReadlineFlag;
 import org.aesh.readline.ReadlineRequest;
 import org.aesh.readline.TestReadline;
@@ -35,6 +34,7 @@ import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.EventDecoder;
+import org.aesh.terminal.Prompt;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.tty.DeviceBuilder;
 import org.aesh.terminal.tty.Size;

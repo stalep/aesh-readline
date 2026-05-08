@@ -30,6 +30,7 @@ import org.aesh.readline.history.InMemoryHistory;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
+import org.aesh.terminal.Prompt;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;

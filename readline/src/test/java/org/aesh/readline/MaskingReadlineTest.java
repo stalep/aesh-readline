@@ -21,6 +21,7 @@ package org.aesh.readline;
 
 import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.terminal.Key;
+import org.aesh.terminal.Prompt;
 import org.aesh.terminal.utils.Parser;
 import org.junit.Test;
 

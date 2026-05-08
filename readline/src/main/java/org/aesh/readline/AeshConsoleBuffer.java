@@ -12,6 +12,7 @@ import org.aesh.readline.paste.PasteManager;
 import org.aesh.readline.undo.UndoAction;
 import org.aesh.readline.undo.UndoManager;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.Prompt;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.Config;

@@ -30,6 +30,7 @@ import org.aesh.readline.completion.Completion;
 import org.aesh.readline.cursor.CursorListener;
 import org.aesh.readline.history.History;
 import org.aesh.terminal.Connection;
+import org.aesh.terminal.Prompt;
 
 /**
  * Encapsulates all parameters for a {@link Readline#readline(ReadlineRequest)} call.

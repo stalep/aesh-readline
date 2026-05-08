@@ -31,9 +31,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-import org.aesh.readline.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.ReadlineRequest;
+import org.aesh.terminal.Prompt;
 import org.aesh.terminal.tty.TerminalConnection;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.aesh.terminal.Prompt;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.Config;
 import org.aesh.terminal.utils.Parser;

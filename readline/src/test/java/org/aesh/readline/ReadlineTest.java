@@ -31,6 +31,7 @@ import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.tty.terminal.TestConnection;
 import org.aesh.readline.tty.terminal.TestReadlineConnection;
 import org.aesh.terminal.Key;
+import org.aesh.terminal.Prompt;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Config;
 import org.junit.Ignore;
