@@ -5,7 +5,6 @@ package org.aesh.readline.suggestion;
  */
 public class CompositeSuggestionProvider implements SuggestionProvider {
 
-    /** Field. */
     private final SuggestionProvider[] providers;
 
     /**
