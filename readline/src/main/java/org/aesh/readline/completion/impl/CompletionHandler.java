@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.readline.completion;
+package org.aesh.readline.completion.impl;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -27,6 +27,8 @@ import java.util.function.Function;
 import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.mappings.ActionMapper;
+import org.aesh.readline.completion.CompleteOperation;
+import org.aesh.readline.completion.Completion;
 import org.aesh.terminal.formatting.TerminalString;
 import org.aesh.terminal.utils.Config;
 import org.aesh.terminal.utils.Parser;

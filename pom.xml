@@ -44,6 +44,7 @@
 
     <modules>
         <module>terminal-api</module>
+        <module>readline-api</module>
         <module>terminal-tty</module>
         <module>readline</module>
         <module>terminal-ssh</module>

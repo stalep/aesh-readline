@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import org.aesh.terminal.Prompt;
+import org.aesh.readline.prompt.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.completion.CompleteOperation;
 import org.aesh.readline.completion.Completion;

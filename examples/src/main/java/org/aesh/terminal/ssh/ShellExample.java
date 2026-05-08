@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.aesh.terminal.Prompt;
+import org.aesh.readline.prompt.Prompt;
 import org.aesh.readline.Readline;
 import org.aesh.readline.completion.Completion;
 import org.aesh.readline.editing.EditMode;

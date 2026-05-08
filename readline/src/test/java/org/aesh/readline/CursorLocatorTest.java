@@ -27,7 +27,7 @@ import java.io.IOException;
 import org.aesh.readline.cursor.CursorLocation;
 import org.aesh.readline.cursor.CursorLocator;
 import org.aesh.readline.cursor.Line;
-import org.aesh.terminal.Prompt;
+import org.aesh.readline.prompt.Prompt;
 import org.aesh.terminal.formatting.Color;
 import org.aesh.terminal.tty.TerminalConnection;
 import org.junit.Assert;

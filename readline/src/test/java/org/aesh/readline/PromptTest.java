@@ -22,7 +22,7 @@ package org.aesh.readline;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-import org.aesh.terminal.Prompt;
+import org.aesh.readline.prompt.Prompt;
 import org.junit.Test;
 
 public class PromptTest {

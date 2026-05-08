@@ -1,4 +1,4 @@
-package org.aesh.readline;
+package org.aesh.readline.suggestion;
 
 /**
  * Provides inline ghost text suggestions based on the current buffer content.

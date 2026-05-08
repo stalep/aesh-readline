@@ -17,7 +17,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.readline.completion;
+package org.aesh.readline.completion.impl;
+
+import org.aesh.readline.completion.CompleteOperation;
+import org.aesh.readline.completion.CompleteOperationImpl;
 
 /**
  * Simple implementation of CompletionHandler using the default CompleteOperation.

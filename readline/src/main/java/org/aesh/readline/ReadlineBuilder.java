@@ -22,8 +22,8 @@ package org.aesh.readline;
 import java.io.File;
 import java.util.function.Consumer;
 
-import org.aesh.readline.completion.CompletionHandler;
-import org.aesh.readline.completion.SimpleCompletionHandler;
+import org.aesh.readline.completion.impl.CompletionHandler;
+import org.aesh.readline.completion.impl.SimpleCompletionHandler;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.readline.editing.EditModeBuilder;
 import org.aesh.readline.history.FileHistory;

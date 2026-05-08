@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import org.aesh.readline.cursor.CursorLocator;
-import org.aesh.terminal.Prompt;
+import org.aesh.readline.prompt.Prompt;
 import org.aesh.terminal.tty.impl.WinSysTerminal;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.Config;

@@ -21,8 +21,8 @@ package org.aesh.readline;
 
 import static org.junit.Assert.assertEquals;
 
+import org.aesh.readline.prompt.Prompt;
 import org.aesh.readline.tty.terminal.TestReadlineConnection;
-import org.aesh.terminal.Prompt;
 import org.aesh.terminal.utils.Config;
 import org.junit.Test;
 

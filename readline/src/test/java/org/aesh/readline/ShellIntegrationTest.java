@@ -28,11 +28,11 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.aesh.readline.prompt.Prompt;
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
-import org.aesh.terminal.Prompt;
 import org.aesh.terminal.TerminalFeatures;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;

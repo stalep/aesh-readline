@@ -1,4 +1,4 @@
-package org.aesh.readline;
+package org.aesh.readline.suggestion;
 
 /**
  * A suggestion provider that chains multiple providers, returning the first non-null result.
