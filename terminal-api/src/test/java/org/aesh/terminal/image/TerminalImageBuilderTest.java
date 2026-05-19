@@ -21,6 +21,7 @@ package org.aesh.terminal.image;
 
 import static org.junit.Assert.*;
 
+import org.aesh.terminal.detect.ImageProtocol;
 import org.junit.Test;
 
 public class TerminalImageBuilderTest {

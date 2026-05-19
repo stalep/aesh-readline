@@ -24,6 +24,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
 
+import org.aesh.terminal.detect.ImageProtocol;
+
 /**
  * iTerm2 inline images protocol implementation.
  * <p>

@@ -22,6 +22,7 @@ package org.aesh.terminal.utils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.formatting.Color;
 import org.aesh.terminal.utils.ANSIBuilder.TextType;
 import org.junit.Test;

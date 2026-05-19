@@ -24,7 +24,7 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import org.aesh.terminal.image.ImageProtocol;
+import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.utils.ColorDepth;

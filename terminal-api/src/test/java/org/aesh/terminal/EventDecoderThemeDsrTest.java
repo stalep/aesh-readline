@@ -24,7 +24,7 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.aesh.terminal.utils.TerminalTheme;
+import org.aesh.terminal.detect.TerminalTheme;
 import org.junit.Before;
 import org.junit.Test;
 

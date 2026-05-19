@@ -23,6 +23,7 @@ import static org.junit.Assert.*;
 
 import java.util.Base64;
 
+import org.aesh.terminal.detect.ImageProtocol;
 import org.junit.Test;
 
 public class ITermImageTest {

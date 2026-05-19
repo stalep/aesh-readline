@@ -21,6 +21,7 @@ package org.aesh.terminal.image;
 
 import org.aesh.terminal.Device;
 import org.aesh.terminal.DeviceAttributes;
+import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**

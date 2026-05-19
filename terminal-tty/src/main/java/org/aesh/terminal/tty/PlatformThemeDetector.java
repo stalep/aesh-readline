@@ -31,12 +31,12 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.utils.ColorUtils;
 import org.aesh.terminal.tty.utils.ProcessHelper;
 import org.aesh.terminal.tty.utils.ThemeNameClassifier;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.TerminalEnvironment;
-import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Detects the terminal theme by reading platform-specific configuration files

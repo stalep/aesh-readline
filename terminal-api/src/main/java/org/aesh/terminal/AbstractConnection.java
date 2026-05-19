@@ -21,9 +21,9 @@ package org.aesh.terminal;
 
 import java.util.function.Consumer;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
-import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Abstract base class for {@link Connection} implementations that use an

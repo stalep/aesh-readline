@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.aesh.terminal.Device;
+import org.aesh.terminal.detect.ImageProtocol;
 
 /**
  * Builder for creating terminal images with automatic protocol detection.

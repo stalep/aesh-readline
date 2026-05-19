@@ -33,6 +33,7 @@ import org.aesh.terminal.Connection;
 import org.aesh.terminal.Device;
 import org.aesh.terminal.Terminal;
 import org.aesh.terminal.TerminalFeatures;
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.utils.ColorUtils;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.CodePointUtils;
@@ -40,7 +41,6 @@ import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.LoggerUtil;
 import org.aesh.terminal.utils.TerminalColorCapability;
 import org.aesh.terminal.utils.TerminalEnvironment;
-import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Utility class to detect terminal color capabilities.

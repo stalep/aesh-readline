@@ -19,7 +19,7 @@
  */
 package org.aesh.terminal.tty.utils;
 
-import org.aesh.terminal.utils.TerminalTheme;
+import org.aesh.terminal.detect.TerminalTheme;
 
 /**
  * Classifies theme/color-scheme names as DARK or LIGHT based on known keywords.

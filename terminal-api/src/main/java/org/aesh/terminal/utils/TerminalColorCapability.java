@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.utils;
 
+import org.aesh.terminal.detect.TerminalTheme;
+
 /**
  * Represents the detected color capabilities of a terminal.
  * <p>

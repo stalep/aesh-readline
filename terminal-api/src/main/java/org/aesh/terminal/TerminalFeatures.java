@@ -27,7 +27,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.aesh.terminal.image.ImageProtocol;
+import org.aesh.terminal.detect.ImageProtocol;
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.image.ImageProtocolDetector;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Point;
@@ -35,7 +36,6 @@ import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.CodePointUtils;
 import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.TerminalColorCapability;
-import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Advanced terminal features: queries, capability detection, semantic output,

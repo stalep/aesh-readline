@@ -25,12 +25,12 @@ import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.Capability;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.tty.Size;
 import org.aesh.terminal.utils.Parser;
-import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Represent a connection to either a local/direct/remote Terminal.

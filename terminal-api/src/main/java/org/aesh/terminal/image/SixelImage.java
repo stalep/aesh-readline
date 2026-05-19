@@ -34,6 +34,7 @@ import java.util.Map;
 
 import javax.imageio.ImageIO;
 
+import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.utils.TerminalEnvironment;
 
 /**
