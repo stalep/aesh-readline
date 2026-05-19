@@ -815,4 +815,78 @@ public class ANSIOscTest {
         assertEquals(1, ANSI.THEME_DSR_DARK);
         assertEquals(2, ANSI.THEME_DSR_LIGHT);
     }
+
+    // ==================== 16-bit Color Parsing Tests ====================
+
+    @Test
+    public void testParseOscColorResponse16_4DigitHex() {
+        // 4-digit hex should be preserved as-is
+        int[] input = toCodePoints("]11;rgb:1c1c/2d2d/3e3e");
+        int[] rgb = ANSI.parseOscColorResponse16(input, 11);
+        assertNotNull(rgb);
+        assertEquals(0x1c1c, rgb[0]);
+        assertEquals(0x2d2d, rgb[1]);
+        assertEquals(0x3e3e, rgb[2]);
+    }
+
+    @Test
+    public void testParseOscColorResponse16_2DigitHex() {
+        // 2-digit hex FF should scale to FFFF (FF * 0x101 = 0xFF01... actually 0xFFFF)
+        int[] input = toCodePoints("]10;rgb:ff/80/00");
+        int[] rgb = ANSI.parseOscColorResponse16(input, 10);
+        assertNotNull(rgb);
+        assertEquals(0xffff, rgb[0]); // FF * 0x101
+        assertEquals(0x8080, rgb[1]); // 80 * 0x101
+        assertEquals(0x0000, rgb[2]); // 00 * 0x101
+    }
+
+    @Test
+    public void testParseOscColorResponse16_1DigitHex() {
+        // 1-digit hex F should scale to FFFF (F * 0x1111)
+        int[] input = toCodePoints("]10;rgb:F/8/0");
+        int[] rgb = ANSI.parseOscColorResponse16(input, 10);
+        assertNotNull(rgb);
+        assertEquals(0xFFFF, rgb[0]); // F * 0x1111
+        assertEquals(0x8888, rgb[1]); // 8 * 0x1111
+        assertEquals(0x0000, rgb[2]); // 0 * 0x1111
+    }
+
+    @Test
+    public void testParseOscColorResponse16_VsStandard() {
+        // Verify 16-bit preserves precision that 8-bit loses
+        int[] input = toCodePoints("]11;rgb:1c1c/2d2d/3e3e");
+        int[] rgb8 = ANSI.parseOscColorResponse(input, 11);
+        int[] rgb16 = ANSI.parseOscColorResponse16(input, 11);
+        assertNotNull(rgb8);
+        assertNotNull(rgb16);
+        // 8-bit loses the low byte: 0x1c1c >> 8 = 0x1c = 28
+        assertEquals(28, rgb8[0]);
+        // 16-bit preserves it: 0x1c1c = 7196
+        assertEquals(0x1c1c, rgb16[0]);
+    }
+
+    @Test
+    public void testParseOscColorResponse16_WithParam() {
+        int[] input = toCodePoints("]4;1;rgb:cc00/0000/0000");
+        int[] rgb = ANSI.parseOscColorResponse16(input, 4, 1);
+        assertNotNull(rgb);
+        assertEquals(0xcc00, rgb[0]);
+        assertEquals(0x0000, rgb[1]);
+        assertEquals(0x0000, rgb[2]);
+    }
+
+    @Test
+    public void testParseHexRgbParts16_Scaling() {
+        // Verify all digit lengths scale correctly to 16-bit
+        assertArrayEquals(new int[] { 0x0000, 0x8888, 0xFFFF },
+                ANSI.parseHexRgbParts16(new String[] { "0", "8", "F" }));
+        assertArrayEquals(new int[] { 0x0000, 0x8080, 0xFFFF },
+                ANSI.parseHexRgbParts16(new String[] { "00", "80", "FF" }));
+        assertArrayEquals(new int[] { 0xFFFF, 0xFFFF, 0xFFFF },
+                ANSI.parseHexRgbParts16(new String[] { "FFFF", "FFFF", "FFFF" }));
+    }
+
+    private static int[] toCodePoints(String s) {
+        return s.codePoints().toArray();
+    }
 }

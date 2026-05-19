@@ -893,13 +893,147 @@ public class ANSI {
     }
 
     /**
-     * Parse hex RGB parts from an OSC color response.
+     * Parse an OSC color response preserving 16-bit precision per channel.
      * <p>
-     * Handles 1-4 digit hex values per component, scaling to 0-255 range.
+     * Same as {@link #parseOscColorResponse(int[], int, int)} but returns
+     * values in the 0-65535 range instead of 0-255. All hex formats (1-4 digits)
+     * are scaled to 16-bit.
+     *
+     * @param input the raw terminal response as code points
+     * @param oscCode the OSC code to look for (4, 10, 11, 12)
+     * @param oscParam the parameter index (-1 for none, 0-255 for palette)
+     * @return RGB array [r, g, b] (0-65535 each), or null if parsing failed
+     */
+    public static int[] parseOscColorResponse16(int[] input, int oscCode, int oscParam) {
+        // Reuse the same response-finding logic, but extract raw hex parts
+        if (input == null || input.length < 10) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int c : input) {
+            sb.appendCodePoint(c);
+        }
+        String response = sb.toString();
+        String rgbPart = extractOscRgbString(response, oscCode, oscParam);
+        if (rgbPart == null) {
+            return null;
+        }
+        return parseHexRgbParts16(rgbPart.split("/"));
+    }
+
+    /**
+     * Convenience overload for {@link #parseOscColorResponse16(int[], int, int)}
+     * without a parameter index.
+     */
+    public static int[] parseOscColorResponse16(int[] input, int oscCode) {
+        return parseOscColorResponse16(input, oscCode, -1);
+    }
+
+    /**
+     * Extract the raw RGB string (e.g., "FFFF/8080/0000") from an OSC color response.
+     */
+    private static String extractOscRgbString(String response, int oscCode, int oscParam) {
+        String oscMarker = "]" + oscCode + ";";
+        int start = response.indexOf(oscMarker);
+        if (start < 0) {
+            oscMarker = "]" + oscCode + ";";
+            start = response.indexOf(oscMarker);
+            if (start >= 0 && start > 0 && response.charAt(start - 1) == '') {
+                start--;
+                oscMarker = "" + oscMarker;
+            } else if (start < 0) {
+                return null;
+            }
+        }
+
+        int searchStart = start + oscMarker.length();
+
+        if (oscParam >= 0) {
+            String paramMarker = oscParam + ";";
+            if (!response.substring(searchStart).startsWith(paramMarker)) {
+                return null;
+            }
+            searchStart += paramMarker.length();
+        }
+
+        int rgbStart = response.indexOf("rgb:", searchStart);
+        if (rgbStart < 0) {
+            return null;
+        }
+
+        int belPos = response.indexOf('', searchStart);
+        int stPos = response.indexOf("\\", searchStart);
+        int terminatorPos = -1;
+        if (belPos >= 0 && stPos >= 0) {
+            terminatorPos = Math.min(belPos, stPos);
+        } else if (belPos >= 0) {
+            terminatorPos = belPos;
+        } else if (stPos >= 0) {
+            terminatorPos = stPos;
+        }
+
+        if (terminatorPos >= 0 && rgbStart > terminatorPos) {
+            return null;
+        }
+
+        rgbStart += 4;
+
+        int end = response.indexOf('', rgbStart);
+        if (end < 0) {
+            end = response.indexOf("\\", rgbStart);
+        }
+        if (end < 0) {
+            end = response.length();
+        }
+
+        return response.substring(rgbStart, end);
+    }
+
+    /**
+     * Parse hex RGB parts, scaling to 0-65535 (16-bit) range.
+     * All hex formats (1-4 digits) are expanded to full 16-bit precision.
      *
      * @param parts the split RGB hex strings (expected length 3)
-     * @return RGB array [r, g, b] (0-255 each), or null if parsing failed
+     * @return RGB array [r, g, b] (0-65535 each), or null if parsing failed
      */
+    static int[] parseHexRgbParts16(String[] parts) {
+        if (parts.length != 3) {
+            return null;
+        }
+        try {
+            int[] rgb = new int[3];
+            for (int i = 0; i < 3; i++) {
+                String hex = parts[i].trim();
+                if (hex.isEmpty() || hex.length() > 4) {
+                    return null;
+                }
+                int raw = Integer.parseInt(hex, 16);
+                int value;
+                switch (hex.length()) {
+                    case 1:
+                        value = raw * 0x1111;
+                        break;
+                    case 2:
+                        value = raw * 0x0101;
+                        break;
+                    case 3:
+                        value = (raw << 4) | (raw >> 8);
+                        break;
+                    case 4:
+                        value = raw;
+                        break;
+                    default:
+                        return null;
+                }
+                rgb[i] = Math.min(65535, Math.max(0, value));
+            }
+            return rgb;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private static int[] parseHexRgbParts(String[] parts) {
         if (parts.length != 3) {
             return null;

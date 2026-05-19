@@ -225,6 +225,39 @@ public class TerminalFeatures {
     }
 
     /**
+     * Query the terminal for its foreground color with 16-bit precision.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-65535 each), or null if not supported or timeout
+     */
+    public int[] queryForegroundColor16(long timeoutMs) {
+        return queryOsc(ANSI.OSC_FOREGROUND, "?", timeoutMs,
+                input -> ANSI.parseOscColorResponse16(input, ANSI.OSC_FOREGROUND));
+    }
+
+    /**
+     * Query the terminal for its background color with 16-bit precision.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-65535 each), or null if not supported or timeout
+     */
+    public int[] queryBackgroundColor16(long timeoutMs) {
+        return queryOsc(ANSI.OSC_BACKGROUND, "?", timeoutMs,
+                input -> ANSI.parseOscColorResponse16(input, ANSI.OSC_BACKGROUND));
+    }
+
+    /**
+     * Query the terminal for its cursor color with 16-bit precision.
+     *
+     * @param timeoutMs timeout in milliseconds to wait for response
+     * @return RGB array [r, g, b] (0-65535 each), or null if not supported or timeout
+     */
+    public int[] queryCursorColor16(long timeoutMs) {
+        return queryOsc(ANSI.OSC_CURSOR_COLOR, "?", timeoutMs,
+                input -> ANSI.parseOscColorResponse16(input, ANSI.OSC_CURSOR_COLOR));
+    }
+
+    /**
      * Query the terminal for its current theme mode using the CSI ? 996 n protocol.
      *
      * @param timeoutMs timeout in milliseconds to wait for response
