@@ -30,7 +30,7 @@ import org.aesh.terminal.Attributes;
 import org.aesh.terminal.formatting.Color;
 import org.aesh.terminal.formatting.TerminalColor;
 import org.aesh.terminal.formatting.TerminalString;
-import org.aesh.terminal.image.ImageProtocol;
+import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.image.TerminalImage;
 import org.aesh.terminal.image.TerminalImageBuilder;
 import org.aesh.terminal.tty.Signal;

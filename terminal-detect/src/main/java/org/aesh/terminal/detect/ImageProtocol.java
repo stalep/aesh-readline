@@ -17,35 +17,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aesh.terminal.image;
+package org.aesh.terminal.detect;
 
 /**
- * Supported terminal image protocols.
+ * Terminal image display protocols.
  */
 public enum ImageProtocol {
-    /**
-     * No image protocol supported.
-     */
     NONE,
-
-    /**
-     * iTerm2 inline images protocol.
-     * Supported by: iTerm2, WezTerm, Mintty, VSCode terminal, Tabby, Hyper
-     * Format: OSC 1337 ; File=[args]:base64data BEL
-     */
-    ITERM2,
-
-    /**
-     * Kitty graphics protocol.
-     * Supported by: Kitty, Konsole (partial)
-     * Format: APC G [control];[payload] ST
-     */
     KITTY,
-
-    /**
-     * Sixel graphics protocol.
-     * Supported by: xterm, mlterm, foot, Windows Terminal, etc.
-     * Not currently implemented.
-     */
+    ITERM2,
     SIXEL
 }

@@ -20,6 +20,7 @@
 package org.aesh.terminal.utils;
 
 import org.aesh.terminal.Device;
+import org.aesh.terminal.detect.TerminalCapabilities;
 
 /**
  * Centralized utility for detecting terminal environment.
@@ -70,7 +71,6 @@ public final class TerminalEnvironment {
     private final boolean inTmux;
     private final boolean inScreen;
     private final boolean tmuxPassthroughEnabled;
-    private final boolean windowsTerminalByProcess;
 
     /**
      * Private constructor - use {@link #getInstance()} or static methods.
@@ -101,7 +101,6 @@ public final class TerminalEnvironment {
         this.inTmux = tmux != null && !tmux.isEmpty();
         this.inScreen = term != null && term.toLowerCase().startsWith("screen");
         this.tmuxPassthroughEnabled = computeTmuxPassthrough();
-        this.windowsTerminalByProcess = detectWindowsTerminalByRegistry();
         this.terminalType = computeTerminalType();
         this.defaultColorDepth = computeColorDepth();
     }
@@ -233,15 +232,17 @@ public final class TerminalEnvironment {
      * Check if running in Windows Terminal.
      * <p>
      * Detects via environment variables (WT_SESSION, WT_PROFILE_ID) first.
-     * When Windows Terminal is the default terminal app but CMD/PowerShell
-     * is launched from its own shortcut, those env vars are absent. In that
-     * case, falls back to checking the process tree for WindowsTerminal.exe
-     * or OpenConsole.exe (requires Java 9+).
+     * When those are absent (e.g., CMD/PowerShell launched from its own
+     * shortcut while WT is the default terminal), falls back to
+     * {@link TerminalCapabilities} which checks the Windows Registry.
      *
      * @return true if running inside Windows Terminal
      */
     public boolean isWindowsTerminal() {
-        return wtSession != null || wtProfileId != null || windowsTerminalByProcess;
+        if (wtSession != null || wtProfileId != null) {
+            return true;
+        }
+        return "windows-terminal".equals(TerminalCapabilities.getInstance().terminalName());
     }
 
     /**
@@ -594,118 +595,15 @@ public final class TerminalEnvironment {
         return Device.TerminalType.UNKNOWN;
     }
 
-    /**
-     * Check the Windows Registry for the default terminal application.
-     * When Windows Terminal is the default but CMD/PowerShell is launched
-     * from its own shortcut, WT_SESSION/WT_PROFILE_ID are not set because
-     * WT hosts the console via ConPTY as a sibling process. The registry
-     * key {@code HKCU\Console\%%Startup\DelegationTerminal} contains the
-     * GUID of the configured default terminal app.
-     */
-    private static boolean detectWindowsTerminalByRegistry() {
-        if (!System.getProperty("os.name", "").toLowerCase().contains("windows")) {
-            return false;
-        }
-        try {
-            String delegation = regQuery(
-                    "HKCU\\Console\\%%Startup", "DelegationTerminal");
-            if (delegation == null) {
-                return false;
-            }
-            String lower = delegation.toLowerCase();
-            // Explicit Windows Terminal GUID (stable or preview)
-            if (lower.contains("{2eaca947-7f5f-4cfa-ba87-8f7fbeefbe69}")
-                    || lower.contains("{e12cff52-a866-4c77-9a90-f570a7aa2c6b}")) {
-                return true;
-            }
-            // "Let Windows decide" (null GUID) — uses WT if installed
-            if (lower.contains("{00000000-0000-0000-0000-000000000000}")) {
-                return isWindowsTerminalInstalled();
-            }
-            return false;
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-    private static boolean isWindowsTerminalInstalled() {
-        String path = regQuery(
-                "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\wt.exe",
-                "Path");
-        return path != null && !path.trim().isEmpty();
-    }
-
-    /**
-     * Query a Windows Registry value. Parses the {@code REG_SZ} value
-     * from the {@code reg query} output format:
-     *
-     * <pre>
-     *     ValueName    REG_SZ    ActualValue
-     * </pre>
-     *
-     * @return the extracted value, or null if the key/value doesn't exist
-     */
-    private static String regQuery(String key, String valueName) {
-        try {
-            Process process = new ProcessBuilder("reg", "query", key, "/v", valueName)
-                    .redirectErrorStream(true)
-                    .start();
-            byte[] buf = new byte[1024];
-            StringBuilder sb = new StringBuilder();
-            int n;
-            while ((n = process.getInputStream().read(buf)) != -1) {
-                sb.append(new String(buf, 0, n));
-            }
-            process.waitFor();
-            if (process.exitValue() != 0) {
-                return null;
-            }
-            // Parse value from "    Name    REG_SZ    Value" line
-            for (String line : sb.toString().split("\\r?\\n")) {
-                int idx = line.indexOf("REG_SZ");
-                if (idx >= 0) {
-                    return line.substring(idx + 6).trim();
-                }
-            }
-            return null;
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
     private ColorDepth computeColorDepth() {
-        // Priority 1: COLORTERM
-        if (isTrueColorIndicated()) {
+        TerminalCapabilities caps = TerminalCapabilities.getInstance();
+        if (caps.supportsTrueColor()) {
             return ColorDepth.TRUE_COLOR;
         }
-
-        // Priority 2: TERM suffix
-        if (term != null) {
-            String termLower = term.toLowerCase();
-            if (termLower.contains("truecolor") || termLower.contains("24bit") ||
-                    termLower.contains("direct")) {
-                return ColorDepth.TRUE_COLOR;
-            }
-            if (termLower.contains("256color") || termLower.contains("256-color")) {
-                return ColorDepth.COLORS_256;
-            }
+        if (caps.supports256Colors()) {
+            return ColorDepth.COLORS_256;
         }
-
-        // Priority 3: Known terminal type
-        if (terminalType != null && terminalType != Device.TerminalType.UNKNOWN) {
-            return terminalType.getDefaultColorDepth();
-        }
-
-        // Priority 4: OS-based detection (modern Windows)
-        String osName = System.getProperty("os.name", "").toLowerCase();
-        if (osName.contains("windows 10") || osName.contains("windows 11") ||
-                osName.contains("windows server 2016") || osName.contains("windows server 2019") ||
-                osName.contains("windows server 2022")) {
-            return ColorDepth.TRUE_COLOR;
-        }
-
-        // Default
-        return ColorDepth.COLORS_256;
+        return ColorDepth.COLORS_8;
     }
 
     // ==================== Static Convenience Methods ====================

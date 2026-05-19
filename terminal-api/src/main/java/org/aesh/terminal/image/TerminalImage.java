@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.image;
 
+import org.aesh.terminal.detect.ImageProtocol;
+
 /**
  * Represents an image that can be displayed in a terminal.
  * Different implementations handle different terminal image protocols.

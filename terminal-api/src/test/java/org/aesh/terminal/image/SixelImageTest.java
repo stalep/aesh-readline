@@ -28,6 +28,7 @@ import java.io.ByteArrayOutputStream;
 
 import javax.imageio.ImageIO;
 
+import org.aesh.terminal.detect.ImageProtocol;
 import org.junit.Test;
 
 public class SixelImageTest {

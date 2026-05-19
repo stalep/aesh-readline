@@ -24,9 +24,9 @@ import java.util.Arrays;
 import java.util.Queue;
 import java.util.function.Consumer;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.utils.ANSI;
-import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Decodes terminal input events, separating signals (INT, SUSP, EOF) and

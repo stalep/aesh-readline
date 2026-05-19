@@ -29,7 +29,7 @@ import java.nio.file.Paths;
 import javax.imageio.ImageIO;
 
 import org.aesh.terminal.Attributes;
-import org.aesh.terminal.image.ImageProtocol;
+import org.aesh.terminal.detect.ImageProtocol;
 import org.aesh.terminal.image.TerminalImage;
 import org.aesh.terminal.image.TerminalImageBuilder;
 import org.aesh.terminal.tty.Signal;

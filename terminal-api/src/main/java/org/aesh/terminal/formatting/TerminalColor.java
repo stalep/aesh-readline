@@ -21,10 +21,10 @@ package org.aesh.terminal.formatting;
 
 import java.io.PrintStream;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.utils.ANSI;
 import org.aesh.terminal.utils.ColorDepth;
 import org.aesh.terminal.utils.TerminalColorCapability;
-import org.aesh.terminal.utils.TerminalTheme;
 
 /**
  * Represents a combination of foreground and background colors for terminal output.

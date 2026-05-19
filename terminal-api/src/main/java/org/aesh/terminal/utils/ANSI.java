@@ -22,6 +22,7 @@ package org.aesh.terminal.utils;
 import java.util.Arrays;
 
 import org.aesh.terminal.DeviceAttributes;
+import org.aesh.terminal.detect.TerminalTheme;
 import org.aesh.terminal.tty.Point;
 
 /**

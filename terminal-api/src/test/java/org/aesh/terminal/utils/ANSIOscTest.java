@@ -21,6 +21,7 @@ package org.aesh.terminal.utils;
 
 import static org.junit.Assert.*;
 
+import org.aesh.terminal.detect.TerminalTheme;
 import org.junit.Test;
 
 /**
