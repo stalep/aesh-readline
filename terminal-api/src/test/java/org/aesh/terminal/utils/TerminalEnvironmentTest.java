@@ -21,6 +21,10 @@ package org.aesh.terminal.utils;
 
 import static org.junit.Assert.*;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.aesh.terminal.Device;
 import org.junit.Test;
 
@@ -289,5 +293,260 @@ public class TerminalEnvironmentTest {
         if ("Dark".equalsIgnoreCase(style)) {
             assertTrue("Dark style should indicate dark mode", darkMode);
         }
+    }
+
+    // ==================== Deterministic tests using injectable env ====================
+
+    private static Map<String, String> env(String... pairs) {
+        Map<String, String> map = new HashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            map.put(pairs[i], pairs[i + 1]);
+        }
+        return map;
+    }
+
+    // ---- Terminal type detection ----
+
+    @Test
+    public void testDetectKitty() {
+        TerminalEnvironment env = new TerminalEnvironment(env("KITTY_WINDOW_ID", "1"));
+        assertEquals(Device.TerminalType.KITTY, env.getTerminalType());
+        assertTrue(env.isKitty());
+    }
+
+    @Test
+    public void testDetectGhostty() {
+        TerminalEnvironment env = new TerminalEnvironment(env("GHOSTTY_RESOURCES_DIR", "/usr/share/ghostty"));
+        assertEquals(Device.TerminalType.GHOSTTY, env.getTerminalType());
+        assertTrue(env.isGhostty());
+    }
+
+    @Test
+    public void testDetectWezTerm() {
+        TerminalEnvironment env = new TerminalEnvironment(env("WEZTERM_PANE", "0"));
+        assertEquals(Device.TerminalType.WEZTERM, env.getTerminalType());
+        assertTrue(env.isWezTerm());
+    }
+
+    @Test
+    public void testDetectITerm2() {
+        TerminalEnvironment env = new TerminalEnvironment(env("ITERM_SESSION_ID", "w0t0p0:ABC"));
+        assertEquals(Device.TerminalType.ITERM2, env.getTerminalType());
+        assertTrue(env.isITerm2());
+    }
+
+    @Test
+    public void testDetectAlacritty() {
+        TerminalEnvironment env = new TerminalEnvironment(env("ALACRITTY_SOCKET", "/tmp/alacritty.sock"));
+        assertEquals(Device.TerminalType.ALACRITTY, env.getTerminalType());
+        assertTrue(env.isAlacritty());
+    }
+
+    @Test
+    public void testDetectConEmu() {
+        TerminalEnvironment env = new TerminalEnvironment(env("ConEmuPID", "1234"));
+        assertEquals(Device.TerminalType.CONEMU, env.getTerminalType());
+        assertTrue(env.isConEmu());
+    }
+
+    @Test
+    public void testDetectJetBrains() {
+        TerminalEnvironment env = new TerminalEnvironment(env("TERMINAL_EMULATOR", "JetBrains-JediTerm"));
+        assertEquals(Device.TerminalType.JETBRAINS, env.getTerminalType());
+        assertTrue(env.isJetBrains());
+    }
+
+    @Test
+    public void testDetectJetBrainsNoOsc() {
+        TerminalEnvironment env = new TerminalEnvironment(env("TERMINAL_EMULATOR", "JetBrains-JediTerm"));
+        assertFalse("JetBrains should not support OSC queries", env.supportsOscQueries());
+    }
+
+    // ---- TERM_PROGRAM based detection ----
+
+    @Test
+    public void testDetectViaTermProgram() {
+        assertEquals(Device.TerminalType.ITERM2,
+                new TerminalEnvironment(env("TERM_PROGRAM", "iTerm.app")).getTerminalType());
+        assertEquals(Device.TerminalType.APPLE_TERMINAL,
+                new TerminalEnvironment(env("TERM_PROGRAM", "Apple_Terminal")).getTerminalType());
+        assertEquals(Device.TerminalType.VSCODE,
+                new TerminalEnvironment(env("TERM_PROGRAM", "vscode")).getTerminalType());
+        assertEquals(Device.TerminalType.HYPER,
+                new TerminalEnvironment(env("TERM_PROGRAM", "Hyper")).getTerminalType());
+    }
+
+    // ---- TERM based detection ----
+
+    @Test
+    public void testDetectViaTerm() {
+        assertEquals(Device.TerminalType.LINUX_CONSOLE,
+                new TerminalEnvironment(env("TERM", "linux")).getTerminalType());
+        assertEquals(Device.TerminalType.XTERM,
+                new TerminalEnvironment(env("TERM", "xterm-256color")).getTerminalType());
+        assertEquals(Device.TerminalType.TMUX,
+                new TerminalEnvironment(env("TERM", "tmux-256color")).getTerminalType());
+        assertEquals(Device.TerminalType.SCREEN,
+                new TerminalEnvironment(env("TERM", "screen-256color")).getTerminalType());
+        assertEquals(Device.TerminalType.FOOT,
+                new TerminalEnvironment(env("TERM", "foot")).getTerminalType());
+    }
+
+    @Test
+    public void testDetectUnknownTerm() {
+        assertEquals(Device.TerminalType.UNKNOWN,
+                new TerminalEnvironment(env("TERM", "dumb")).getTerminalType());
+    }
+
+    @Test
+    public void testEmptyEnvironment() {
+        TerminalEnvironment env = new TerminalEnvironment(Collections.emptyMap());
+        assertEquals(Device.TerminalType.UNKNOWN, env.getTerminalType());
+        assertFalse(env.isKitty());
+        assertFalse(env.isGhostty());
+        assertFalse(env.isInTmux());
+        assertFalse(env.isInScreen());
+        assertFalse(env.isInMultiplexer());
+        assertFalse(env.isTrueColorIndicated());
+        assertFalse(env.isMacOsDarkMode());
+    }
+
+    // ---- Priority: env var > TERM_PROGRAM > TERM ----
+
+    @Test
+    public void testEnvVarTakesPriorityOverTermProgram() {
+        // KITTY_WINDOW_ID should win over TERM_PROGRAM=iTerm.app
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "KITTY_WINDOW_ID", "1",
+                "TERM_PROGRAM", "iTerm.app"));
+        assertEquals(Device.TerminalType.KITTY, env.getTerminalType());
+    }
+
+    @Test
+    public void testTermProgramTakesPriorityOverTerm() {
+        // TERM_PROGRAM=iTerm.app should win over TERM=xterm-256color
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TERM_PROGRAM", "iTerm.app",
+                "TERM", "xterm-256color"));
+        assertEquals(Device.TerminalType.ITERM2, env.getTerminalType());
+    }
+
+    @Test
+    public void testJetBrainsTakesPriorityOverAll() {
+        // JetBrains should win over everything
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TERMINAL_EMULATOR", "JetBrains-JediTerm",
+                "KITTY_WINDOW_ID", "1",
+                "TERM_PROGRAM", "iTerm.app",
+                "TERM", "xterm-256color"));
+        assertEquals(Device.TerminalType.JETBRAINS, env.getTerminalType());
+    }
+
+    // ---- Multiplexer detection ----
+
+    @Test
+    public void testTmuxDetection() {
+        TerminalEnvironment env = new TerminalEnvironment(env("TMUX", "/tmp/tmux-1000/default,12345,0"));
+        assertTrue(env.isInTmux());
+        assertTrue(env.isInMultiplexer());
+    }
+
+    @Test
+    public void testScreenDetection() {
+        TerminalEnvironment env = new TerminalEnvironment(env("TERM", "screen"));
+        assertTrue(env.isInScreen());
+        assertTrue(env.isInMultiplexer());
+    }
+
+    @Test
+    public void testTmuxPassthroughEnabled() {
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TMUX", "/tmp/tmux-1000/default,12345,0",
+                "TMUX_PASSTHROUGH", "1"));
+        assertTrue(env.isTmuxPassthroughEnabled());
+    }
+
+    @Test
+    public void testTmuxPassthroughDisabled() {
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TMUX", "/tmp/tmux-1000/default,12345,0"));
+        assertFalse(env.isTmuxPassthroughEnabled());
+    }
+
+    @Test
+    public void testTmuxPassthroughNotInTmux() {
+        // TMUX_PASSTHROUGH without TMUX should be false
+        TerminalEnvironment env = new TerminalEnvironment(env("TMUX_PASSTHROUGH", "1"));
+        assertFalse(env.isTmuxPassthroughEnabled());
+    }
+
+    // ---- Color detection ----
+
+    @Test
+    public void testTrueColorIndicated() {
+        assertTrue(new TerminalEnvironment(env("COLORTERM", "truecolor")).isTrueColorIndicated());
+        assertTrue(new TerminalEnvironment(env("COLORTERM", "24bit")).isTrueColorIndicated());
+        assertTrue(new TerminalEnvironment(env("COLORTERM", "TrueColor")).isTrueColorIndicated());
+        assertFalse(new TerminalEnvironment(env("COLORTERM", "256color")).isTrueColorIndicated());
+    }
+
+    @Test
+    public void testMacOsDarkModeDetection() {
+        assertTrue(new TerminalEnvironment(env("APPLE_INTERFACE_STYLE", "Dark")).isMacOsDarkMode());
+        assertFalse(new TerminalEnvironment(env("APPLE_INTERFACE_STYLE", "Light")).isMacOsDarkMode());
+        assertFalse(new TerminalEnvironment(Collections.emptyMap()).isMacOsDarkMode());
+    }
+
+    // ---- OSC query support ----
+
+    @Test
+    public void testOscSupportedWithKnownTerminal() {
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "KITTY_WINDOW_ID", "1",
+                "TERM", "xterm-kitty"));
+        assertTrue(env.supportsOscQueries());
+    }
+
+    @Test
+    public void testOscNotSupportedInMultiplexerWithoutPassthrough() {
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TMUX", "/tmp/tmux-1000/default,12345,0",
+                "TERM", "tmux-256color"));
+        // In tmux without passthrough and without a known outer terminal
+        assertFalse(env.supportsOscQueries());
+    }
+
+    @Test
+    public void testOscSupportedInTmuxWithKnownOuter() {
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TMUX", "/tmp/tmux-1000/default,12345,0",
+                "KITTY_WINDOW_ID", "1",
+                "TERM", "tmux-256color"));
+        // In tmux but with Kitty as outer terminal
+        assertTrue(env.supportsOscQueries());
+    }
+
+    @Test
+    public void testOscSupportedInTmuxWithPassthrough() {
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TMUX", "/tmp/tmux-1000/default,12345,0",
+                "TMUX_PASSTHROUGH", "on",
+                "TERM", "tmux-256color"));
+        assertTrue(env.supportsOscQueries());
+    }
+
+    // ---- Raw accessor consistency ----
+
+    @Test
+    public void testRawAccessorsReturnInjectedValues() {
+        TerminalEnvironment env = new TerminalEnvironment(env(
+                "TERM", "xterm-256color",
+                "TERM_PROGRAM", "Ghostty",
+                "COLORTERM", "truecolor",
+                "COLORFGBG", "15;0"));
+        assertEquals("xterm-256color", env.getTerm());
+        assertEquals("Ghostty", env.getTermProgram());
+        assertEquals("truecolor", env.getColorterm());
+        assertEquals("15;0", env.getColorFgBg());
     }
 }
