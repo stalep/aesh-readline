@@ -28,6 +28,10 @@ import org.aesh.terminal.KeyAction;
  * A trie-based data structure for efficient key sequence matching.
  * Provides O(m) lookup complexity where m is the length of the input sequence,
  * compared to O(n*m) for linear search where n is the number of mappings.
+ * <p>
+ * The single-byte fast path uses pre-computed arrays for O(1) lookup.
+ * HotSpot's escape analysis eliminates the MatchResult allocation on
+ * the hot path, making the object-returning API zero-allocation in practice.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -62,21 +66,14 @@ public class KeyMappingTrie {
      * Internal trie node structure.
      */
     private static class TrieNode {
-        // Sparse array for children with code points 0-255 (covers ASCII and common control chars)
+        // Sparse array for children with code points 0-255
         private final TrieNode[] children = new TrieNode[256];
         // Map for extended code points > 255
         private Map<Integer, TrieNode> extendedChildren;
         // The KeyAction at this node (if this is a terminal node)
         private KeyAction action;
-
-        boolean hasChildren() {
-            for (TrieNode child : children) {
-                if (child != null) {
-                    return true;
-                }
-            }
-            return extendedChildren != null && !extendedChildren.isEmpty();
-        }
+        // Tracked child count to avoid scanning the 256-element array
+        private int childCount;
     }
 
     /**
@@ -92,7 +89,6 @@ public class KeyMappingTrie {
                 insert(mapping);
             }
         }
-        // Pre-compute single-byte lookups for fast path
         computeSingleByteLookups();
     }
 
@@ -107,6 +103,7 @@ public class KeyMappingTrie {
         }
         root.extendedChildren = null;
         root.action = null;
+        root.childCount = 0;
     }
 
     /**
@@ -123,15 +120,12 @@ public class KeyMappingTrie {
             }
             current = child;
         }
-        // Prefer longer matches - only set if not already set or if current is longer/equal
+        // Prefer longer matches
         if (current.action == null || current.action.length() <= action.length()) {
             current.action = action;
         }
     }
 
-    /**
-     * Gets a child node for the given code point.
-     */
     private TrieNode getChild(TrieNode node, int codePoint) {
         if (codePoint >= 0 && codePoint < 256) {
             return node.children[codePoint];
@@ -141,29 +135,29 @@ public class KeyMappingTrie {
         return null;
     }
 
-    /**
-     * Sets a child node for the given code point.
-     */
     private void setChild(TrieNode node, int codePoint, TrieNode child) {
         if (codePoint >= 0 && codePoint < 256) {
+            if (node.children[codePoint] == null) {
+                node.childCount++;
+            }
             node.children[codePoint] = child;
         } else {
             if (node.extendedChildren == null) {
                 node.extendedChildren = new HashMap<>();
             }
+            if (!node.extendedChildren.containsKey(codePoint)) {
+                node.childCount++;
+            }
             node.extendedChildren.put(codePoint, child);
         }
     }
 
-    /**
-     * Pre-computes single-byte lookups for the fast path.
-     */
     private void computeSingleByteLookups() {
         for (int i = 0; i < 256; i++) {
             TrieNode child = root.children[i];
             if (child != null) {
                 singleByteLookup[i] = child.action;
-                singleByteHasPrefix[i] = child.hasChildren();
+                singleByteHasPrefix[i] = child.childCount > 0;
             }
         }
     }
@@ -183,13 +177,28 @@ public class KeyMappingTrie {
 
     /**
      * Matches the input buffer against the trie.
-     * Returns the longest matching KeyAction and whether the buffer is a prefix of longer sequences.
+     * Returns the longest matching KeyAction and whether the buffer is a prefix.
      *
      * @param buffer the input code points to match
-     * @return the match result containing the action and prefix information
+     * @return the match result
      */
     public MatchResult match(int[] buffer) {
         if (buffer == null || buffer.length == 0) {
+            return new MatchResult(null, false);
+        }
+        return match(buffer, 0, buffer.length);
+    }
+
+    /**
+     * Matches a range of the input buffer against the trie.
+     *
+     * @param buffer the input code points
+     * @param offset the start offset in the buffer
+     * @param length the number of code points to match
+     * @return the match result
+     */
+    public MatchResult match(int[] buffer, int offset, int length) {
+        if (buffer == null || length == 0) {
             return new MatchResult(null, false);
         }
 
@@ -197,24 +206,22 @@ public class KeyMappingTrie {
         KeyAction longestMatch = null;
         boolean hasPrefix = false;
 
-        for (int i = 0; i < buffer.length; i++) {
+        int end = offset + length;
+        for (int i = offset; i < end; i++) {
             int codePoint = buffer[i];
             TrieNode child = getChild(current, codePoint);
 
             if (child == null) {
-                // No more matches possible
                 break;
             }
 
             current = child;
 
-            // Track the longest complete match found so far
             if (current.action != null) {
                 longestMatch = current.action;
             }
 
-            // Check if this is a prefix of a longer sequence (at the end of buffer)
-            if (i == buffer.length - 1 && current.hasChildren()) {
+            if (i == end - 1 && current.childCount > 0) {
                 hasPrefix = true;
             }
         }

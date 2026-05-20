@@ -27,6 +27,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.aesh.readline.prompt.Prompt;
+
 import org.aesh.terminal.Attributes;
 import org.aesh.terminal.BaseDevice;
 import org.aesh.terminal.Connection;

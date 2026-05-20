@@ -26,18 +26,34 @@ import java.util.Queue;
 import org.aesh.readline.editing.EditMode;
 import org.aesh.terminal.Key;
 import org.aesh.terminal.KeyAction;
+import org.aesh.terminal.parser.VtHandler;
+import org.aesh.terminal.parser.VtParser;
 
 /**
  * Decodes input key sequences and maps them to corresponding actions.
+ * <p>
+ * Uses a pre-allocated buffer with offset tracking to avoid per-keystroke
+ * array allocations. The buffer grows when needed but is compacted only
+ * when the read offset exceeds half the capacity.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
 public class ActionDecoder {
 
+    private static final int INITIAL_CAPACITY = 128;
+
     private KeyAction[] mappings;
     private final KeyMappingTrie trie;
     private final Queue<KeyAction> actions = new LinkedList<>();
-    private int[] buffer = new int[0];
+
+    // Pre-allocated buffer with offset tracking — avoids copy on every consume
+    private int[] buffer = new int[INITIAL_CAPACITY];
+    private int bufferOffset; // read position
+    private int bufferLength; // write position (number of valid elements)
+
+    // Reusable VtParser for unknown sequence measurement
+    private final VtParser vtParser;
+    private final SequenceMeasurer sequenceMeasurer;
 
     /**
      * Creates a decoder with key mappings from the specified edit mode.
@@ -48,6 +64,8 @@ public class ActionDecoder {
         this.mappings = editMode.keys();
         this.trie = new KeyMappingTrie();
         this.trie.build(this.mappings);
+        this.sequenceMeasurer = new SequenceMeasurer();
+        this.vtParser = new VtParser(this.sequenceMeasurer);
     }
 
     /**
@@ -57,6 +75,8 @@ public class ActionDecoder {
         this.mappings = Key.values();
         this.trie = new KeyMappingTrie();
         this.trie.build(this.mappings);
+        this.sequenceMeasurer = new SequenceMeasurer();
+        this.vtParser = new VtParser(this.sequenceMeasurer);
     }
 
     /**
@@ -65,8 +85,9 @@ public class ActionDecoder {
      * @param input the array of code points to add
      */
     public void add(int[] input) {
-        buffer = Arrays.copyOf(buffer, buffer.length + input.length);
-        System.arraycopy(input, 0, buffer, buffer.length - input.length, input.length);
+        ensureCapacity(input.length);
+        System.arraycopy(input, 0, buffer, bufferLength, input.length);
+        bufferLength += input.length;
     }
 
     /**
@@ -75,8 +96,8 @@ public class ActionDecoder {
      * @param input the code point to add
      */
     public void add(int input) {
-        buffer = Arrays.copyOf(buffer, buffer.length + 1);
-        System.arraycopy(new int[] { input }, 0, buffer, buffer.length - 1, 1);
+        ensureCapacity(1);
+        buffer[bufferLength++] = input;
     }
 
     /**
@@ -86,7 +107,7 @@ public class ActionDecoder {
      */
     public KeyAction peek() {
         if (actions.isEmpty()) {
-            return parse(buffer);
+            return parse();
         } else {
             return actions.peek();
         }
@@ -108,10 +129,14 @@ public class ActionDecoder {
      */
     public KeyAction next() {
         if (actions.isEmpty()) {
-            KeyAction next = parse(buffer);
+            KeyAction next = parse();
             if (next != null) {
                 actions.add(next);
-                buffer = Arrays.copyOfRange(buffer, next.length(), buffer.length);
+                bufferOffset += next.length();
+                // Compact when the read offset exceeds half the capacity
+                if (bufferOffset > buffer.length / 2) {
+                    compact();
+                }
             }
         }
         return actions.remove();
@@ -127,14 +152,15 @@ public class ActionDecoder {
         trie.build(mappings);
     }
 
-    private KeyAction parse(int[] buffer) {
-        if (buffer.length == 0) {
+    private KeyAction parse() {
+        int available = bufferLength - bufferOffset;
+        if (available == 0) {
             return null;
         }
 
-        // Fast path: single printable character
-        if (buffer.length == 1) {
-            int code = buffer[0];
+        // Fast path: single code point
+        if (available == 1) {
+            int code = buffer[bufferOffset];
             KeyMappingTrie.MatchResult result = trie.matchSingleByte(code);
             if (result.action != null) {
                 return result.action;
@@ -142,24 +168,156 @@ public class ActionDecoder {
             if (!result.hasPrefix) {
                 return new DefaultKeyAction(code);
             }
-            // Has prefix - wait for more input
+            // Has prefix — wait for more input
             return null;
         }
 
         // Full trie lookup for multi-byte sequences
-        KeyMappingTrie.MatchResult result = trie.match(buffer);
+        KeyMappingTrie.MatchResult result = trie.match(buffer, bufferOffset, available);
 
         if (result.action != null) {
             return result.action;
         }
 
         if (result.hasPrefix) {
-            // Buffer is prefix of a longer sequence - wait for more input
+            // Buffer is prefix of a longer sequence — wait for more input
             return null;
         }
 
-        // No match and not a prefix - return single character
-        return new DefaultKeyAction(buffer[0]);
+        // No match and not a prefix — use VtParser to classify the sequence.
+        // This prevents unknown CSI/OSC/DCS sequences from leaking byte-by-byte.
+        int firstByte = buffer[bufferOffset];
+        if (firstByte == 27 && available > 1) { // starts with ESC
+            int seqLen = measureEscapeSequence(buffer, bufferOffset, available);
+            if (seqLen > 1) {
+                // Complete unrecognized sequence — consume it as one action
+                return new SequenceKeyAction(buffer, bufferOffset, seqLen);
+            }
+            if (seqLen == -1) {
+                // Incomplete sequence — wait for more input
+                return null;
+            }
+        }
+
+        // Not an escape sequence — return single character
+        return new DefaultKeyAction(firstByte);
+    }
+
+    /**
+     * Measures the length of a complete escape sequence using the reusable VtParser.
+     */
+    private int measureEscapeSequence(int[] buf, int offset, int length) {
+        sequenceMeasurer.reset();
+        vtParser.reset();
+
+        for (int i = 0; i < length; i++) {
+            vtParser.advance(buf[offset + i]);
+            if (sequenceMeasurer.complete) {
+                return i + 1;
+            }
+        }
+
+        // Sequence is not complete — need more input
+        return -1;
+    }
+
+    /**
+     * Ensures the buffer has room for additionalCount more elements.
+     */
+    private void ensureCapacity(int additionalCount) {
+        int available = bufferLength - bufferOffset;
+        int needed = available + additionalCount;
+
+        if (needed > buffer.length - bufferOffset) {
+            if (needed <= buffer.length) {
+                // Compact: shift data to front
+                compact();
+            } else {
+                // Grow: allocate bigger buffer
+                int newCapacity = Math.max(buffer.length * 2, needed);
+                int[] newBuffer = new int[newCapacity];
+                System.arraycopy(buffer, bufferOffset, newBuffer, 0, available);
+                buffer = newBuffer;
+                bufferOffset = 0;
+                bufferLength = available;
+            }
+        }
+    }
+
+    /**
+     * Compacts the buffer by shifting remaining data to the front.
+     */
+    private void compact() {
+        int available = bufferLength - bufferOffset;
+        if (bufferOffset > 0 && available > 0) {
+            System.arraycopy(buffer, bufferOffset, buffer, 0, available);
+        }
+        bufferOffset = 0;
+        bufferLength = available;
+    }
+
+    /**
+     * Reusable VtHandler that tracks whether a complete sequence was found.
+     */
+    private static class SequenceMeasurer implements VtHandler {
+        boolean complete;
+
+        void reset() {
+            complete = false;
+        }
+
+        @Override
+        public void escDispatch(int finalChar, int[] intermediates, int intermediateCount) {
+            complete = true;
+        }
+
+        @Override
+        public void csiDispatch(int finalChar, int[] params, int paramCount,
+                int[] intermediates, int intermediateCount,
+                boolean hasSubParams) {
+            complete = true;
+        }
+
+        @Override
+        public void oscEnd(String data) {
+            complete = true;
+        }
+
+        @Override
+        public void hook(int finalChar, int[] params, int paramCount,
+                int[] intermediates, int intermediateCount) {
+            complete = true;
+        }
+    }
+
+    /**
+     * A key action representing a complete but unrecognized escape sequence.
+     * This prevents unknown CSI/OSC/DCS sequences from leaking byte-by-byte
+     * into the input stream.
+     */
+    private static class SequenceKeyAction implements KeyAction {
+
+        private final int[] codePoints;
+
+        SequenceKeyAction(int[] buffer, int offset, int length) {
+            this.codePoints = new int[length];
+            System.arraycopy(buffer, offset, codePoints, 0, length);
+        }
+
+        @Override
+        public int getCodePointAt(int index) throws IndexOutOfBoundsException {
+            return codePoints[index];
+        }
+
+        @Override
+        public int length() {
+            return codePoints.length;
+        }
+
+        @Override
+        public String name() {
+            return "sequence: " + Arrays.toString(codePoints);
+        }
     }
 
     private static class DefaultKeyAction implements KeyAction {
