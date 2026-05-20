@@ -19,6 +19,8 @@
  */
 package org.aesh.terminal.utils;
 
+import java.util.Map;
+
 import org.aesh.terminal.Device;
 import org.aesh.terminal.detect.TerminalCapabilities;
 
@@ -74,28 +76,40 @@ public final class TerminalEnvironment {
 
     /**
      * Private constructor - use {@link #getInstance()} or static methods.
+     * Reads environment variables from {@code System.getenv()}.
      */
     private TerminalEnvironment() {
-        // Parse all environment variables
-        this.term = System.getenv("TERM");
-        this.termProgram = System.getenv("TERM_PROGRAM");
-        this.terminalEmulator = System.getenv("TERMINAL_EMULATOR");
-        this.colorterm = System.getenv("COLORTERM");
+        this(System.getenv());
+    }
 
-        this.kittyWindowId = System.getenv("KITTY_WINDOW_ID");
-        this.ghosttyResourcesDir = System.getenv("GHOSTTY_RESOURCES_DIR");
-        this.weztermPane = System.getenv("WEZTERM_PANE");
-        this.itermSessionId = System.getenv("ITERM_SESSION_ID");
-        this.wtSession = System.getenv("WT_SESSION");
-        this.wtProfileId = System.getenv("WT_PROFILE_ID");
-        this.conEmuPid = System.getenv("ConEmuPID");
-        this.conEmuAnsi = System.getenv("ConEmuANSI");
-        this.alacrittySocket = System.getenv("ALACRITTY_SOCKET");
-        String tmux = System.getenv("TMUX");
-        this.tmuxPassthrough = System.getenv("TMUX_PASSTHROUGH");
+    /**
+     * Package-private constructor for testing.
+     * Reads environment variables from the provided map instead of
+     * {@code System.getenv()}, enabling deterministic unit tests for
+     * terminal detection logic.
+     *
+     * @param env the environment variable map (keys are variable names)
+     */
+    TerminalEnvironment(Map<String, String> env) {
+        this.term = env.get("TERM");
+        this.termProgram = env.get("TERM_PROGRAM");
+        this.terminalEmulator = env.get("TERMINAL_EMULATOR");
+        this.colorterm = env.get("COLORTERM");
 
-        this.colorFgBg = System.getenv("COLORFGBG");
-        this.appleInterfaceStyle = System.getenv("APPLE_INTERFACE_STYLE");
+        this.kittyWindowId = env.get("KITTY_WINDOW_ID");
+        this.ghosttyResourcesDir = env.get("GHOSTTY_RESOURCES_DIR");
+        this.weztermPane = env.get("WEZTERM_PANE");
+        this.itermSessionId = env.get("ITERM_SESSION_ID");
+        this.wtSession = env.get("WT_SESSION");
+        this.wtProfileId = env.get("WT_PROFILE_ID");
+        this.conEmuPid = env.get("ConEmuPID");
+        this.conEmuAnsi = env.get("ConEmuANSI");
+        this.alacrittySocket = env.get("ALACRITTY_SOCKET");
+        String tmux = env.get("TMUX");
+        this.tmuxPassthrough = env.get("TMUX_PASSTHROUGH");
+
+        this.colorFgBg = env.get("COLORFGBG");
+        this.appleInterfaceStyle = env.get("APPLE_INTERFACE_STYLE");
 
         // Compute derived values
         this.inTmux = tmux != null && !tmux.isEmpty();
