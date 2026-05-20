@@ -21,6 +21,8 @@ package org.aesh.readline;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import org.aesh.readline.prompt.Prompt;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;

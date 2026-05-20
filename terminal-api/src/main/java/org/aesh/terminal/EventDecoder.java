@@ -191,10 +191,12 @@ public class EventDecoder implements Consumer<int[]> {
      */
     @Override
     public void accept(int[] input) {
-        if (signalHandler != null) {
-            int index = 0;
-            while (index < input.length) {
-                int val = input[index];
+        if (signalHandler != null && input.length > 0) {
+            // Single-pass signal extraction: scan once, dispatch signals and
+            // input segments without re-scanning the remainder.
+            int segmentStart = 0;
+            for (int i = 0; i < input.length; i++) {
+                int val = input[i];
                 Signal event = null;
                 if (val == intr) {
                     event = Signal.INT;
@@ -204,23 +206,25 @@ public class EventDecoder implements Consumer<int[]> {
                     event = Signal.EOF;
                 }
                 if (event != null) {
-                    if (signalHandler != null) {
-                        if (inputHandler != null) {
-                            int[] a = new int[index];
-                            if (index > 0) {
-                                System.arraycopy(input, 0, a, 0, index);
-                                inputHandler.accept(a);
-                            }
-                        }
-                        signalHandler.accept(event);
-                        int[] a = new int[input.length - index - 1];
-                        System.arraycopy(input, index + 1, a, 0, a.length);
-                        input = a;
-                        index = 0;
-                        continue;
+                    // Send any input before this signal to the input handler
+                    if (i > segmentStart && inputHandler != null) {
+                        int[] segment = new int[i - segmentStart];
+                        System.arraycopy(input, segmentStart, segment, 0, segment.length);
+                        inputHandler.accept(segment);
                     }
+                    signalHandler.accept(event);
+                    segmentStart = i + 1;
                 }
-                index++;
+            }
+            // Remaining input after the last signal (or all input if no signals)
+            if (segmentStart >= input.length) {
+                return; // all consumed by signals
+            }
+            if (segmentStart > 0) {
+                // Create trimmed array for the remainder
+                int[] remainder = new int[input.length - segmentStart];
+                System.arraycopy(input, segmentStart, remainder, 0, remainder.length);
+                input = remainder;
             }
         }
         // Filter theme DSR sequences if a handler is registered
