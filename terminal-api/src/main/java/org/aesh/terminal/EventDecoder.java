@@ -25,6 +25,7 @@ import java.util.Queue;
 import java.util.function.Consumer;
 
 import org.aesh.terminal.detect.TerminalTheme;
+import org.aesh.terminal.tty.MouseEvent;
 import org.aesh.terminal.tty.Signal;
 import org.aesh.terminal.utils.ANSI;
 
@@ -49,8 +50,25 @@ public class EventDecoder implements Consumer<int[]> {
     private Consumer<Signal> signalHandler;
     private Consumer<int[]> inputHandler;
     private Consumer<TerminalTheme> themeChangeHandler;
+    private Consumer<MouseEvent> mouseHandler;
 
     private final Queue<int[]> inputQueue = new ArrayDeque<>(10);
+
+    // ---- Mouse SGR sequence detection ----
+    // SGR mouse format: ESC [ < Pb ; Px ; Py M/m
+    // We detect this as: ESC(27) [(91) <(60) digits ;(59) digits ;(59) digits M(77)/m(109)
+    private static final int MOUSE_IDLE = 0;
+    private static final int MOUSE_AFTER_ESC = 1; // seen ESC
+    private static final int MOUSE_AFTER_CSI = 2; // seen ESC [
+    private static final int MOUSE_AFTER_LT = 3; // seen ESC [ <
+    private static final int MOUSE_PARAM1 = 4; // collecting Pb digits
+    private static final int MOUSE_PARAM2 = 5; // collecting Px digits
+    private static final int MOUSE_PARAM3 = 6; // collecting Py digits
+
+    private int mouseState = MOUSE_IDLE;
+    private int mouseParam1, mouseParam2, mouseParam3;
+    private int[] mousePending = new int[16];
+    private int mousePendingLen;
 
     // ---- Theme DSR state machine ----
     // The prefix we're matching: ESC [ ? 9 9 7 ;
@@ -156,6 +174,32 @@ public class EventDecoder implements Consumer<int[]> {
     }
 
     /**
+     * Get the current mouse event handler.
+     *
+     * @return the mouse handler, or null if not set
+     */
+    public Consumer<MouseEvent> getMouseHandler() {
+        return mouseHandler;
+    }
+
+    /**
+     * Set the handler for mouse events.
+     * <p>
+     * When set, the decoder will intercept SGR mouse sequences
+     * ({@code CSI < Pb ; Px ; Py M/m}) from the input stream and
+     * invoke this handler instead of passing them through as input.
+     *
+     * @param mouseHandler the handler, or null to disable interception
+     */
+    public void setMouseHandler(Consumer<MouseEvent> mouseHandler) {
+        this.mouseHandler = mouseHandler;
+        if (mouseHandler == null) {
+            mouseState = MOUSE_IDLE;
+            mousePendingLen = 0;
+        }
+    }
+
+    /**
      * Set the handler for theme change DSR notifications.
      * <p>
      * When set, the decoder will intercept {@code CSI ? 997 ; Ps n} sequences
@@ -230,6 +274,10 @@ public class EventDecoder implements Consumer<int[]> {
         // Filter theme DSR sequences if a handler is registered
         if (input.length > 0 && themeChangeHandler != null) {
             input = filterThemeDsr(input);
+        }
+        // Filter mouse SGR sequences if a handler is registered
+        if (input.length > 0 && mouseHandler != null) {
+            input = filterMouseSgr(input);
         }
         if (input.length > 0) {
             if (inputHandler != null)
@@ -367,6 +415,154 @@ public class EventDecoder implements Consumer<int[]> {
         dsrPendingLen = 0;
         dsrState = DSR_IDLE;
         dsrParamValue = 0;
+        return outLen;
+    }
+
+    // =========================================================================
+    // Mouse SGR sequence filtering
+    // =========================================================================
+
+    /**
+     * Filter SGR mouse sequences ({@code ESC [ < Pb ; Px ; Py M/m}) from input.
+     * Recognized sequences are parsed into {@link MouseEvent} and dispatched
+     * to the mouse handler. Non-matching bytes are passed through unchanged.
+     */
+    private int[] filterMouseSgr(int[] input) {
+        // Fast path: if not mid-sequence and no ESC in input, pass through
+        if (mouseState == MOUSE_IDLE) {
+            boolean hasEsc = false;
+            for (int c : input) {
+                if (c == 27) {
+                    hasEsc = true;
+                    break;
+                }
+            }
+            if (!hasEsc)
+                return input;
+        }
+
+        int[] output = new int[input.length + mousePendingLen];
+        int outLen = 0;
+
+        for (int i = 0; i < input.length; i++) {
+            int cp = input[i];
+
+            switch (mouseState) {
+                case MOUSE_IDLE:
+                    if (cp == 27) {
+                        mouseState = MOUSE_AFTER_ESC;
+                        mousePendingLen = 0;
+                        appendMousePending(cp);
+                    } else {
+                        output[outLen++] = cp;
+                    }
+                    break;
+
+                case MOUSE_AFTER_ESC:
+                    if (cp == 91) { // [
+                        mouseState = MOUSE_AFTER_CSI;
+                        appendMousePending(cp);
+                    } else {
+                        // Not CSI — flush pending and re-process
+                        outLen = flushMousePending(output, outLen);
+                        i--;
+                    }
+                    break;
+
+                case MOUSE_AFTER_CSI:
+                    if (cp == 60) { // <
+                        mouseState = MOUSE_AFTER_LT;
+                        mouseParam1 = 0;
+                        mouseParam2 = 0;
+                        mouseParam3 = 0;
+                        appendMousePending(cp);
+                    } else {
+                        // Not < — not a mouse sequence, flush and re-process
+                        outLen = flushMousePending(output, outLen);
+                        i--;
+                    }
+                    break;
+
+                case MOUSE_AFTER_LT:
+                    // Expect first digit of Pb
+                    if (cp >= '0' && cp <= '9') {
+                        mouseState = MOUSE_PARAM1;
+                        mouseParam1 = cp - '0';
+                        appendMousePending(cp);
+                    } else {
+                        outLen = flushMousePending(output, outLen);
+                        i--;
+                    }
+                    break;
+
+                case MOUSE_PARAM1:
+                    if (cp >= '0' && cp <= '9') {
+                        mouseParam1 = mouseParam1 * 10 + (cp - '0');
+                        appendMousePending(cp);
+                    } else if (cp == ';') {
+                        mouseState = MOUSE_PARAM2;
+                        appendMousePending(cp);
+                    } else {
+                        outLen = flushMousePending(output, outLen);
+                        i--;
+                    }
+                    break;
+
+                case MOUSE_PARAM2:
+                    if (cp >= '0' && cp <= '9') {
+                        mouseParam2 = mouseParam2 * 10 + (cp - '0');
+                        appendMousePending(cp);
+                    } else if (cp == ';') {
+                        mouseState = MOUSE_PARAM3;
+                        appendMousePending(cp);
+                    } else {
+                        outLen = flushMousePending(output, outLen);
+                        i--;
+                    }
+                    break;
+
+                case MOUSE_PARAM3:
+                    if (cp >= '0' && cp <= '9') {
+                        mouseParam3 = mouseParam3 * 10 + (cp - '0');
+                        appendMousePending(cp);
+                    } else if (cp == 'M' || cp == 'm') {
+                        // Complete mouse sequence!
+                        MouseEvent event = MouseEvent.parseSgr(cp,
+                                new int[] { mouseParam1, mouseParam2, mouseParam3 }, 3);
+                        mouseState = MOUSE_IDLE;
+                        mousePendingLen = 0;
+                        if (event != null && mouseHandler != null) {
+                            mouseHandler.accept(event);
+                        }
+                    } else {
+                        outLen = flushMousePending(output, outLen);
+                        i--;
+                    }
+                    break;
+            }
+        }
+
+        if (outLen == 0 && mouseState == MOUSE_IDLE) {
+            return new int[0];
+        }
+        if (outLen == input.length && mousePendingLen == 0) {
+            return input;
+        }
+        return Arrays.copyOf(output, outLen);
+    }
+
+    private void appendMousePending(int cp) {
+        if (mousePendingLen >= mousePending.length) {
+            mousePending = Arrays.copyOf(mousePending, mousePending.length * 2);
+        }
+        mousePending[mousePendingLen++] = cp;
+    }
+
+    private int flushMousePending(int[] output, int outLen) {
+        System.arraycopy(mousePending, 0, output, outLen, mousePendingLen);
+        outLen += mousePendingLen;
+        mousePendingLen = 0;
+        mouseState = MOUSE_IDLE;
         return outLen;
     }
 }
