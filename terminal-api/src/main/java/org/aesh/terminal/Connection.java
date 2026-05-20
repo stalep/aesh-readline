@@ -176,6 +176,29 @@ public interface Connection extends Appendable, AutoCloseable {
         return null;
     }
 
+    /**
+     * Set a handler to be called when mouse events are received.
+     * <p>
+     * Mouse tracking must be explicitly enabled via {@link org.aesh.terminal.tty.MouseTracking}
+     * for the terminal to send mouse events.
+     *
+     * @param handler the handler to invoke with mouse events, or null to remove
+     * @see org.aesh.terminal.tty.MouseTracking
+     * @see org.aesh.terminal.tty.MouseEvent
+     */
+    default void setMouseHandler(Consumer<org.aesh.terminal.tty.MouseEvent> handler) {
+        // Default no-op; AbstractConnection delegates to EventDecoder
+    }
+
+    /**
+     * Get the current mouse event handler.
+     *
+     * @return the mouse handler, or null if not set
+     */
+    default Consumer<org.aesh.terminal.tty.MouseEvent> mouseHandler() {
+        return null;
+    }
+
     // ==================== Lifecycle ====================
 
     /**
