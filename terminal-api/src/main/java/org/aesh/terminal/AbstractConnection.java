@@ -120,6 +120,16 @@ public abstract class AbstractConnection implements Connection {
     }
 
     @Override
+    public void setMouseHandler(java.util.function.Consumer<org.aesh.terminal.tty.MouseEvent> handler) {
+        eventDecoder.setMouseHandler(handler);
+    }
+
+    @Override
+    public java.util.function.Consumer<org.aesh.terminal.tty.MouseEvent> mouseHandler() {
+        return eventDecoder.getMouseHandler();
+    }
+
+    @Override
     public boolean reading() {
         return reading;
     }
