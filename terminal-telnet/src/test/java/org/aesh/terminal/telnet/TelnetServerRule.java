@@ -66,10 +66,14 @@ public class TelnetServerRule extends ExternalResource {
         try {
             b.bind("localhost", 4000).sync();
             return () -> {
-                Future<?> future = bossGroup.shutdownGracefully();
+                Future<?> bossFuture = bossGroup.shutdownGracefully(0, 200, TimeUnit.MILLISECONDS);
+                Future<?> workerFuture = workerGroup.shutdownGracefully(0, 200, TimeUnit.MILLISECONDS);
                 try {
-                    if (!future.await(30, TimeUnit.SECONDS)) {
+                    if (!bossFuture.await(5, TimeUnit.SECONDS)) {
                         throw TestBase.failure("bossGroup not finished in timeout");
+                    }
+                    if (!workerFuture.await(5, TimeUnit.SECONDS)) {
+                        throw TestBase.failure("workerGroup not finished in timeout");
                     }
                 } catch (InterruptedException e) {
                     throw TestBase.failure(e);
