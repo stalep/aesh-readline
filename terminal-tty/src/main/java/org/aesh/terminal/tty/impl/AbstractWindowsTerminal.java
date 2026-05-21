@@ -224,13 +224,17 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
             mode = 0;
         }
         // Clear the flags we manage
-        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_QUICK_EDIT_MODE);
         // Set them based on Attributes
         if (attr.getLocalFlag(Attributes.LocalFlag.ECHO)) {
             mode |= ENABLE_ECHO_INPUT;
         }
         if (attr.getLocalFlag(Attributes.LocalFlag.ICANON)) {
             mode |= ENABLE_LINE_INPUT;
+            // Quick edit is a line-editing convenience (select text with mouse).
+            // Only enable it in canonical mode; in raw mode it intercepts
+            // SHIFT+mouse which breaks mouse tracking.
+            mode |= ENABLE_QUICK_EDIT_MODE;
         }
         if (vtInputEnabled) {
             mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
