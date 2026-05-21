@@ -87,6 +87,8 @@ public class ANSI {
     public static final String BOLD = InfoCmpHelper.getCurrentTranslatedCapability("bold", "\u001B[0;1m");
     /** ANSI escape code to disable bold text. */
     public static final String BOLD_OFF = "\u001B[0;22m";
+    /** ANSI escape code to enable faint/dim text (SGR 2). */
+    public static final String FAINT = "\u001B[0;2m";
     /** ANSI escape code to enable underlined text. */
     public static final String UNDERLINE = InfoCmpHelper.getCurrentTranslatedCapability("smul", "\u001B[0;4m");
     /** ANSI escape code to disable underlined text. */
