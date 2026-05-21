@@ -39,6 +39,7 @@ import org.aesh.terminal.Terminal;
 import org.aesh.terminal.io.Decoder;
 import org.aesh.terminal.io.Encoder;
 import org.aesh.terminal.tty.impl.ExternalTerminal;
+import org.aesh.terminal.tty.impl.WinSysTerminal;
 import org.aesh.terminal.utils.LoggerUtil;
 
 /**
@@ -228,10 +229,18 @@ public class TerminalConnection extends AbstractConnection {
         return ansi;
     }
 
+    @Override
+    public void setMouseHandler(Consumer<MouseEvent> handler) {
+        super.setMouseHandler(handler);
+        // On Windows, enable/disable ENABLE_MOUSE_INPUT on the console
+        if (terminal instanceof WinSysTerminal) {
+            ((WinSysTerminal) terminal).setMouseHandler(handler);
+        }
+    }
+
     /**
      * Opens the Connection stream, this method will block and wait for input.
      */
-    @Override
     public void openBlocking() {
         openBlocking(null);
     }
