@@ -216,7 +216,16 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
      */
     public void setAttributes(Attributes attr) {
         attributes.copy(attr);
-        int mode = 0;
+        // Start from current mode and modify only the flags that Attributes
+        // maps to, preserving all other Windows-specific flags (ENABLE_MOUSE_INPUT,
+        // ENABLE_WINDOW_INPUT, ENABLE_QUICK_EDIT_MODE, ENABLE_EXTENDED_FLAGS, etc.)
+        int mode = getConsoleMode();
+        if (mode == -1) {
+            mode = 0;
+        }
+        // Clear the flags we manage
+        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+        // Set them based on Attributes
         if (attr.getLocalFlag(Attributes.LocalFlag.ECHO)) {
             mode |= ENABLE_ECHO_INPUT;
         }
