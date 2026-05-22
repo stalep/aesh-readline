@@ -266,7 +266,9 @@ public interface Connection extends Appendable, AutoCloseable {
     default Attributes enterRawMode() {
         Attributes prvAttr = attributes();
         Attributes newAttr = new Attributes(prvAttr);
-        newAttr.setLocalFlags(EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO, Attributes.LocalFlag.IEXTEN),
+        newAttr.setLocalFlags(
+                EnumSet.of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO, Attributes.LocalFlag.IEXTEN,
+                        Attributes.LocalFlag.ISIG),
                 false);
         newAttr.setInputFlags(EnumSet.of(Attributes.InputFlag.IXON, Attributes.InputFlag.ICRNL, Attributes.InputFlag.INLCR),
                 false);
