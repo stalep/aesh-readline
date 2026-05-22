@@ -206,6 +206,9 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         if ((mode & ENABLE_LINE_INPUT) != 0) {
             attributes.setLocalFlag(Attributes.LocalFlag.ICANON, true);
         }
+        if ((mode & ENABLE_PROCESSED_INPUT) != 0) {
+            attributes.setLocalFlag(Attributes.LocalFlag.ISIG, true);
+        }
         return new Attributes(attributes);
     }
 
@@ -223,19 +226,21 @@ abstract class AbstractWindowsTerminal extends AbstractTerminal {
         if (mode == -1) {
             mode = 0;
         }
-        // Clear the flags we manage
-        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_QUICK_EDIT_MODE);
+        // Clear only the flags we manage — preserve everything else
+        // (ENABLE_MOUSE_INPUT, ENABLE_QUICK_EDIT_MODE, ENABLE_EXTENDED_FLAGS, etc.)
+        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
         // Set them based on Attributes
         if (attr.getLocalFlag(Attributes.LocalFlag.ECHO)) {
             mode |= ENABLE_ECHO_INPUT;
         }
         if (attr.getLocalFlag(Attributes.LocalFlag.ICANON)) {
             mode |= ENABLE_LINE_INPUT;
-            // Quick edit is a line-editing convenience (select text with mouse).
-            // Only enable it in canonical mode; in raw mode it intercepts
-            // SHIFT+mouse which breaks mouse tracking.
-            mode |= ENABLE_QUICK_EDIT_MODE;
         }
+        if (attr.getLocalFlag(Attributes.LocalFlag.ISIG)) {
+            mode |= ENABLE_PROCESSED_INPUT;
+        }
+        // Always enable ENABLE_WINDOW_INPUT for resize events
+        mode |= ENABLE_WINDOW_INPUT;
         if (vtInputEnabled) {
             mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
         }
