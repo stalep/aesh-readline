@@ -215,7 +215,10 @@ public class WinSysTerminal extends AbstractWindowsTerminal {
         }
         if (handler != null) {
             mode |= ENABLE_MOUSE_INPUT;
-            // Disable quick edit mode — it conflicts with mouse tracking
+            // Disable quick edit mode — it intercepts mouse clicks for text
+            // selection. Per MSDN, setting ENABLE_EXTENDED_FLAGS without
+            // ENABLE_QUICK_EDIT_MODE disables quick edit.
+            mode |= ENABLE_EXTENDED_FLAGS;
             mode &= ~ENABLE_QUICK_EDIT_MODE;
         } else {
             mode &= ~ENABLE_MOUSE_INPUT;
