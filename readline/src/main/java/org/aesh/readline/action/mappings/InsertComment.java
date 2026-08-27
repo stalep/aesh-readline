@@ -42,11 +42,23 @@ public class InsertComment implements Action {
     public void accept(InputProcessor inputProcessor) {
         ConsoleBuffer consoleBuffer = inputProcessor.buffer();
 
-        // Move to beginning, insert #
-        consoleBuffer.moveCursor(-consoleBuffer.buffer().cursor());
-        consoleBuffer.writeChar('#');
+        // Insert # at the beginning of each logical line
+        // Work backwards to avoid cursor position shifts
+        int lineCount = consoleBuffer.buffer().getLogicalLineCount();
+        for (int i = lineCount - 1; i >= 0; i--) {
+            int lineStart = 0;
+            // Find the start of logical line i
+            int pos = 0;
+            for (int ln = 0; ln < i; ln++) {
+                pos = consoleBuffer.buffer().getLogicalLineEnd(pos) + 1;
+            }
+            lineStart = pos;
+            consoleBuffer.moveCursor(lineStart - consoleBuffer.buffer().cursor());
+            consoleBuffer.writeChar('#');
+        }
+
         // Move to end and accept
-        consoleBuffer.moveCursor(consoleBuffer.buffer().length());
+        consoleBuffer.moveCursor(consoleBuffer.buffer().length() - consoleBuffer.buffer().cursor());
         if (consoleBuffer.history().isEnabled()) {
             consoleBuffer.history().push(consoleBuffer.buffer().multiLine());
         }

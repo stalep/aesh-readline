@@ -1483,9 +1483,11 @@ public final class Buffer {
      * Up case if the current character is a letter
      */
     void upCase(Consumer<int[]> out) {
-        if (Character.isLetter(line[cursor])) {
-            line[cursor] = Character.toUpperCase(line[cursor]);
-            out.accept(new int[] { line[cursor] });
+        if (cursor < size) {
+            if (Character.isLetter(line[cursor])) {
+                line[cursor] = Character.toUpperCase(line[cursor]);
+                out.accept(new int[] { line[cursor] });
+            }
             cursor++;
         }
     }
@@ -1494,9 +1496,11 @@ public final class Buffer {
      * Lower case if the current character is a letter
      */
     void downCase(Consumer<int[]> out) {
-        if (Character.isLetter(line[cursor])) {
-            line[cursor] = Character.toLowerCase(line[cursor]);
-            out.accept(new int[] { line[cursor] });
+        if (cursor < size) {
+            if (Character.isLetter(line[cursor])) {
+                line[cursor] = Character.toLowerCase(line[cursor]);
+                out.accept(new int[] { line[cursor] });
+            }
             cursor++;
         }
     }

@@ -48,9 +48,19 @@ public class TransposeChars implements Action {
         if (length < 2 || cursor == 0)
             return;
 
+        int[] line = consoleBuffer.buffer().getRawLine();
+
+        // Don't swap newline characters — that would move line boundaries
+        if (cursor == length) {
+            if (line[cursor - 1] == '\n' || line[cursor - 2] == '\n')
+                return;
+        } else {
+            if (line[cursor] == '\n' || line[cursor - 1] == '\n')
+                return;
+        }
+
         consoleBuffer.addActionToUndoStack();
 
-        int[] line = consoleBuffer.buffer().getRawLine();
         int targetCursor;
 
         if (cursor == length) {

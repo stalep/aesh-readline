@@ -621,7 +621,9 @@ public class Readline {
             if (synchronizedOutputSupported)
                 conn.terminal().enableSynchronizedOutput();
             if (inputProcessor.consoleBuffer.buffer().length() > 0) {
-                int[] buffer = inputProcessor.buffer().buffer().multiLine();
+                // Use getRawLine() to preserve all newlines (including backslash
+                // continuations) during resize. multiLine() would strip them.
+                int[] buffer = inputProcessor.buffer().buffer().getRawLine();
                 inputProcessor.consoleBuffer.setSize(size);
                 inputProcessor.consoleBuffer.replace(buffer);
             } else
