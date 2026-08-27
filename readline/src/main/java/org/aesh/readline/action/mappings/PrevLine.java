@@ -40,9 +40,13 @@ public class PrevLine implements Action {
     public void accept(InputProcessor inputProcessor) {
         Buffer buffer = inputProcessor.buffer().buffer();
 
-        if (!buffer.isMultiLine() || buffer.getLogicalLineIndex(buffer.cursor()) == 0) {
-            // Single-line or cursor on first line — navigate history
+        if (!buffer.isMultiLine()) {
+            // Single-line — navigate history
             new PrevHistory().accept(inputProcessor);
+            return;
+        }
+        if (buffer.getLogicalLineIndex(buffer.cursor()) == 0) {
+            // Already on first line in multi-line mode — do nothing
             return;
         }
 

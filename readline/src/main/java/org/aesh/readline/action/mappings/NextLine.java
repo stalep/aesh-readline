@@ -42,9 +42,13 @@ public class NextLine implements Action {
         int cursor = buffer.cursor();
         int lastLineIndex = buffer.getLogicalLineCount() - 1;
 
-        if (!buffer.isMultiLine() || buffer.getLogicalLineIndex(cursor) >= lastLineIndex) {
-            // Single-line or cursor on last line — navigate history
+        if (!buffer.isMultiLine()) {
+            // Single-line — navigate history
             new NextHistory().accept(inputProcessor);
+            return;
+        }
+        if (buffer.getLogicalLineIndex(cursor) >= lastLineIndex) {
+            // Already on last line in multi-line mode — do nothing
             return;
         }
 
