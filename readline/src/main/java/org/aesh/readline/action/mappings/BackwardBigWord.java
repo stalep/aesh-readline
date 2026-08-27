@@ -38,7 +38,7 @@ abstract class BackwardBigWord extends ChangeAction {
     @Override
     public void accept(InputProcessor inputProcessor) {
         int cursor = inputProcessor.buffer().buffer().cursor();
-        String buffer = inputProcessor.buffer().buffer().asString();
+        String buffer = inputProcessor.buffer().buffer().asRawString();
 
         if (cursor > buffer.length())
             cursor = buffer.length() - 1;

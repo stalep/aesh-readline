@@ -60,7 +60,7 @@ public class KillRegion implements Action {
 
         inputProcessor.buffer().addActionToUndoStack();
         inputProcessor.buffer().pasteManager().addText(
-                Arrays.copyOfRange(buffer.multiLine(), start, end));
+                Arrays.copyOfRange(buffer.getRawLine(), start, end));
 
         // Move cursor to start if needed, then delete forward
         if (cursor > mark) {

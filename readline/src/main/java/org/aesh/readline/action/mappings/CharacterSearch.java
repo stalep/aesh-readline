@@ -48,7 +48,7 @@ public class CharacterSearch implements ActionEvent {
             // Second call — perform the search
             waitingForInput = false;
             if (searchChar >= 0) {
-                String buffer = inputProcessor.buffer().buffer().asString();
+                String buffer = inputProcessor.buffer().buffer().asRawString();
                 int cursor = inputProcessor.buffer().buffer().cursor();
                 for (int i = cursor + 1; i < buffer.length(); i++) {
                     if (buffer.charAt(i) == searchChar) {

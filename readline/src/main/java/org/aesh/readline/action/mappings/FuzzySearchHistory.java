@@ -231,7 +231,7 @@ public class FuzzySearchHistory implements ActionEvent {
         allEntries = inputProcessor.buffer().history().getAll();
         allTimestamps = inputProcessor.buffer().history().getTimestamps();
 
-        savedBuffer = inputProcessor.buffer().buffer().multiLine();
+        savedBuffer = inputProcessor.buffer().buffer().getRawLine();
 
         if (savedBuffer != null && savedBuffer.length > 0) {
             query = new IntArrayBuilder(savedBuffer);

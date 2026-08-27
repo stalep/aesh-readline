@@ -50,7 +50,7 @@ public class TransposeChars implements Action {
 
         consoleBuffer.addActionToUndoStack();
 
-        int[] line = consoleBuffer.buffer().multiLine();
+        int[] line = consoleBuffer.buffer().getRawLine();
         int targetCursor;
 
         if (cursor == length) {

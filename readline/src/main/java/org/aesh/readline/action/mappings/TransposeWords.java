@@ -42,7 +42,7 @@ public class TransposeWords implements Action {
     @Override
     public void accept(InputProcessor inputProcessor) {
         ConsoleBuffer consoleBuffer = inputProcessor.buffer();
-        String content = consoleBuffer.buffer().asString();
+        String content = consoleBuffer.buffer().asRawString();
         int cursor = consoleBuffer.buffer().cursor();
         int length = content.length();
 

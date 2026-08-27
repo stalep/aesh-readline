@@ -42,7 +42,7 @@ public class TildeExpand implements Action {
     @Override
     public void accept(InputProcessor inputProcessor) {
         ConsoleBuffer consoleBuffer = inputProcessor.buffer();
-        String buffer = consoleBuffer.buffer().asString();
+        String buffer = consoleBuffer.buffer().asRawString();
         int cursor = consoleBuffer.buffer().cursor();
 
         if (buffer.isEmpty())

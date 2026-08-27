@@ -47,7 +47,7 @@ public class CharacterSearchBackward implements ActionEvent {
         if (waitingForInput) {
             waitingForInput = false;
             if (searchChar >= 0) {
-                String buffer = inputProcessor.buffer().buffer().asString();
+                String buffer = inputProcessor.buffer().buffer().asRawString();
                 int cursor = inputProcessor.buffer().buffer().cursor();
                 for (int i = cursor - 1; i >= 0; i--) {
                     if (buffer.charAt(i) == searchChar) {

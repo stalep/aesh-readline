@@ -48,7 +48,7 @@ public class UnixFilenameRubout implements Action {
         if (cursor == 0)
             return;
 
-        String buffer = consoleBuffer.buffer().asString();
+        String buffer = consoleBuffer.buffer().asRawString();
         int newCursor = cursor;
 
         // Skip trailing delimiters (whitespace and slashes)
@@ -63,7 +63,7 @@ public class UnixFilenameRubout implements Action {
 
         consoleBuffer.addActionToUndoStack();
         consoleBuffer.pasteManager().addText(
-                Arrays.copyOfRange(consoleBuffer.buffer().multiLine(), newCursor, cursor));
+                Arrays.copyOfRange(consoleBuffer.buffer().getRawLine(), newCursor, cursor));
         consoleBuffer.delete(newCursor - cursor);
     }
 

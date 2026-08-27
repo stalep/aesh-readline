@@ -50,7 +50,7 @@ public class HistorySearchBackward implements Action {
             return;
 
         int cursor = inputProcessor.buffer().buffer().cursor();
-        String buffer = inputProcessor.buffer().buffer().asString();
+        String buffer = inputProcessor.buffer().buffer().asRawString();
         String prefix = buffer.substring(0, cursor);
 
         if (prefix.isEmpty()) {

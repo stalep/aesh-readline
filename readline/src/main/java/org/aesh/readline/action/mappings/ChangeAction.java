@@ -88,13 +88,13 @@ abstract class ChangeAction extends MovementAction {
             if (cursor < oldCursor) {
                 //add to pastemanager
                 inputProcessor.buffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), cursor, oldCursor));
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().getRawLine(), cursor, oldCursor));
                 //delete buffer
                 inputProcessor.buffer().delete(cursor - oldCursor);
             } else {
                 //add to pastemanager
                 inputProcessor.buffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), oldCursor, cursor));
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().getRawLine(), oldCursor, cursor));
                 //delete buffer
                 inputProcessor.buffer().delete(cursor - oldCursor);
             }
@@ -109,10 +109,10 @@ abstract class ChangeAction extends MovementAction {
         } else if (status == EditMode.Status.YANK) {
             if (cursor < oldCursor)
                 inputProcessor.buffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), cursor, oldCursor));
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().getRawLine(), cursor, oldCursor));
             else if (cursor > oldCursor)
                 inputProcessor.buffer().pasteManager().addText(
-                        Arrays.copyOfRange(inputProcessor.buffer().buffer().multiLine(), oldCursor, cursor));
+                        Arrays.copyOfRange(inputProcessor.buffer().buffer().getRawLine(), oldCursor, cursor));
         }
 
         else if (status == EditMode.Status.UP_CASE) {

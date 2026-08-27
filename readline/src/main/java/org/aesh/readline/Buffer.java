@@ -169,6 +169,17 @@ public final class Buffer {
     }
 
     /**
+     * Returns the raw buffer content as a string, including all newlines.
+     * Use this for operations that need to index into the buffer with
+     * cursor positions, since cursor values are raw buffer indices.
+     *
+     * @return the raw buffer content as a string
+     */
+    public String asRawString() {
+        return Parser.fromCodePoints(getRawLine());
+    }
+
+    /**
      * Resets the buffer to its initial empty state.
      * This clears all content, resets the cursor to position 0,
      * and clears any multi-line state.

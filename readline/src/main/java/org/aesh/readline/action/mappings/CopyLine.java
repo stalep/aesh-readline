@@ -43,6 +43,6 @@ public class CopyLine implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.buffer().pasteManager().addText(inputProcessor.buffer().buffer().multiLine());
+        inputProcessor.buffer().pasteManager().addText(inputProcessor.buffer().buffer().getRawLine());
     }
 }

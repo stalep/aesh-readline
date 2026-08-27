@@ -47,7 +47,7 @@ abstract class BackwardWord extends ChangeAction {
             cursor = inputProcessor.buffer().buffer().length() - 1;
 
         if (viMode) {
-            String buffer = inputProcessor.buffer().buffer().asString();
+            String buffer = inputProcessor.buffer().buffer().asRawString();
             while (cursor > 0 && isSpace(buffer.charAt(cursor - 1)))
                 cursor--;
             if (cursor > 0 && isDelimiter(buffer.charAt(cursor - 1))) {
@@ -59,7 +59,7 @@ abstract class BackwardWord extends ChangeAction {
                 }
             }
         } else {
-            String buffer = inputProcessor.buffer().buffer().asString();
+            String buffer = inputProcessor.buffer().buffer().asRawString();
             while (cursor > 0 && isDelimiter(buffer.charAt(cursor - 1)))
                 cursor--;
             while (cursor > 0 && !isDelimiter(buffer.charAt(cursor - 1)))
