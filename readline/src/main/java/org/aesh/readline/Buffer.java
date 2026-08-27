@@ -57,8 +57,6 @@ public final class Buffer {
     private boolean deltaChangedAtEndOfBuffer = true;
     private boolean disablePrompt = false;
     private boolean multiLine = false;
-    /** Tracks positions of \n that came from backslash continuations (should be stripped on submission). */
-    private java.util.BitSet backslashNewlines = new java.util.BitSet();
     private Prompt continuationPrompt = new Prompt("> ");
     private boolean isPromptDisplayed = false;
     private boolean deletingBackward = true;
@@ -182,7 +180,6 @@ public final class Buffer {
         size = 0;
         isPromptDisplayed = false;
         multiLine = false;
-        backslashNewlines.clear();
         lastRenderedCursorRow = 0;
         locator.clear();
     }
@@ -493,14 +490,11 @@ public final class Buffer {
         if (lineEndsWithBackslash()) {
             // Replace trailing backslash with newline
             line[size - 1] = '\n';
-            // Mark this newline as a backslash continuation (stripped on submission)
-            backslashNewlines.set(size - 1);
             // cursor stays at size (after the \n)
             cursor = size;
         } else {
             // Open-quote continuation: insert newline at the cursor position
             doInsert('\n');
-            // This \n is NOT marked as backslash — it's preserved on submission
         }
     }
 
@@ -1288,23 +1282,38 @@ public final class Buffer {
 
     /**
      * Returns the complete buffer content for submission to the caller.
-     * Newlines from backslash continuations are stripped (lines are joined).
-     * Newlines from open-quote continuations are preserved.
+     * Newlines that are NOT inside quotes are stripped (backslash-continuation
+     * lines are joined). Newlines inside quotes are preserved.
      *
      * @return the processed buffer content as an array of code points
      */
     public int[] multiLine() {
-        if (!multiLine || backslashNewlines.isEmpty()) {
+        if (!multiLine) {
             return getLine();
         }
-        // Build result with backslash-continuation newlines removed
+        // Build result: strip \n that are outside quotes (backslash continuations)
+        // and preserve \n that are inside quotes (open-quote continuations)
         IntArrayBuilder result = new IntArrayBuilder(size);
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
         for (int i = 0; i < size; i++) {
-            if (line[i] == '\n' && backslashNewlines.get(i)) {
-                // Skip this newline — it was a backslash continuation
+            int c = line[i];
+            if (c == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (c == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            } else if (c == '\\' && inDoubleQuote && i + 1 < size) {
+                // Escaped char inside double quotes — skip the backslash check
+                result.append(c);
+                i++;
+                result.append(line[i]);
                 continue;
             }
-            result.append(line[i]);
+            if (c == '\n' && !inSingleQuote && !inDoubleQuote) {
+                // Outside quotes: backslash continuation — strip the newline
+                continue;
+            }
+            result.append(c);
         }
         return result.toArray();
     }

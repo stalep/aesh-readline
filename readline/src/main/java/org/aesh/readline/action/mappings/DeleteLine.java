@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
 
@@ -44,6 +45,15 @@ public class DeleteLine extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        apply(0, inputProcessor.buffer().buffer().length(), inputProcessor);
+        Buffer buf = inputProcessor.buffer().buffer();
+        int lineStart = buf.getLogicalLineStart(buf.cursor());
+        int lineEnd = buf.getLogicalLineEnd(buf.cursor());
+        // Include the \n separator in the deletion to avoid empty lines
+        if (lineEnd < buf.length()) {
+            lineEnd++; // include the trailing \n
+        } else if (lineStart > 0) {
+            lineStart--; // include the preceding \n
+        }
+        apply(lineStart, lineEnd, inputProcessor);
     }
 }

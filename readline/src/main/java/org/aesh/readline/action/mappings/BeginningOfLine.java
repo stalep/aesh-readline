@@ -19,11 +19,14 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
 /**
- * Action that moves the cursor to the beginning of the line.
+ * Action that moves the cursor to the beginning of the current logical line.
+ * In multi-line mode, this moves to the start of the line the cursor is on
+ * (after the preceding {@code \n}), not to position 0 of the entire buffer.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -42,6 +45,8 @@ public class BeginningOfLine implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        inputProcessor.buffer().moveCursor(-inputProcessor.buffer().buffer().length());
+        Buffer buf = inputProcessor.buffer().buffer();
+        int lineStart = buf.getLogicalLineStart(buf.cursor());
+        inputProcessor.buffer().moveCursor(lineStart - buf.cursor());
     }
 }

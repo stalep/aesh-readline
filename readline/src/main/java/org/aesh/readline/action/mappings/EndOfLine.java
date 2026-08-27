@@ -19,11 +19,14 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.action.Action;
 
 /**
- * Action that moves the cursor to the end of the current line.
+ * Action that moves the cursor to the end of the current logical line.
+ * In multi-line mode, this moves to the end of the line the cursor is on
+ * (before the next {@code \n}), not to the end of the entire buffer.
  *
  * @author <a href="mailto:spederse@redhat.com">Ståle W. Pedersen</a>
  */
@@ -42,11 +45,12 @@ public class EndOfLine implements Action {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        if (inputProcessor.buffer().buffer().cursor() >= inputProcessor.buffer().buffer().length()
-                && inputProcessor.buffer().ghostText() != null) {
+        Buffer buf = inputProcessor.buffer().buffer();
+        int lineEnd = buf.getLogicalLineEnd(buf.cursor());
+        if (buf.cursor() >= lineEnd && inputProcessor.buffer().ghostText() != null) {
             inputProcessor.buffer().acceptGhostText();
         } else {
-            inputProcessor.buffer().moveCursor(inputProcessor.buffer().buffer().length());
+            inputProcessor.buffer().moveCursor(lineEnd - buf.cursor());
         }
     }
 }

@@ -472,4 +472,88 @@ public class ReadlineTest {
         term.assertBuffer("history-entry");
     }
 
+    // ---- Phase 2: Line-boundary-aware actions ----
+
+    @Test
+    public void testHomeEndOnMultiLine() {
+        TestReadlineConnection term = new TestReadlineConnection();
+        // Create two-line buffer: "first\nsecond"
+        term.read("first\\");
+        term.read(Key.ENTER);
+        term.assertLine(null);
+        term.read("second");
+
+        // Cursor is at end of "second" (line 1). Press Home.
+        term.read(Key.HOME);
+        // Should move to start of line 1 ("second"), not start of entire buffer
+        // Verify by pressing End then Enter — should get full content
+        term.read(Key.END);
+        term.read(Key.ENTER);
+        term.assertLine("firstsecond");
+    }
+
+    @Test
+    public void testHomeOnLine0() {
+        TestReadlineConnection term = new TestReadlineConnection();
+        term.read("first\\");
+        term.read(Key.ENTER);
+        term.assertLine(null);
+        term.read("second");
+
+        // Move to line 0
+        term.read(Key.UP);
+        // Press Home — should stay on line 0, move to column 0
+        term.read(Key.HOME);
+        // Type 'X' at position 0 of line 0
+        term.read("X");
+        term.read(Key.ENTER);
+        term.assertLine("Xfirstsecond");
+    }
+
+    @Test
+    public void testCtrlKOnMultiLine() {
+        TestReadlineConnection term = new TestReadlineConnection();
+        term.read("first\\");
+        term.read(Key.ENTER);
+        term.assertLine(null);
+        term.read("second");
+
+        // Move to line 0, then to column 3
+        term.read(Key.UP);
+        term.read(Key.HOME);
+        term.read(Key.RIGHT);
+        term.read(Key.RIGHT);
+        term.read(Key.RIGHT);
+
+        // Ctrl+K should kill from cursor to end of line 0 only ("st")
+        term.read(Key.CTRL_K);
+
+        // Buffer should now be "fir\nsecond" (line 0 = "fir", line 1 = "second")
+        term.read(Key.ENTER);
+        term.assertLine("firsecond");
+    }
+
+    @Test
+    public void testCtrlUOnMultiLine() {
+        TestReadlineConnection term = new TestReadlineConnection();
+        term.read("first\\");
+        term.read(Key.ENTER);
+        term.assertLine(null);
+        term.read("second");
+
+        // Move to line 0, then to column 3
+        term.read(Key.UP);
+        term.read(Key.HOME);
+        term.read(Key.RIGHT);
+        term.read(Key.RIGHT);
+        term.read(Key.RIGHT);
+
+        // Ctrl+U should kill from cursor back to start of line 0 only ("fir")
+        term.read(Key.CTRL_U);
+
+        // Buffer should now be "st\nsecond" (line 0 = "st", line 1 = "second")
+        term.read(Key.ENTER);
+        term.assertLine("stsecond");
+    }
+
 }

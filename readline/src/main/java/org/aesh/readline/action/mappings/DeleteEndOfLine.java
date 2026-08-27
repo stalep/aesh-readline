@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
 
@@ -52,7 +53,8 @@ public class DeleteEndOfLine extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        int cursor = inputProcessor.buffer().buffer().length();
-        apply(cursor, inputProcessor);
+        Buffer buf = inputProcessor.buffer().buffer();
+        int lineEnd = buf.getLogicalLineEnd(buf.cursor());
+        apply(lineEnd, inputProcessor);
     }
 }

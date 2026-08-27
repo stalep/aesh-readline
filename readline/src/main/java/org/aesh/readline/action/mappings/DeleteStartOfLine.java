@@ -19,6 +19,7 @@
  */
 package org.aesh.readline.action.mappings;
 
+import org.aesh.readline.Buffer;
 import org.aesh.readline.InputProcessor;
 import org.aesh.readline.editing.EditMode;
 
@@ -43,6 +44,8 @@ public class DeleteStartOfLine extends ChangeAction {
 
     @Override
     public void accept(InputProcessor inputProcessor) {
-        apply(0, inputProcessor);
+        Buffer buf = inputProcessor.buffer().buffer();
+        int lineStart = buf.getLogicalLineStart(buf.cursor());
+        apply(lineStart, inputProcessor);
     }
 }
