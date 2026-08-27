@@ -142,12 +142,14 @@ public class FuzzySearchHistory implements ActionEvent {
             return;
         }
 
-        if (action instanceof PrevHistory || key == Key.UP || key == Key.UP_2) {
+        if (action instanceof PrevHistory || action instanceof PrevLine
+                || key == Key.UP || key == Key.UP_2) {
             nextAction = InputAction.MOVE_UP;
             return;
         }
 
-        if (action instanceof NextHistory || key == Key.DOWN || key == Key.DOWN_2) {
+        if (action instanceof NextHistory || action instanceof NextLine
+                || key == Key.DOWN || key == Key.DOWN_2) {
             nextAction = InputAction.MOVE_DOWN;
             return;
         }

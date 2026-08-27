@@ -19,19 +19,19 @@
  */
 package org.aesh.readline.cursor;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.aesh.readline.Buffer;
 
 /**
  * Map a command character index onto a cursor COL/ROW.
+ * <p>
+ * With the unified buffer model, line boundaries are computed on-demand
+ * from {@code \n} characters in the buffer rather than being registered
+ * externally via {@link #addLine(int, int)}.
  *
  * @author jdenise@redhat.com
  */
 public class CursorLocator {
 
-    private final List<Integer> linesSize = new ArrayList<>();
     private boolean invalidatedLines;
 
     private final Buffer buffer;
@@ -47,13 +47,15 @@ public class CursorLocator {
 
     /**
      * Adds a line with the specified size and prompt size to the locator.
+     * <p>
+     * With the unified buffer model, this is a no-op — line boundaries
+     * are computed from the buffer content on demand.
      *
      * @param size the size of the line content
      * @param promptSize the size of the prompt on this line
      */
     public void addLine(int size, int promptSize) {
-        linesSize.add(size);
-        linesSize.add(promptSize);
+        // No-op: unified buffer computes line boundaries from \n positions
     }
 
     /**
@@ -76,54 +78,59 @@ public class CursorLocator {
 
     /**
      * The core logic of the locator. Map a command index onto an absolute
-     * COL/ROW cursor location.
+     * COL/ROW cursor location by scanning the buffer for {@code \n} characters.
      *
-     * @param index The commnd index.
-     * @param width The terminal width.
-     * @return the cursor location corresponding to the index, or null if the location is invalidated or out of bounds
+     * @param index the character index in the buffer
+     * @param width the terminal width
+     * @return the cursor location corresponding to the index, or null if
+     *         the location is invalidated or out of bounds
      */
     public CursorLocation locate(int index, int width) {
-        // Upper lines location has been lost.
         if (isLocationInvalidated()) {
             return null;
         }
-        int cumulated = 0;
+        if (width <= 0) {
+            return new CursorLocation(0, index);
+        }
 
-        List<Integer> allLines = new ArrayList<>(linesSize);
-        allLines.add(buffer.length());
-        allLines.add(buffer.prompt().getLength());
-        int lineIndex = 0;
-        for (int i = 0; i < allLines.size(); i++) {
-            int cmdSize = allLines.get(i++);
-            int promptSize = allLines.get(i);
-            lineIndex += 1;
-            if (cumulated + cmdSize > index) {
-                int part = index - cumulated;
-                int col = (part + promptSize) % width;
-                // if the part + prompt is longer than width, then
-                // the row is in a lower line.
-                lineIndex += (promptSize + part) / width;
-                return new CursorLocation(lineIndex - 1, col);
+        int row = 0;
+        int logicalLine = 0;
+        int lineStart = 0;
+        int bufLen = buffer.length();
+
+        // Iterate through logical lines (separated by \n)
+        for (int i = 0; i <= bufLen; i++) {
+            boolean isNewline = (i < bufLen && buffer.get(i) == '\n');
+            boolean isEnd = (i == bufLen);
+
+            if (isNewline || isEnd) {
+                int lineLen = i - lineStart;
+                int promptLen = buffer.getPromptLengthForLine(logicalLine);
+
+                if (index >= lineStart && index <= i) {
+                    // The target index is on this logical line
+                    int posOnLine = index - lineStart;
+                    int col = (posOnLine + promptLen) % width;
+                    int wrappedRows = (posOnLine + promptLen) / width;
+                    return new CursorLocation(row + wrappedRows, col);
+                }
+
+                // Account for this complete line's display rows
+                row += Math.max(1, (lineLen + promptLen + width - 1) / width);
+                logicalLine++;
+                lineStart = i + 1;
             }
-            cumulated += cmdSize;
-            // Each line could be wrapped if longer than width.
-            lineIndex += (cmdSize + promptSize) / width;
         }
-        // we are on the last line at the last character.
-        if (cumulated == index) {
-            int cmdSize = allLines.get(allLines.size() - 2);
-            int promptSize = allLines.get(allLines.size() - 1);
-            int col = (cmdSize + promptSize) % width;
-            return new CursorLocation(lineIndex - 1, col);
-        } else {
-            return null;
-        }
+
+        // Shouldn't reach here, but handle gracefully
+        return null;
     }
 
     /**
-     * Clears all stored line information from the locator.
+     * Clears any cached state. With the unified buffer model this
+     * only resets the invalidation flag.
      */
     public void clear() {
-        linesSize.clear();
+        invalidatedLines = false;
     }
 }

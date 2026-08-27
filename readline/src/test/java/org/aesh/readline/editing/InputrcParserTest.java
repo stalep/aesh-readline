@@ -60,7 +60,7 @@ public class InputrcParserTest {
             actionQueue.add(new int[] { 27, 91, 68 });
             Assert.assertEquals("backward-char", editMode.parse(actionQueue.next()).name());
             actionQueue.add(new int[] { 27, 91, 66 });
-            Assert.assertEquals("next-history", editMode.parse(actionQueue.next()).name());
+            Assert.assertEquals("next-line", editMode.parse(actionQueue.next()).name());
             actionQueue.add(1);
             Assert.assertEquals("beginning-of-line", editMode.parse(actionQueue.next()).name());
 

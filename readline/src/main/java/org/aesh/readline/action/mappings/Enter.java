@@ -72,7 +72,8 @@ public class Enter implements Action {
                     || (!ignoreQuotes && Parser.doesStringContainOpenQuote(buffer, multilineFlags))) {
                 consoleBuffer.buffer().setMultiLine(true);
                 consoleBuffer.buffer().updateMultiLineBuffer();
-                inputProcessor.buffer().writeOut(Config.CR);
+                // No CR needed — the full multi-line redraw handles
+                // all line breaks via the \n in the buffer content
                 isCurrentLineEnding = false;
             } else if (inputProcessor.buffer().history().isEnabled()) {
                 inputProcessor.buffer().history().push(consoleBuffer.buffer().multiLine());

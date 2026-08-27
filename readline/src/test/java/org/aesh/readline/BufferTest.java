@@ -28,7 +28,6 @@ import java.util.List;
 
 import org.aesh.readline.prompt.Prompt;
 import org.aesh.terminal.utils.ANSI;
-import org.aesh.terminal.utils.Config;
 import org.aesh.terminal.utils.Parser;
 import org.junit.Assert;
 import org.junit.Test;
@@ -361,23 +360,23 @@ public class BufferTest {
         buffer.insert(outConsumer::add, "foo bar\\", 100);
         buffer.setMultiLine(true);
         buffer.updateMultiLineBuffer();
+        // With unified buffer, the backslash is replaced with \n internally
+        // asString() strips backslash-continuation newlines for backward compat
+        assertEquals("foo bar", buffer.asString());
+        assertEquals(2, buffer.getLogicalLineCount());
+
         outConsumer.clear();
         buffer.insert(outConsumer::add, " bar ", 100);
-        assertEquals(">  bar ",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length - 7, outConsumer.get(0).length)));
-
+        // asString() joins the lines (strips backslash \n)
         assertEquals("foo bar bar ", buffer.asString());
 
         buffer.insert(outConsumer::add, "\\", 100);
         buffer.updateMultiLineBuffer();
+        // Second backslash replaced with \n internally
         outConsumer.clear();
         buffer.insert(outConsumer::add, "gar", 100);
-        assertEquals("> gar",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length - 5, outConsumer.get(0).length)));
-
         assertEquals("foo bar bar gar", buffer.asString());
+        assertEquals(3, buffer.getLogicalLineCount());
     }
 
     @Test
@@ -387,24 +386,18 @@ public class BufferTest {
         buffer.insert(outConsumer::add, "foo \"bar", 100);
         buffer.setMultiLine(true);
         buffer.updateMultiLineBuffer();
+        // Open-quote continuation: \n is preserved in asString()
+        assertEquals("foo \"bar\n", buffer.asString());
+
         outConsumer.clear();
         buffer.insert(outConsumer::add, " bar ", 100);
-        assertEquals(">  bar ",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length - 7, outConsumer.get(0).length)));
+        assertEquals("foo \"bar\n bar ", buffer.asString());
 
-        assertEquals("foo \"bar" + Config.getLineSeparator() + " bar ", buffer.asString());
-
-        //buffer.insert(outConsumer::add, "\\", 100);
         buffer.updateMultiLineBuffer();
         outConsumer.clear();
         buffer.insert(outConsumer::add, "gar\"", 100);
-        assertEquals("> gar\"",
-                Parser.fromCodePoints(Arrays.copyOfRange(outConsumer.get(0),
-                        outConsumer.get(0).length - 6, outConsumer.get(0).length)));
-
-        assertEquals("foo \"bar" + Config.getLineSeparator() + " bar " + Config.getLineSeparator() + "gar\"",
-                buffer.asString());
+        assertEquals("foo \"bar\n bar \ngar\"", buffer.asString());
+        assertEquals(3, buffer.getLogicalLineCount());
     }
 
     @Test
@@ -418,17 +411,16 @@ public class BufferTest {
         outConsumer.clear();
         buffer.insert(outConsumer::add, "baz", 100);
 
-        // The continuation prompt should be "... " not "> "
-        String output = Parser.fromCodePoints(outConsumer.get(0));
-        Assert.assertTrue("Expected '... ' continuation prompt, got: " + output,
-                output.contains("... baz"));
-
+        // asString() strips backslash-continuation newlines
         assertEquals("foo barbaz", buffer.asString());
+
+        // The continuation prompt for line 1 should be "... "
+        assertEquals("... ", Parser.fromCodePoints(
+                buffer.getPromptForLine(1).getPromptCharacters()));
     }
 
     @Test
     public void defaultContinuationPrompt() {
-        // Verify backward compatibility: without setContinuationPrompt, "> " is used
         Buffer buffer = new Buffer(new Prompt("$ "));
         List<int[]> outConsumer = new ArrayList<>();
         buffer.insert(outConsumer::add, "hello\\", 100);
@@ -437,11 +429,154 @@ public class BufferTest {
         outConsumer.clear();
         buffer.insert(outConsumer::add, "world", 100);
 
-        String output = Parser.fromCodePoints(outConsumer.get(0));
-        Assert.assertTrue("Expected '> ' default continuation prompt, got: " + output,
-                output.contains("> world"));
-
+        // asString() strips backslash-continuation newlines
         assertEquals("helloworld", buffer.asString());
+
+        // Default continuation prompt is "> "
+        assertEquals("> ", Parser.fromCodePoints(
+                buffer.getPromptForLine(1).getPromptCharacters()));
+    }
+
+    // ---- Logical line helper tests ----
+
+    @Test
+    public void testLogicalLineHelpersSingleLine() {
+        Buffer buffer = new Buffer(new Prompt("$ "));
+        List<int[]> outConsumer = new ArrayList<>();
+        buffer.insert(outConsumer::add, "hello world", 100);
+
+        // Single line — no \n
+        assertEquals(1, buffer.getLogicalLineCount());
+        assertEquals(0, buffer.getLogicalLineStart(0));
+        assertEquals(0, buffer.getLogicalLineStart(5));
+        assertEquals(11, buffer.getLogicalLineEnd(0));
+        assertEquals(11, buffer.getLogicalLineEnd(5));
+        assertEquals(0, buffer.getLogicalLineIndex(0));
+        assertEquals(0, buffer.getLogicalLineIndex(5));
+        assertEquals(5, buffer.getCursorColumnOnLine(5));
+    }
+
+    @Test
+    public void testLogicalLineHelpersWithNewlines() {
+        Buffer buffer = new Buffer(new Prompt("$ "));
+        List<int[]> outConsumer = new ArrayList<>();
+        // Insert "foo\nbar\nbaz" — 3 logical lines
+        buffer.insert(outConsumer::add, Parser.toCodePoints("foo\nbar\nbaz"), 100);
+
+        assertEquals(3, buffer.getLogicalLineCount());
+
+        // Line 0: "foo" — positions 0-2, \n at 3
+        assertEquals(0, buffer.getLogicalLineStart(0));
+        assertEquals(0, buffer.getLogicalLineStart(2));
+        assertEquals(3, buffer.getLogicalLineEnd(0));
+        assertEquals(3, buffer.getLogicalLineEnd(2));
+        assertEquals(0, buffer.getLogicalLineIndex(0));
+        assertEquals(0, buffer.getLogicalLineIndex(2));
+
+        // Line 1: "bar" — positions 4-6, \n at 7
+        assertEquals(4, buffer.getLogicalLineStart(4));
+        assertEquals(4, buffer.getLogicalLineStart(6));
+        assertEquals(7, buffer.getLogicalLineEnd(4));
+        assertEquals(7, buffer.getLogicalLineEnd(6));
+        assertEquals(1, buffer.getLogicalLineIndex(4));
+        assertEquals(1, buffer.getLogicalLineIndex(6));
+
+        // Line 2: "baz" — positions 8-10
+        assertEquals(8, buffer.getLogicalLineStart(8));
+        assertEquals(8, buffer.getLogicalLineStart(10));
+        assertEquals(11, buffer.getLogicalLineEnd(8));
+        assertEquals(11, buffer.getLogicalLineEnd(10));
+        assertEquals(2, buffer.getLogicalLineIndex(8));
+        assertEquals(2, buffer.getLogicalLineIndex(10));
+
+        // Column positions
+        assertEquals(0, buffer.getCursorColumnOnLine(0)); // 'f' in "foo"
+        assertEquals(2, buffer.getCursorColumnOnLine(2)); // 'o' in "foo"
+        assertEquals(0, buffer.getCursorColumnOnLine(4)); // 'b' in "bar"
+        assertEquals(1, buffer.getCursorColumnOnLine(9)); // 'a' in "baz"
+    }
+
+    @Test
+    public void testLogicalLineHelpersAtNewlinePosition() {
+        Buffer buffer = new Buffer(new Prompt("$ "));
+        List<int[]> outConsumer = new ArrayList<>();
+        // "ab\ncd" — \n is at position 2
+        buffer.insert(outConsumer::add, Parser.toCodePoints("ab\ncd"), 100);
+
+        // Position 2 is the \n itself — it belongs to line 0
+        assertEquals(0, buffer.getLogicalLineStart(2));
+        assertEquals(2, buffer.getLogicalLineEnd(2));
+        assertEquals(0, buffer.getLogicalLineIndex(2));
+
+        // Position 3 is 'c' — first char of line 1
+        assertEquals(3, buffer.getLogicalLineStart(3));
+        assertEquals(5, buffer.getLogicalLineEnd(3));
+        assertEquals(1, buffer.getLogicalLineIndex(3));
+    }
+
+    @Test
+    public void testPromptForLine() {
+        Buffer buffer = new Buffer(new Prompt("$ "));
+        buffer.setContinuationPrompt(new Prompt("> "));
+
+        assertEquals(2, buffer.getPromptLengthForLine(0)); // "$ " = 2
+        assertEquals(2, buffer.getPromptLengthForLine(1)); // "> " = 2
+        assertEquals(2, buffer.getPromptLengthForLine(5)); // "> " = 2
+
+        // Verify prompt objects
+        assertEquals("$ ", Parser.fromCodePoints(buffer.getPromptForLine(0).getPromptCharacters()));
+        assertEquals("> ", Parser.fromCodePoints(buffer.getPromptForLine(1).getPromptCharacters()));
+    }
+
+    @Test
+    public void testLogicalLineHelpersEmptyBuffer() {
+        Buffer buffer = new Buffer(new Prompt("$ "));
+
+        assertEquals(1, buffer.getLogicalLineCount());
+        assertEquals(0, buffer.getLogicalLineStart(0));
+        assertEquals(0, buffer.getLogicalLineEnd(0));
+        assertEquals(0, buffer.getLogicalLineIndex(0));
+        assertEquals(0, buffer.getCursorColumnOnLine(0));
+    }
+
+    @Test
+    public void testMultiLineRedrawContainsPrompts() {
+        Buffer buffer = new Buffer(new Prompt("> "));
+        buffer.setContinuationPrompt(new Prompt(".. "));
+        List<int[]> outConsumer = new ArrayList<>();
+
+        // Build 3-line buffer: "first\nsecond\nthird"
+        buffer.insert(outConsumer::add, "first\\", 80);
+        buffer.setMultiLine(true);
+        buffer.updateMultiLineBuffer();
+        buffer.insert(outConsumer::add, "second\\", 80);
+        buffer.updateMultiLineBuffer();
+        buffer.insert(outConsumer::add, "third", 80);
+
+        // Move cursor to start of line 0
+        buffer.move(outConsumer::add, -(buffer.cursor()), 80);
+        outConsumer.clear();
+
+        // Insert a space — triggers full redraw
+        buffer.insert(outConsumer::add, " ", 80);
+
+        // The output should contain the continuation prompt ".. " for lines 1 and 2
+        StringBuilder sb = new StringBuilder();
+        for (int[] arr : outConsumer) {
+            sb.append(Parser.fromCodePoints(arr));
+        }
+        String output = sb.toString();
+
+        // Strip ANSI escape codes for assertion
+        String stripped = Parser.stripAwayAnsiCodes(output);
+
+        // The redraw should contain prompts for all 3 lines
+        Assert.assertTrue("Output should contain main prompt '> ', got: " + stripped,
+                stripped.contains("> "));
+        Assert.assertTrue("Output should contain continuation prompt '.. ' for line 1, got: " + stripped,
+                stripped.contains(".. second"));
+        Assert.assertTrue("Output should contain continuation prompt '.. ' for line 2, got: " + stripped,
+                stripped.contains(".. third"));
     }
 
     @Test

@@ -110,6 +110,8 @@ public class CursorLocatorTest {
     public void testMultiline() {
 
         {
+            // "cmd --opt1\\" (11 chars) → updateMultiLineBuffer → "cmd --opt1\n" (11 chars, \ replaced by \n)
+            // Then insert "--opt2" → "cmd --opt1\n--opt2" (17 chars)
             Buffer buffer = new Buffer(new Prompt(PROMPT));
             String cmd = "cmd --opt1\\";
             buffer.insert((c) -> {
@@ -119,24 +121,31 @@ public class CursorLocatorTest {
             String cmd2 = "--opt2";
             buffer.insert((c) -> {
             }, cmd2, WIDTH);
-            int offset = cmd.length() - 1 + cmd2.length();
+            // In unified buffer, \n is at position 10. Line 1 starts at 11.
+            // Cursor is at 17 (end). On line 1, column = (6 + 2) = 8
+            int offset = cmd.length() + cmd2.length(); // 11 + 6 = 17 (includes the \n that replaced \)
             check(buffer, offset, 1, cmd2.length() + MULTI_LINE_PROMPT.length(), WIDTH);
             checkCursor(buffer, 1, cmd2.length() + MULTI_LINE_PROMPT.length(), WIDTH);
         }
 
         {// Check that the cursor location is on col=MULTI_LINE_PROMPT, row=1
+         // "cmd --opt1\\" → "cmd --opt1\n" → cursor at 11 (after \n)
             Buffer buffer = new Buffer(new Prompt(PROMPT));
             String cmd = "cmd --opt1";
             buffer.insert((c) -> {
             }, cmd + "\\", WIDTH);
             buffer.setMultiLine(true);
             buffer.updateMultiLineBuffer();
+            // Check position of last char on line 0: "cmd --opt1" is 10 chars, last is at index 9
             int offset = cmd.length() - 1;
             check(buffer, offset, 0, cmd.length() + PROMPT.length() - 1, WIDTH);
+            // Cursor is at 11 (after \n on line 1)
             checkCursor(buffer, 1, MULTI_LINE_PROMPT.length(), WIDTH);
         }
 
         { //Wrapped and multiline.
+          // "cmd --opt1 --opt2 --opt3\\" (25 chars) → "cmd --opt1 --opt2 --opt3\n" (25 chars)
+          // Then insert "--opt4" → "cmd --opt1 --opt2 --opt3\n--opt4" (31 chars)
             Buffer buffer = new Buffer(new Prompt(PROMPT));
             String cmd = "cmd --opt1 --opt2 --opt3\\";
             int width = PROMPT.length() + (cmd.length() / 2);
@@ -147,7 +156,9 @@ public class CursorLocatorTest {
             String cmd2 = "--opt4";
             buffer.insert((c) -> {
             }, cmd2, width);
-            int offset = cmd.length() - 1 + cmd2.length();
+            // \n at position 24. Line 0: "cmd --opt1 --opt2 --opt3" (24 chars + prompt wraps)
+            // Line 1: "--opt4" starts at 25
+            int offset = cmd.length() + cmd2.length(); // 25 + 6 = 31
             check(buffer, offset, 2, cmd2.length() + MULTI_LINE_PROMPT.length(), width);
         }
     }
@@ -158,7 +169,8 @@ public class CursorLocatorTest {
         Buffer buffer = new Buffer(new Prompt(PROMPT));
         String cmd1 = "cmd --opt1 --opt2 ";
         String cmd2 = "--opt3 --opt4";
-        String cmd = cmd1 + cmd2;
+        // With unified buffer: getLineToCursor() returns raw content including \n
+        String cmdWithNewline = cmd1 + "\n" + cmd2;
         buffer.insert((c) -> {
         }, cmd1 + "\\", WIDTH);
         buffer.setMultiLine(true);
@@ -167,7 +179,7 @@ public class CursorLocatorTest {
         }, cmd2, WIDTH);
         Line line = new Line(buffer, connection, WIDTH);
         String s = line.getLineToCursor();
-        Assert.assertEquals(cmd, s);
+        Assert.assertEquals(cmdWithNewline, s);
         Assert.assertNotNull(line.getCursorLocator());
         Assert.assertEquals(buffer.multiCursor(), s.length());
         line.newCursorTransactionBuilder().move(10).build().run();

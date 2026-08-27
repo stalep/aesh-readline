@@ -47,7 +47,7 @@ public class KeyTest {
 
         Action action = editMode.parse(up);
 
-        assertEquals(action.name(), ActionMapper.mapToAction("previous-history").name());
+        assertEquals(action.name(), ActionMapper.mapToAction("previous-line").name());
 
         if (Config.isOSPOSIXCompatible()) {
             int[] doubleUpKey = new int[6];
@@ -62,7 +62,7 @@ public class KeyTest {
             actionDecoder.add(doubleUpKey);
 
             action = editMode.parse(actionDecoder.next());
-            assertEquals(action.name(), ActionMapper.mapToAction("previous-history").name());
+            assertEquals(action.name(), ActionMapper.mapToAction("previous-line").name());
         }
 
     }

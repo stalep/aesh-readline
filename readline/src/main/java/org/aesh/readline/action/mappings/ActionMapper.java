@@ -154,6 +154,10 @@ public class ActionMapper {
                 return new NullAction(); // TODO: need to add a proper Operation
             case "previous-history":
                 return new PrevHistory();
+            case "previous-line":
+                return new PrevLine();
+            case "next-line":
+                return new NextLine();
             case "quoted-insert":
                 return new QuotedInsert();
             case "re-read-init-file":

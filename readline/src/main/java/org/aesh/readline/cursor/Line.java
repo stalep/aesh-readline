@@ -30,6 +30,7 @@ import org.aesh.terminal.formatting.Color;
 import org.aesh.terminal.formatting.TerminalCharacter;
 import org.aesh.terminal.formatting.TerminalColor;
 import org.aesh.terminal.utils.ANSI;
+import org.aesh.terminal.utils.Parser;
 
 /**
  * A command line. This line abstract commands spread-out on multiple lines.
@@ -359,7 +360,9 @@ public class Line {
      * @return the substring from the cursor position to the end of the line
      */
     public String getLineFromCursor() {
-        return buffer.asString().substring(buffer.multiCursor());
+        int[] raw = buffer.getRawLine();
+        int cursorPos = Math.min(buffer.multiCursor(), raw.length);
+        return Parser.fromCodePoints(java.util.Arrays.copyOfRange(raw, cursorPos, raw.length));
     }
 
     @Override
@@ -401,7 +404,9 @@ public class Line {
      * @return the contents of the beginning of the line up to where the cursor is
      */
     public String getLineToCursor() {
-        return buffer.asString().substring(0, buffer.multiCursor());
+        int[] raw = buffer.getRawLine();
+        int cursorPos = Math.min(buffer.multiCursor(), raw.length);
+        return Parser.fromCodePoints(java.util.Arrays.copyOf(raw, cursorPos));
     }
 
     /**

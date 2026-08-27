@@ -68,9 +68,9 @@ abstract class SearchHistory implements SearchAction {
             status = Status.SEARCH_NEXT;
         } else if (action instanceof DeletePrevChar) {
             status = Status.SEARCH_DELETE;
-        } else if (action instanceof PrevHistory)
+        } else if (action instanceof PrevHistory || action instanceof PrevLine)
             status = Status.SEARCH_MOVE_PREV;
-        else if (action instanceof NextHistory)
+        else if (action instanceof NextHistory || action instanceof NextLine)
             status = Status.SEARCH_MOVE_NEXT;
         else if (action instanceof ForwardChar) {
             status = Status.SEARCH_MOVE_RIGHT;

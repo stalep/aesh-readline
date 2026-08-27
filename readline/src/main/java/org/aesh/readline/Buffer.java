@@ -57,7 +57,8 @@ public final class Buffer {
     private boolean deltaChangedAtEndOfBuffer = true;
     private boolean disablePrompt = false;
     private boolean multiLine = false;
-    private int[] multiLineBuffer = new int[0];
+    /** Tracks positions of \n that came from backslash continuations (should be stripped on submission). */
+    private java.util.BitSet backslashNewlines = new java.util.BitSet();
     private Prompt continuationPrompt = new Prompt("> ");
     private boolean isPromptDisplayed = false;
     private boolean deletingBackward = true;
@@ -65,6 +66,8 @@ public final class Buffer {
     private boolean overwriteMode = false;
     /** Number of extra prompt lines above the input line (lineCount - 1). */
     private int promptExtraLines = 0;
+    /** The display row the terminal cursor was on after the last render. */
+    private int lastRenderedCursorRow = 0;
 
     private final CursorLocator locator;
 
@@ -131,16 +134,12 @@ public final class Buffer {
     }
 
     /**
-     * Returns the cursor position including the multi-line buffer offset.
-     * If the buffer is in multi-line mode, this returns the cursor position
-     * relative to the entire multi-line content.
+     * Returns the cursor position in the complete multi-line content.
+     * With the unified buffer, this is the same as {@link #cursor()}.
      *
-     * @return the cursor position including multi-line offset
+     * @return the cursor position
      */
     public int multiCursor() {
-        if (multiLine) {
-            return multiLineBuffer.length + cursor;
-        }
         return cursor;
     }
 
@@ -174,7 +173,7 @@ public final class Buffer {
     /**
      * Resets the buffer to its initial empty state.
      * This clears all content, resets the cursor to position 0,
-     * and clears any multi-line buffer content.
+     * and clears any multi-line state.
      */
     public void reset() {
         cursor = 0;
@@ -182,10 +181,9 @@ public final class Buffer {
             line[i] = 0;
         size = 0;
         isPromptDisplayed = false;
-        if (multiLine) {
-            multiLineBuffer = new int[0];
-            multiLine = false;
-        }
+        multiLine = false;
+        backslashNewlines.clear();
+        lastRenderedCursorRow = 0;
         locator.clear();
     }
 
@@ -256,6 +254,120 @@ public final class Buffer {
         }
     }
 
+    // =========================================================================
+    // Logical line helpers — scan the buffer for \n to determine line
+    // boundaries. These methods support multi-line editing where the buffer
+    // contains embedded newline characters.
+    // =========================================================================
+
+    /**
+     * Returns the index of the first character on the logical line
+     * containing the given position. This is the position immediately
+     * after the preceding {@code \n}, or 0 if on the first line.
+     *
+     * @param pos a position in the buffer
+     * @return the start index of the logical line
+     */
+    public int getLogicalLineStart(int pos) {
+        for (int i = Math.min(pos, size) - 1; i >= 0; i--) {
+            if (line[i] == '\n') {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Returns the index one past the last content character on the logical
+     * line containing the given position. This is the position of the
+     * next {@code \n}, or {@code size} if on the last line.
+     *
+     * @param pos a position in the buffer
+     * @return the end index (exclusive) of the logical line
+     */
+    public int getLogicalLineEnd(int pos) {
+        for (int i = pos; i < size; i++) {
+            if (line[i] == '\n') {
+                return i;
+            }
+        }
+        return size;
+    }
+
+    /**
+     * Returns the 0-based logical line index for the given buffer position.
+     * Line 0 is the first line; each {@code \n} increments the line number.
+     *
+     * @param pos a position in the buffer
+     * @return the logical line index
+     */
+    public int getLogicalLineIndex(int pos) {
+        int lineIndex = 0;
+        for (int i = 0; i < pos && i < size; i++) {
+            if (line[i] == '\n') {
+                lineIndex++;
+            }
+        }
+        return lineIndex;
+    }
+
+    /**
+     * Returns the total number of logical lines in the buffer.
+     * A buffer with no {@code \n} has 1 logical line.
+     *
+     * @return the number of logical lines
+     */
+    public int getLogicalLineCount() {
+        int count = 1;
+        for (int i = 0; i < size; i++) {
+            if (line[i] == '\n') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Returns the column position of the given buffer position within
+     * its logical line (i.e., the offset from the logical line start).
+     *
+     * @param pos a position in the buffer
+     * @return the column within the logical line
+     */
+    public int getCursorColumnOnLine(int pos) {
+        return pos - getLogicalLineStart(pos);
+    }
+
+    /**
+     * Returns the prompt length for the given logical line index.
+     * Line 0 uses the main prompt; subsequent lines use the continuation prompt.
+     *
+     * @param lineIndex the 0-based logical line index
+     * @return the prompt length in characters
+     */
+    public int getPromptLengthForLine(int lineIndex) {
+        if (disablePrompt)
+            return 0;
+        if (lineIndex == 0) {
+            return prompt.length();
+        }
+        return continuationPrompt.length();
+    }
+
+    /**
+     * Returns the prompt for the given logical line index.
+     * Line 0 uses the main prompt; subsequent lines use the continuation prompt.
+     *
+     * @param lineIndex the 0-based logical line index
+     * @return the prompt
+     */
+    public Prompt getPromptForLine(int lineIndex) {
+        if (lineIndex == 0) {
+            return prompt;
+        }
+        return continuationPrompt;
+    }
+
     /**
      * Returns the length of the buffer content.
      * If masking with a null mask character, returns 1.
@@ -275,7 +387,8 @@ public final class Buffer {
 
     /**
      * Returns the total number of display rows occupied by the prompt + buffer,
-     * including extra prompt lines for multi-line prompts.
+     * including extra prompt lines for multi-line prompts. Accounts for
+     * logical line breaks ({@code \n}) and per-line prompt widths.
      *
      * @param width the terminal width
      * @return the total display rows
@@ -283,14 +396,19 @@ public final class Buffer {
     int totalDisplayRows(int width) {
         if (width <= 0)
             return 1 + promptExtraLines;
-        int totalChars = size + promptLength();
-        int inputRows = totalChars == 0 ? 1 : (totalChars + width - 1) / width;
-        return inputRows + promptExtraLines;
+        if (!multiLine) {
+            int totalChars = size + promptLength();
+            int inputRows = totalChars == 0 ? 1 : (totalChars + width - 1) / width;
+            return inputRows + promptExtraLines;
+        }
+        // Multi-line: iterate logical lines
+        return computeDisplayRow(size, width) + 1 + promptExtraLines;
     }
 
     /**
      * Returns the display row of the cursor, including extra prompt lines.
-     * Row 0 is the first prompt line.
+     * Row 0 is the first prompt line. Accounts for logical line breaks
+     * and per-line prompt widths.
      *
      * @param width the terminal width
      * @return the cursor's display row
@@ -298,8 +416,49 @@ public final class Buffer {
     int cursorDisplayRow(int width) {
         if (width <= 0)
             return promptExtraLines;
-        int cursorChars = cursor + promptLength();
-        return (cursorChars / width) + promptExtraLines;
+        if (!multiLine) {
+            int cursorChars = cursor + promptLength();
+            return (cursorChars / width) + promptExtraLines;
+        }
+        // Multi-line: compute row for cursor position
+        return computeDisplayRow(cursor, width) + promptExtraLines;
+    }
+
+    /**
+     * Computes the display row for a given buffer position, accounting
+     * for logical newlines and per-line prompt widths.
+     */
+    private int computeDisplayRow(int pos, int width) {
+        int row = 0;
+        int logicalLine = 0;
+        int lineStart = 0;
+        for (int i = 0; i < pos && i < size; i++) {
+            if (line[i] == '\n') {
+                // This logical line is complete — account for its wrapping
+                int lineLen = i - lineStart;
+                int promptLen = getPromptLengthForLine(logicalLine);
+                row += Math.max(1, (lineLen + promptLen + width - 1) / width);
+                logicalLine++;
+                lineStart = i + 1;
+            }
+        }
+        // Account for the current (possibly partial) logical line
+        int lineLen = pos - lineStart;
+        int promptLen = getPromptLengthForLine(logicalLine);
+        row += (lineLen + promptLen) / width;
+        return row;
+    }
+
+    /**
+     * Computes the display column for a given buffer position, accounting
+     * for the prompt width on the logical line containing the position.
+     */
+    private int computeDisplayCol(int pos, int width) {
+        int lineStart = getLogicalLineStart(pos);
+        int logicalLine = getLogicalLineIndex(pos);
+        int promptLen = getPromptLengthForLine(logicalLine);
+        int lineLen = pos - lineStart;
+        return (lineLen + promptLen) % width;
     }
 
     /**
@@ -324,33 +483,25 @@ public final class Buffer {
     }
 
     /**
-     * Updates the multi-line buffer by appending the current line content.
-     * If the line ends with a backslash, the backslash is removed.
-     * Otherwise, a newline is appended to the buffer.
+     * Transitions to multi-line editing by inserting a newline into the buffer.
+     * <p>
+     * If the line ends with a backslash, the backslash is replaced with a newline.
+     * Otherwise (open-quote continuation), a newline is appended at the cursor.
+     * The cursor is positioned after the newline, ready for the next line of input.
      */
     public void updateMultiLineBuffer() {
-        int originalSize = multiLineBuffer.length;
-        // Store the size of each line.
-        int cmdSize;
         if (lineEndsWithBackslash()) {
-            cmdSize = size - 1;
-            multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + size - 1);
-            System.arraycopy(line, 0, multiLineBuffer, originalSize, size - 1);
+            // Replace trailing backslash with newline
+            line[size - 1] = '\n';
+            // Mark this newline as a backslash continuation (stripped on submission)
+            backslashNewlines.set(size - 1);
+            // cursor stays at size (after the \n)
+            cursor = size;
+        } else {
+            // Open-quote continuation: insert newline at the cursor position
+            doInsert('\n');
+            // This \n is NOT marked as backslash — it's preserved on submission
         }
-        //here we have an open quote, so we need to feed a new-line into the buffer
-        else {
-            cmdSize = size + Config.getLineSeparator().length();
-            multiLineBuffer = Arrays.copyOf(multiLineBuffer, originalSize + cmdSize);
-            System.arraycopy(line, 0, multiLineBuffer, originalSize, size);
-            // add new line
-            int[] lineSeparator = Parser.toCodePoints(Config.getLineSeparator());
-            System.arraycopy(lineSeparator, 0, multiLineBuffer, originalSize + size, lineSeparator.length);
-        }
-        locator.addLine(cmdSize, prompt.getLength());
-        clear();
-        prompt = continuationPrompt;
-        cursor = 0;
-        size = 0;
     }
 
     private boolean lineEndsWithBackslash() {
@@ -366,7 +517,12 @@ public final class Buffer {
      */
     public void insert(Consumer<int[]> out, int[] data, int width) {
         doInsert(data);
-        printInsertedData(out, width);
+        if (multiLine) {
+            printMultiLineRedraw(out, width, false);
+            delta = 0;
+        } else {
+            printInsertedData(out, width);
+        }
     }
 
     /**
@@ -378,14 +534,19 @@ public final class Buffer {
      */
     public void insert(Consumer<int[]> out, int data, int width) {
         doInsert(data);
-        printInsertedData(out, width);
+        if (multiLine) {
+            printMultiLineRedraw(out, width, false);
+            delta = 0;
+        } else {
+            printInsertedData(out, width);
+        }
     }
 
     private void doInsert(int data) {
         int width = WcWidth.width(data);
-        if (width == -1) {
+        if (width == -1 && data != '\n') {
             //todo: handle control chars...
-        } else if (width == 1) {
+        } else if (width == 1 || data == '\n') {
             if (cursor < size)
                 System.arraycopy(line, cursor, line, cursor + 1, size - cursor);
             line[cursor++] = data;
@@ -401,6 +562,11 @@ public final class Buffer {
     private void doInsert(int[] data) {
         boolean gotControlChar = false;
         for (int aData : data) {
+            if (aData == '\n') {
+                // Newlines are allowed — they create logical line breaks
+                // in multi-line editing mode
+                continue;
+            }
             int width = WcWidth.width(aData);
             if (width == -1) {
                 gotControlChar = true;
@@ -459,10 +625,46 @@ public final class Buffer {
             return;
         }
 
-        out.accept(syncCursor(promptLength() + cursor, promptLength() + cursor + move, termWidth));
+        if (multiLine) {
+            out.accept(syncCursorMultiLine(cursor, cursor + move, termWidth));
+        } else {
+            out.accept(syncCursor(promptLength() + cursor, promptLength() + cursor + move, termWidth));
+        }
 
         cursor = cursor + move;
 
+        // Update tracked display row so printMultiLineRedraw knows where we are
+        if (multiLine) {
+            lastRenderedCursorRow = computeDisplayRow(cursor, termWidth) + promptExtraLines;
+        }
+
+    }
+
+    /**
+     * Multi-line aware cursor sync: uses computeDisplayRow/Col to handle
+     * newlines and per-line prompts correctly.
+     */
+    private int[] syncCursorMultiLine(int fromPos, int toPos, int width) {
+        int fromRow = computeDisplayRow(fromPos, width) + promptExtraLines;
+        int fromCol = computeDisplayCol(fromPos, width);
+        int toRow = computeDisplayRow(toPos, width) + promptExtraLines;
+        int toCol = computeDisplayCol(toPos, width);
+
+        IntArrayBuilder builder = new IntArrayBuilder(16);
+        int rowDelta = fromRow - toRow;
+        if (rowDelta != 0) {
+            char rowDir = rowDelta > 0 ? 'A' : 'B';
+            builder.append(moveNumberOfColumns(Math.abs(rowDelta), rowDir));
+        }
+        int colDelta = fromCol - toCol;
+        if (colDelta != 0) {
+            if (colDelta > 0) {
+                builder.append(moveNumberOfColumns(colDelta, 'D'));
+            } else {
+                builder.append(moveNumberOfColumns(-colDelta, 'C'));
+            }
+        }
+        return builder.toArray();
     }
 
     private int[] syncCursor(int currentPos, int newPos, int width) {
@@ -700,12 +902,42 @@ public final class Buffer {
     }
 
     private void print(Consumer<int[]> out, int width, boolean viMode) {
+        if (multiLine) {
+            // Multi-line mode: full redraw every time
+            printMultiLineRedraw(out, width, viMode);
+            delta = 0;
+            return;
+        }
         if (delta >= 0)
             printInsertedData(out, width);
         else {
             printDeletedData(out, width, viMode);
         }
         delta = 0;
+    }
+
+    /**
+     * Full redraw for multi-line mode. Clears all displayed content and
+     * reprints the entire buffer with per-line prompts.
+     */
+    private void printMultiLineRedraw(Consumer<int[]> out, int width, boolean viMode) {
+        IntArrayBuilder builder = new IntArrayBuilder(size + 64);
+
+        // Move cursor to top-left of the editing area.
+        // Use the tracked lastRenderedCursorRow to know exactly how many
+        // rows up to move — avoids overshooting into scrollback.
+        if (isPromptDisplayed) {
+            if (lastRenderedCursorRow > 0) {
+                builder.append(moveNumberOfColumns(lastRenderedCursorRow, 'A'));
+            }
+            // Move to column 0
+            builder.append(new int[] { '\r' });
+            // Erase from cursor to end of screen
+            builder.append(ANSI.ERASE_SCREEN_FROM_CURSOR);
+        }
+
+        // Print each logical line with its prompt
+        printMultiLineBuffer(out, builder, width, viMode);
     }
 
     private void printInsertedData(Consumer<int[]> out, int width) {
@@ -843,14 +1075,34 @@ public final class Buffer {
         if (line == null || size == 0 && line.length == 0)
             return;
 
+        boolean wasMultiLine = multiLine;
         int tmpDelta = line.length - size;
         int oldSize = size + promptLength();
         int oldCursor = cursor + promptLength();
         clear();
         doInsert(line);
         delta = tmpDelta;
-        //deltaChangedAtEndOfBuffer = false;
         deltaChangedAtEndOfBuffer = (cursor == size);
+
+        // Check if new content has newlines
+        boolean hasNewlines = false;
+        for (int c : line) {
+            if (c == '\n') {
+                hasNewlines = true;
+                break;
+            }
+        }
+        if (hasNewlines) {
+            multiLine = true;
+        }
+
+        if (multiLine || wasMultiLine) {
+            // Full multi-line redraw
+            printMultiLineRedraw(out, width, false);
+            delta = 0;
+            deltaChangedAtEndOfBuffer = true;
+            return;
+        }
 
         IntArrayBuilder builder = new IntArrayBuilder(32);
         if (oldSize >= width)
@@ -967,19 +1219,104 @@ public final class Buffer {
     }
 
     /**
-     * Returns the complete buffer content including multi-line content.
-     * If in multi-line mode, this combines the multi-line buffer with the current line.
+     * Full redraw of multi-line buffer content. Clears all displayed lines,
+     * then reprints each logical line with its appropriate prompt.
+     */
+    private void printMultiLineBuffer(Consumer<int[]> out, IntArrayBuilder builder,
+            int width, boolean viMode) {
+        // Print each logical line with its prompt
+        int lineCount = getLogicalLineCount();
+        int lineStart = 0;
+        for (int i = 0; i < lineCount; i++) {
+            int lineEnd = getLogicalLineEnd(lineStart);
+            Prompt linePrompt = getPromptForLine(i);
+
+            // Print prompt
+            builder.append(linePrompt.getANSI());
+
+            // Print line content (exclude the \n)
+            if (lineEnd > lineStart) {
+                int[] lineContent = Arrays.copyOfRange(line, lineStart, lineEnd);
+                builder.append(lineContent);
+            }
+
+            // Pad at terminal edge
+            int lineLen = lineEnd - lineStart + linePrompt.length();
+            if (lineLen > 0 && lineLen % width == 0) {
+                builder.append(new int[] { 32, 13 });
+            }
+
+            // Move to next line (if not last)
+            if (i < lineCount - 1) {
+                builder.append(new int[] { '\r', '\n' });
+                lineStart = lineEnd + 1; // skip the \n
+            }
+        }
+
+        // Sync cursor back to its position
+        int cursorRow = computeDisplayRow(cursor, width) + promptExtraLines;
+        if (cursor < size) {
+            int endRow = computeDisplayRow(size, width) + promptExtraLines;
+            int cursorCol = computeDisplayCol(cursor, width);
+
+            // Move to column 0 first
+            builder.append(new int[] { '\r' });
+            // Move up to the cursor's row
+            int rowDelta = endRow - cursorRow;
+            if (rowDelta > 0) {
+                builder.append(moveNumberOfColumns(rowDelta, 'A'));
+            }
+            // Move right to the cursor's column
+            if (cursorCol > 0) {
+                builder.append(moveNumberOfColumns(cursorCol, 'C'));
+            }
+        }
+
+        // Vi mode: cursor before last char
+        if (viMode && cursor == size && size > 0) {
+            builder.append(moveNumberOfColumns(1, 'D'));
+            cursor--;
+            cursorRow = computeDisplayRow(cursor, width) + promptExtraLines;
+        }
+
+        // Track where the terminal cursor is after this render
+        lastRenderedCursorRow = cursorRow;
+
+        out.accept(builder.toArray());
+        isPromptDisplayed = true;
+    }
+
+    /**
+     * Returns the complete buffer content for submission to the caller.
+     * Newlines from backslash continuations are stripped (lines are joined).
+     * Newlines from open-quote continuations are preserved.
      *
-     * @return the complete buffer content as an array of code points
+     * @return the processed buffer content as an array of code points
      */
     public int[] multiLine() {
-        if (multiLine) {
-            int[] tmpLine = Arrays.copyOf(multiLineBuffer, multiLineBuffer.length + size);
-            System.arraycopy(line, 0, tmpLine, multiLineBuffer.length, size);
-            return tmpLine;
-        } else {
+        if (!multiLine || backslashNewlines.isEmpty()) {
             return getLine();
         }
+        // Build result with backslash-continuation newlines removed
+        IntArrayBuilder result = new IntArrayBuilder(size);
+        for (int i = 0; i < size; i++) {
+            if (line[i] == '\n' && backslashNewlines.get(i)) {
+                // Skip this newline — it was a backslash continuation
+                continue;
+            }
+            result.append(line[i]);
+        }
+        return result.toArray();
+    }
+
+    /**
+     * Returns the raw buffer content including all newlines (both backslash
+     * and open-quote continuations). Used internally for display rendering.
+     *
+     * @return the raw buffer content
+     */
+    public int[] getRawLine() {
+        return getLine();
     }
 
     /**
